@@ -1,0 +1,257 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  BOOKING_STAFF
+  AGENT
+  AFFILIATE
+  CUSTOMER
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  PAID
+  CHECKED_IN
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  REFUNDED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+  REFUNDED
+}
+
+enum CommissionStatus {
+  PENDING
+  ELIGIBLE
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String?
+  role         UserRole    @default(CUSTOMER)
+  passwordHash String?
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  customer     Customer?
+  agent        Agent?
+  affiliate    Affiliate?
+  auditLogs    AuditLog[]
+}
+
+model Customer {
+  id          String    @id @default(cuid())
+  userId      String?   @unique
+  user        User?     @relation(fields: [userId], references: [id])
+  name        String
+  nationality String?
+  phone       String
+  email       String?
+  isTourist   Boolean   @default(true)
+  bookings    Booking[]
+  createdAt   DateTime  @default(now())
+}
+
+model Booking {
+  id                String        @id @default(cuid())
+  reference         String        @unique
+  customerId        String
+  customer          Customer      @relation(fields: [customerId], references: [id])
+  date              DateTime
+  timeSlotId        String
+  timeSlot          TimeSlot      @relation(fields: [timeSlotId], references: [id])
+  riderCount        Int
+  totalAmount       Decimal       @db.Decimal(10, 2)
+  currency          String
+  paymentStatus     PaymentStatus @default(UNPAID)
+  bookingStatus     BookingStatus @default(PENDING)
+  agentId           String?
+  agent             Agent?        @relation(fields: [agentId], references: [id])
+  affiliateId       String?
+  affiliate         Affiliate?    @relation(fields: [affiliateId], references: [id])
+  affiliateCodeId   String?
+  affiliateCode     AffiliateCode? @relation(fields: [affiliateCodeId], references: [id])
+  commissionAmount  Decimal?      @db.Decimal(10, 2)
+  internalNotes     String?
+  createdById       String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  riders            BookingRider[]
+  addons            BookingAddon[]
+  payments          Payment[]
+  commissions       Commission[]
+}
+
+model BookingRider {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  name      String?
+  type      String
+  weightKg  Decimal? @db.Decimal(5, 2)
+}
+
+model BookingAddon {
+  id        String  @id @default(cuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  addonKey  String
+  label     String
+  price     Decimal @db.Decimal(10, 2)
+  currency  String
+}
+
+model Agent {
+  id                String       @id @default(cuid())
+  userId            String       @unique
+  user              User         @relation(fields: [userId], references: [id])
+  agencyName        String
+  commissionPercent Decimal      @default(10) @db.Decimal(5, 2)
+  isApproved        Boolean      @default(false)
+  isSuspended       Boolean      @default(false)
+  bookings          Booking[]
+  rates             AgentRate[]
+  commissions       Commission[]
+}
+
+model AgentRate {
+  id        String  @id @default(cuid())
+  agentId   String
+  agent     Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name      String
+  price     Decimal @db.Decimal(10, 2)
+  currency  String
+  validFrom DateTime?
+  validTo   DateTime?
+}
+
+model Affiliate {
+  id          String          @id @default(cuid())
+  userId      String          @unique
+  user        User            @relation(fields: [userId], references: [id])
+  displayName String
+  isApproved  Boolean         @default(false)
+  codes       AffiliateCode[]
+  bookings    Booking[]
+  commissions Commission[]
+}
+
+model AffiliateCode {
+  id          String     @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate  @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  code        String     @unique
+  clicks      Int        @default(0)
+  isActive    Boolean    @default(true)
+  bookings    Booking[]
+}
+
+model Commission {
+  id          String           @id @default(cuid())
+  bookingId   String
+  booking     Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  agentId     String?
+  agent       Agent?           @relation(fields: [agentId], references: [id])
+  affiliateId String?
+  affiliate   Affiliate?       @relation(fields: [affiliateId], references: [id])
+  amount      Decimal          @db.Decimal(10, 2)
+  currency    String
+  status      CommissionStatus @default(PENDING)
+  paidAt      DateTime?
+  notes       String?
+}
+
+model Payment {
+  id        String        @id @default(cuid())
+  bookingId String
+  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  amount    Decimal       @db.Decimal(10, 2)
+  currency  String
+  method    String
+  status    PaymentStatus @default(UNPAID)
+  createdAt DateTime      @default(now())
+}
+
+model TimeSlot {
+  id          String    @id @default(cuid())
+  label       String
+  startsAt    DateTime
+  maxRiders   Int       @default(8)
+  isActive    Boolean   @default(true)
+  bookings    Booking[]
+}
+
+model PricingRule {
+  id          String    @id @default(cuid())
+  name        String
+  audience    String
+  adultPrice  Decimal   @db.Decimal(10, 2)
+  childPrice  Decimal   @db.Decimal(10, 2)
+  currency    String
+  validFrom   DateTime?
+  validTo     DateTime?
+  minGroup    Int?
+  isActive    Boolean   @default(true)
+}
+
+model MediaFile {
+  id          String    @id @default(cuid())
+  type        MediaType
+  url         String
+  fallbackUrl String?
+  caption     String?
+  placement   String
+  isFeatured  Boolean   @default(false)
+  sortOrder   Int       @default(0)
+  createdAt   DateTime  @default(now())
+}
+
+model WebsiteContent {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  entity    String
+  entityId  String?
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now())
+}
