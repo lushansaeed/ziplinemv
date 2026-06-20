@@ -3,7 +3,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 export default function ReportsPage() {
   const reports = ["Daily bookings", "Monthly bookings", "Revenue", "Add-on sales", "Agent sales", "Affiliate sales", "Commission payable", "Payment status", "Cancelled bookings", "Customer nationality"];
   return (
-    <DashboardShell title="Reports" subtitle="Export operational reports to CSV or Excel for finance, sales, and booking staff." nav={["Daily", "Monthly", "Revenue", "CSV", "Excel"]}>
+    <DashboardShell title="Reports" subtitle="Export operational reports to CSV or Excel for finance, sales, and booking staff." nav={["Daily", "Monthly", "Revenue", "CSV", "Excel"]} showSignOut>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => (
           <div key={report} className="rounded-[2rem] bg-white p-6 shadow-sm">

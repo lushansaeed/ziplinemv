@@ -4,7 +4,7 @@ import { adminMetrics } from "@/lib/data";
 
 export default function AdminPage() {
   return (
-    <DashboardShell title="Admin dashboard" subtitle="Manage bookings, customers, agents, affiliates, pricing, time slots, media, commissions, reports, roles, themes, and audit logs." nav={["Bookings", "Pricing", "Media", "Commission", "Reports", "Theme", "Roles"]}>
+    <DashboardShell title="Admin dashboard" subtitle="Manage bookings, customers, agents, affiliates, pricing, time slots, media, commissions, reports, roles, themes, and audit logs." nav={["Bookings", "Pricing", "Media", "Commission", "Reports", "Theme", "Roles"]} showSignOut>
       <div className="grid gap-5 md:grid-cols-4">
         {adminMetrics.map((metric) => (
           <div key={metric.label} className="rounded-[2rem] bg-white p-6 shadow-sm">

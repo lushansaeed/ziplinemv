@@ -3,7 +3,7 @@ import { bookings } from "@/lib/data";
 
 export default function AgentDashboardPage() {
   return (
-    <DashboardShell title="Agent dashboard" subtitle="Create bookings, update customer details before confirmation, and monitor bookings and commissions." nav={["Create booking", "Bookings", "Commission", "Reports"]}>
+    <DashboardShell title="Agent dashboard" subtitle="Create bookings, update customer details before confirmation, and monitor bookings and commissions." nav={["Create booking", "Bookings", "Commission", "Reports"]} showSignOut>
       <div className="grid gap-5 md:grid-cols-3">
         {["Today bookings: 6", "Monthly bookings: 42", "Pending commission: $380"].map((item) => (
           <div key={item} className="rounded-[2rem] bg-white p-6 text-2xl font-black shadow-sm">{item}</div>

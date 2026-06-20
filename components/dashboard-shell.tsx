@@ -1,16 +1,19 @@
 import Link from "next/link";
 import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
+import { signOut } from "@/lib/auth/actions";
 
 export function DashboardShell({
   title,
   subtitle,
   nav,
+  showSignOut = false,
   children
 }: {
   title: string;
   subtitle: string;
   nav: string[];
+  showSignOut?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -30,6 +33,13 @@ export function DashboardShell({
                   {item}
                 </Link>
               ))}
+              {showSignOut ? (
+                <form action={signOut}>
+                  <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white shadow-sm">
+                    Sign out
+                  </button>
+                </form>
+              ) : null}
             </div>
             <div className="mt-8">{children}</div>
           </div>

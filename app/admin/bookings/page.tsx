@@ -3,7 +3,7 @@ import { bookings } from "@/lib/data";
 
 export default function BookingManagementPage() {
   return (
-    <DashboardShell title="Booking management" subtitle="Filter, approve, cancel, reschedule, mark paid, complete, add notes, assign media status, and export bookings." nav={["All", "Pending", "Confirmed", "Paid", "Completed", "Export CSV"]}>
+    <DashboardShell title="Booking management" subtitle="Filter, approve, cancel, reschedule, mark paid, complete, add notes, assign media status, and export bookings." nav={["All", "Pending", "Confirmed", "Paid", "Completed", "Export CSV"]} showSignOut>
       <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm">
         {bookings.map((booking) => (
           <div key={booking.ref} className="grid gap-3 border-b border-ocean-950/10 p-4 text-sm md:grid-cols-7">
