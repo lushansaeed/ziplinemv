@@ -9,7 +9,10 @@ import { getUserRole, isAuthRole, roleHome, safeRedirectPath } from "@/lib/auth/
 import type { AuthRole } from "@/lib/auth/roles";
 
 function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL || "http://localhost:3000";
+
+  return configuredUrl.startsWith("http") ? configuredUrl : `https://${configuredUrl}`;
 }
 
 function authErrorRedirect(role: string, redirectTo: string, message: string) {
