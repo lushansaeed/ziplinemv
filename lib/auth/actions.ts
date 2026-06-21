@@ -48,6 +48,10 @@ function registrationRedirect(role: string, message: string, error?: string) {
   redirect(`/${role}s/register?${params.toString()}`);
 }
 
+function hasSupabaseAuthConfig() {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
 function roleToDbRole(role: AuthRole) {
   return role === "admin" ? "ADMIN" : role === "agent" ? "AGENT" : "AFFILIATE";
 }
@@ -211,20 +215,50 @@ export async function signUp(formData: FormData) {
   }
 
   const portalRole = role as Exclude<AuthRole, "admin">;
-  const supabase = await createClient();
   const name = String(formData.get("name") ?? "").trim();
   const agencyName = String(formData.get("agencyName") ?? "").trim();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent("/login?role=" + role)}`,
-      data: {
-        requested_role: portalRole,
-        display_name: name || agencyName
+
+  if (!hasSupabaseAuthConfig()) {
+    registrationRedirect(
+      role,
+      "",
+      "Supabase auth is not configured for this deployment. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in Vercel."
+    );
+  }
+
+  let supabase: Awaited<ReturnType<typeof createClient>> | null = null;
+  try {
+    supabase = await createClient();
+  } catch (error) {
+    console.error("Supabase client creation failed", error);
+    registrationRedirect(role, "", "Supabase auth client could not be created for this deployment.");
+  }
+
+  const authClient = supabase!;
+  let signUpResult: Awaited<ReturnType<typeof authClient.auth.signUp>> | null = null;
+  try {
+    signUpResult = await authClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent("/login?role=" + role)}`,
+        data: {
+          requested_role: portalRole,
+          display_name: name || agencyName
+        }
       }
-    }
-  });
+    });
+  } catch (error) {
+    console.error("Supabase signup failed", error);
+    registrationRedirect(role, "", "Supabase signup failed. Check auth URL, anon key, and allowed redirect URLs in Supabase.");
+  }
+
+  if (!signUpResult) {
+    registrationRedirect(role, "", "Supabase signup did not return a result.");
+  }
+
+  const completedSignUp = signUpResult!;
+  const { data, error } = completedSignUp;
 
   if (error) {
     authErrorRedirect(role, redirectTo, error.message);
@@ -241,7 +275,7 @@ export async function signUp(formData: FormData) {
       });
     } catch (error) {
       console.error("Portal profile creation failed", error);
-      await supabase.auth.signOut();
+      await authClient.auth.signOut();
       registrationRedirect(
         role,
         "Your Supabase auth account may have been created, but the portal profile could not be saved.",
@@ -251,7 +285,7 @@ export async function signUp(formData: FormData) {
   }
 
   if (data.session) {
-    await supabase.auth.signOut();
+    await authClient.auth.signOut();
   }
 
   requestMessageRedirect(role, redirectTo, "Check your email to verify your account. After verification, an admin must approve portal access.");
