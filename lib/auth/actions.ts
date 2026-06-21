@@ -68,7 +68,7 @@ function signupErrorMessage(message: string) {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("rate limit")) {
-    return "Too many verification emails were requested. Please wait a few minutes before trying again, or increase the email rate limit in Supabase Auth settings.";
+    return "Too many verification emails were requested. Please wait a few minutes before trying again";
   }
 
   if (normalized.includes("timeout") || normalized.includes("email") || normalized.includes("smtp")) {
