@@ -33,6 +33,7 @@ const adminLinks: Record<string, string> = {
   Commission: "/admin/commissions",
   Customers: "/admin/customers",
   Daily: "/admin/reports",
+  Dashboard: "/admin",
   Default: "/admin/pricing",
   "Export CSV": "/admin/bookings",
   Gallery: "/admin/media",
@@ -102,13 +103,14 @@ export function DashboardShell({
   const isAffiliate = title.toLowerCase().includes("affiliate");
   const kicker = isAdmin ? "Operations" : isAffiliate ? "Partner portal" : "Zipline portal";
   const initials = isAdmin ? "AD" : isAffiliate ? "AF" : "AG";
+  const navigation = isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav] : nav;
 
   return (
     <main className="min-h-screen overflow-hidden bg-ocean-50 text-ocean-950">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(19,214,198,0.28),transparent_34%),radial-gradient(circle_at_85%_15%,rgba(255,138,76,0.20),transparent_28%),linear-gradient(135deg,#ecfeff_0%,#f8fdff_48%,#dff7f8_100%)]" />
       <div className="mx-auto flex w-full max-w-[1500px] gap-6 px-4 py-4 md:px-6 lg:p-8">
         <aside className="glass sticky top-8 hidden h-[calc(100vh-4rem)] w-72 shrink-0 rounded-3xl p-5 shadow-[0_28px_90px_rgba(8,51,68,0.12)] lg:block">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href={isAdmin ? "/admin" : "/"} className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-ocean-950 to-ocean-700 text-white shadow-glow">
               <Waves className="h-5 w-5" />
             </span>
@@ -119,10 +121,10 @@ export function DashboardShell({
           </Link>
 
           <nav className="mt-8 grid gap-2" aria-label="Dashboard navigation">
-            {nav.map((item, index) => {
+            {navigation.map((item, index) => {
               const href = getHref(item, isAdmin, isAffiliate);
               const Icon = iconMap[item] ?? (index === 0 ? Home : Menu);
-              const active = index === 0 || title.toLowerCase().includes(item.toLowerCase());
+              const active = isActiveNavItem(item, title, isAdmin, index);
 
               return (
                 <Link
@@ -174,13 +176,13 @@ export function DashboardShell({
             </div>
 
             <nav className="mt-4 flex gap-2 overflow-x-auto pb-1 lg:hidden" aria-label="Mobile dashboard navigation">
-              {nav.map((item, index) => (
+              {navigation.map((item, index) => (
                 <Link
                   key={item}
                   href={getHref(item, isAdmin, isAffiliate)}
                   className={clsx(
                     "whitespace-nowrap rounded-full px-4 py-2 text-sm font-black",
-                    index === 0 ? "bg-ocean-950 text-white" : "bg-white/75 text-ocean-950/65"
+                    isActiveNavItem(item, title, isAdmin, index) ? "bg-ocean-950 text-white" : "bg-white/75 text-ocean-950/65"
                   )}
                 >
                   {item}
@@ -215,4 +217,16 @@ function getHref(item: string, isAdmin: boolean, isAffiliate: boolean) {
   }
 
   return portalLinks[item] ?? "#";
+}
+
+function isActiveNavItem(item: string, title: string, isAdmin: boolean, index: number) {
+  const normalizedTitle = title.toLowerCase();
+  const normalizedItem = item.toLowerCase();
+
+  if (isAdmin) {
+    if (item === "Dashboard") return normalizedTitle === "admin dashboard";
+    return normalizedTitle.includes(normalizedItem);
+  }
+
+  return index === 0 || normalizedTitle.includes(normalizedItem);
 }
