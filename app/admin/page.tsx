@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 type MoneyBucket = {
   usd: number;
   mvr: number;
-  usdEquivalent: number;
+  mvrEquivalent: number;
 };
 
 export default async function AdminPage() {
@@ -86,12 +86,12 @@ export default async function AdminPage() {
     .reduce((sum, commission) => sum + Number(commission.amount), 0);
 
   const summaryCards = [
-    { label: "Today's sales", value: moneyLabel(todaySales), detail: compareText(todaySales.usdEquivalent, yesterdaySales.usdEquivalent, "vs yesterday"), icon: DollarSign, tone: "lagoon" as const },
+    { label: "Today's sales", value: moneyLabel(todaySales), detail: `${compareText(todaySales.mvrEquivalent, yesterdaySales.mvrEquivalent, "vs yesterday")} / ${usdDetail(todaySales)}`, icon: DollarSign, tone: "lagoon" as const },
     { label: "Today's bookings", value: String(todayBookings), detail: `${pendingBookings} pending confirmation`, icon: CalendarCheck, tone: "ocean" as const },
-    { label: "Monthly revenue", value: moneyLabel(monthlyRevenue), detail: `${dashboardBookings.filter((booking) => booking.createdAt >= monthStart).length} bookings created this month`, icon: CreditCard, tone: "mint" as const },
+    { label: "Monthly revenue", value: moneyLabel(monthlyRevenue), detail: `${dashboardBookings.filter((booking) => booking.createdAt >= monthStart).length} bookings / ${usdDetail(monthlyRevenue)}`, icon: CreditCard, tone: "mint" as const },
     { label: "Pending bookings", value: String(pendingBookings), detail: "Awaiting admin action", icon: Clock3, tone: "sunset" as const },
     { label: "Completed rides", value: String(completedRides), detail: `${percent(completedRides, totalBookings)} of all bookings`, icon: TicketCheck, tone: "ocean" as const },
-    { label: "Commission payable", value: `USD ${commissionPayable.toFixed(2)}`, detail: "Pending, eligible, or approved", icon: WalletCards, tone: "rose" as const }
+    { label: "Commission payable", value: mvrFromUsdLabel(commissionPayable), detail: `USD ${commissionPayable.toFixed(2)} pending, eligible, or approved`, icon: WalletCards, tone: "rose" as const }
   ];
 
   const addOnSales = buildAddonSales(addonRows, totalBookings);
@@ -132,7 +132,7 @@ export default async function AdminPage() {
               String(booking.riderCount),
               booking.addons.length ? booking.addons.map((addon) => addon.label).join(", ") : "None",
               booking.agent ? "Agent" : booking.affiliate ? "Affiliate" : booking.createdById ? "Admin/manual" : "Direct website",
-              `${booking.currency} ${Number(booking.totalAmount).toFixed(2)}`,
+              <MoneyStack key="amount" money={toMoney(Number(booking.totalAmount), booking.currency)} />,
               <StatusBadge key="payment" status={booking.paymentStatus} />,
               <StatusBadge key="status" status={booking.bookingStatus} />,
               <BookingActions key="actions" id={booking.id} bookingStatus={booking.bookingStatus} paymentStatus={booking.paymentStatus} />
@@ -152,7 +152,10 @@ export default async function AdminPage() {
                     <p className="font-black text-ocean-950">{addon.name}</p>
                     <p className="text-sm font-bold text-ocean-950/50">{addon.quantity} sold</p>
                   </div>
-                  <p className="text-xl font-black text-ocean-700">USD {addon.revenue.toFixed(2)}</p>
+                  <div className="text-right">
+                    <p className="text-xl font-black text-ocean-700">{mvrFromUsdLabel(addon.revenue)}</p>
+                    <p className="text-xs font-black text-ocean-950/45">USD {addon.revenue.toFixed(2)}</p>
+                  </div>
                 </div>
                 <div className="mt-4">
                   <ProgressBar label={`${addon.attachRate.toFixed(1)}% attach rate`} value={addon.attachRate} />
@@ -165,13 +168,13 @@ export default async function AdminPage() {
         <DataCard title="Payment overview" eyebrow="Collections">
           <div className="grid gap-3">
             {[
-              ["Paid amount", moneyLabel(paymentOverview.paid)],
-              ["Unpaid amount", moneyLabel(paymentOverview.unpaid)],
-              ["Partial payments", String(paymentCounts.PARTIALLY_PAID ?? 0)],
-              ["Refunded amount", moneyLabel(paymentOverview.refunded)],
-              ["USD collected", `USD ${paymentOverview.usdCollected.toFixed(2)}`],
-              ["MVR collected", `MVR ${paymentOverview.mvrCollected.toFixed(2)}`]
-            ].map(([label, value]) => <MiniMetric key={label} label={label} value={value} />)}
+              ["Paid amount", moneyLabel(paymentOverview.paid), usdDetail(paymentOverview.paid)],
+              ["Unpaid amount", moneyLabel(paymentOverview.unpaid), usdDetail(paymentOverview.unpaid)],
+              ["Partial payments", String(paymentCounts.PARTIALLY_PAID ?? 0), ""],
+              ["Refunded amount", moneyLabel(paymentOverview.refunded), usdDetail(paymentOverview.refunded)],
+              ["USD collected", mvrFromUsdLabel(paymentOverview.usdCollected), `USD ${paymentOverview.usdCollected.toFixed(2)}`],
+              ["MVR collected", `MVR ${paymentOverview.mvrCollected.toFixed(2)}`, "MVR direct collection"]
+            ].map(([label, value, detail]) => <MiniMetric key={label} label={label} value={value} detail={detail} />)}
             <div className="rounded-2xl bg-white/65 p-4">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">Payment methods</p>
               <p className="mt-2 text-sm font-bold text-ocean-950/65">{paymentOverview.methods || "No payment records yet"}</p>
@@ -229,12 +232,22 @@ function InlineBookingAction({ id, bookingStatus, paymentStatus, label, danger =
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
     <div className="rounded-2xl bg-white/65 p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">{label}</p>
       <p className="mt-2 text-xl font-black text-ocean-950">{value}</p>
+      {detail ? <p className="mt-1 text-xs font-black text-ocean-950/45">{detail}</p> : null}
     </div>
+  );
+}
+
+function MoneyStack({ money }: { money: MoneyBucket }) {
+  return (
+    <span className="block">
+      <span className="block font-black text-ocean-950">{moneyLabel(money)}</span>
+      {money.usd > 0 ? <span className="block text-xs font-black text-ocean-950/45">USD {money.usd.toFixed(2)}</span> : null}
+    </span>
   );
 }
 
@@ -264,11 +277,11 @@ function buildSalesDatasets(bookings: Array<{ date: Date; createdAt: Date; total
     if (yearPoint) addToPoint(yearPoint, money);
 
     if (date.getFullYear() === currentYear && date.getMonth() === currentMonth - 1) {
-      dailyPrevious += money.usdEquivalent;
-      weeklyPrevious += money.usdEquivalent;
+      dailyPrevious += money.mvrEquivalent;
+      weeklyPrevious += money.mvrEquivalent;
     }
-    if (date.getFullYear() === currentYear - 1) monthlyPrevious += money.usdEquivalent;
-    if (date.getFullYear() === currentYear - 1) yearlyPrevious += money.usdEquivalent;
+    if (date.getFullYear() === currentYear - 1) monthlyPrevious += money.mvrEquivalent;
+    if (date.getFullYear() === currentYear - 1) yearlyPrevious += money.mvrEquivalent;
   });
 
   return {
@@ -336,7 +349,7 @@ function buildAlerts({
     pendingBookings ? `${pendingBookings} pending bookings awaiting confirmation.` : "",
     unpaidBookings ? `${unpaidBookings} unpaid bookings need payment follow-up.` : "",
     partialPayments ? `${partialPayments} bookings have partial payments.` : "",
-    commissionPayable ? `USD ${commissionPayable.toFixed(2)} commission payable is due for review.` : "",
+    commissionPayable ? `${mvrFromUsdLabel(commissionPayable)} commission payable is due for review (USD ${commissionPayable.toFixed(2)}).` : "",
     delayedMedia ? `${delayedMedia} media package bookings may be delayed.` : "",
     fullSlots.length ? `${fullSlots.length} time slots are fully booked today.` : "",
     cancelledBookings ? `${cancelledBookings} cancelled bookings recorded.` : "",
@@ -349,24 +362,24 @@ function createPoint(label: string) {
 }
 
 function addToPoint(point: { amount: number; usd: number; mvr: number }, money: MoneyBucket) {
-  point.amount += money.usdEquivalent;
+  point.amount += money.mvrEquivalent;
   point.usd += money.usd;
   point.mvr += money.mvr;
 }
 
 function emptyMoney(): MoneyBucket {
-  return { usd: 0, mvr: 0, usdEquivalent: 0 };
+  return { usd: 0, mvr: 0, mvrEquivalent: 0 };
 }
 
 function toMoney(amount: number, currency: string): MoneyBucket {
-  if (currency === "MVR") return { usd: 0, mvr: amount, usdEquivalent: amount / defaultPricing.exchangeRateMvrPerUsd };
-  return { usd: amount, mvr: 0, usdEquivalent: amount };
+  if (currency === "MVR") return { usd: 0, mvr: amount, mvrEquivalent: amount };
+  return { usd: amount, mvr: 0, mvrEquivalent: amount * defaultPricing.exchangeRateMvrPerUsd };
 }
 
 function addMoney(bucket: MoneyBucket, value: MoneyBucket) {
   bucket.usd += value.usd;
   bucket.mvr += value.mvr;
-  bucket.usdEquivalent += value.usdEquivalent;
+  bucket.mvrEquivalent += value.mvrEquivalent;
   return bucket;
 }
 
@@ -375,16 +388,22 @@ function addMoneyFromBooking<T extends { totalAmount: unknown; currency: string 
 }
 
 function moneyLabel(bucket: MoneyBucket) {
-  if (bucket.usd > 0 && bucket.mvr > 0) return `USD ${bucket.usdEquivalent.toFixed(2)} eq`;
-  if (bucket.mvr > 0) return `MVR ${bucket.mvr.toFixed(2)}`;
-  return `USD ${bucket.usd.toFixed(2)}`;
+  return `MVR ${bucket.mvrEquivalent.toFixed(2)}`;
+}
+
+function usdDetail(bucket: MoneyBucket) {
+  return bucket.usd > 0 ? `USD ${bucket.usd.toFixed(2)}` : "No USD sales";
+}
+
+function mvrFromUsdLabel(usd: number) {
+  return `MVR ${(usd * defaultPricing.exchangeRateMvrPerUsd).toFixed(2)}`;
 }
 
 function currencyLabel(points: Array<{ usd: number; mvr: number }>) {
   const totals = points.reduce((bucket, point) => ({ usd: bucket.usd + point.usd, mvr: bucket.mvr + point.mvr }), { usd: 0, mvr: 0 });
-  if (totals.usd > 0 && totals.mvr > 0) return `Mixed currency, MVR converted at ${defaultPricing.exchangeRateMvrPerUsd}:1`;
-  if (totals.mvr > 0) return "MVR sales converted for chart";
-  return "USD sales";
+  if (totals.usd > 0 && totals.mvr > 0) return `MVR totals, USD visible at ${defaultPricing.exchangeRateMvrPerUsd}:1`;
+  if (totals.usd > 0) return `USD sales converted to MVR at ${defaultPricing.exchangeRateMvrPerUsd}:1`;
+  return "MVR sales";
 }
 
 function countBy(items: string[]) {

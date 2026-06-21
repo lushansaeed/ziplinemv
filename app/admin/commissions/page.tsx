@@ -1,5 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { deleteCommission, updateCommission } from "@/lib/admin/actions";
+import { defaultPricing } from "@/lib/pricing";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -39,7 +40,8 @@ export default async function CommissionManagementPage({
           <div key={item.status} className="rounded-lg bg-white p-6 shadow-sm">
             <p className="text-sm font-bold text-ocean-950/60">{item.status}</p>
             <p className="mt-2 text-2xl font-black">{item.count} items</p>
-            <p className="text-sm font-bold text-ocean-700">USD {item.amount}</p>
+            <p className="text-sm font-bold text-ocean-700">{mvrFromUsdLabel(Number(item.amount))}</p>
+            <p className="text-xs font-black text-ocean-950/45">USD {item.amount}</p>
           </div>
         ))}
       </div>
@@ -51,7 +53,10 @@ export default async function CommissionManagementPage({
               <strong>{commission.booking.reference}</strong>
               <span>{commission.booking.customer.name}</span>
               <span>{commission.agent?.agencyName ?? commission.affiliate?.displayName ?? "Direct"}</span>
-              <span>{commission.currency} {commission.amount.toFixed(2)}</span>
+              <span>
+                <span className="block font-black text-ocean-950">{commission.currency === "USD" ? mvrFromUsdLabel(Number(commission.amount)) : `MVR ${commission.amount.toFixed(2)}`}</span>
+                {commission.currency === "USD" ? <span className="block text-xs font-black text-ocean-950/45">USD {commission.amount.toFixed(2)}</span> : null}
+              </span>
               <span>{commission.status}</span>
               <span>{commission.paidAt?.toISOString().slice(0, 10) ?? "Unpaid"}</span>
             </div>
@@ -73,6 +78,10 @@ export default async function CommissionManagementPage({
       </div>
     </DashboardShell>
   );
+}
+
+function mvrFromUsdLabel(usd: number) {
+  return `MVR ${(usd * defaultPricing.exchangeRateMvrPerUsd).toFixed(2)}`;
 }
 
 function Messages({ message, error }: { message?: string; error?: string }) {

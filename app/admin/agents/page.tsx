@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { updateAgent } from "@/lib/admin/actions";
+import { defaultPricing } from "@/lib/pricing";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -37,16 +38,16 @@ export default async function AgentsPage({
           rows={agentPerformance.slice(0, 8).map((agent) => [
             <span key="agent" className="font-black text-ocean-950">{agent.name}</span>,
             String(agent.bookings),
-            moneyLabel(agent.sales),
-            `USD ${agent.pendingCommission.toFixed(2)}`,
-            `USD ${agent.paidCommission.toFixed(2)}`
+            <MoneyStack key="sales" money={agent.sales} />,
+            <UsdCommission key="pending" usd={agent.pendingCommission} />,
+            <UsdCommission key="paid" usd={agent.paidCommission} />
           ])}
           empty="No agent performance data yet."
         />
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
           <MiniMetric label="Agent bookings" value={String(agentPerformance.reduce((sum, agent) => sum + agent.bookings, 0))} />
-          <MiniMetric label="Agent sales" value={moneyLabel(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} />
-          <MiniMetric label="Payable" value={`USD ${agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0).toFixed(2)}`} />
+          <MiniMetric label="Agent sales" value={moneyLabel(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} detail={usdDetail(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} />
+          <MiniMetric label="Payable" value={mvrFromUsdLabel(agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0))} detail={`USD ${agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0).toFixed(2)}`} />
         </div>
       </DataCard>
 
@@ -76,41 +77,66 @@ export default async function AgentsPage({
 type MoneyBucket = {
   usd: number;
   mvr: number;
-  usdEquivalent: number;
+  mvrEquivalent: number;
 };
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
     <div className="rounded-2xl bg-white/65 p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">{label}</p>
       <p className="mt-2 text-xl font-black text-ocean-950">{value}</p>
+      {detail ? <p className="mt-1 text-xs font-black text-ocean-950/45">{detail}</p> : null}
     </div>
   );
 }
 
+function MoneyStack({ money }: { money: MoneyBucket }) {
+  return (
+    <span className="block">
+      <span className="block font-black text-ocean-950">{moneyLabel(money)}</span>
+      {money.usd > 0 ? <span className="block text-xs font-black text-ocean-950/45">USD {money.usd.toFixed(2)}</span> : null}
+    </span>
+  );
+}
+
+function UsdCommission({ usd }: { usd: number }) {
+  return (
+    <span className="block">
+      <span className="block font-black text-ocean-950">{mvrFromUsdLabel(usd)}</span>
+      <span className="block text-xs font-black text-ocean-950/45">USD {usd.toFixed(2)}</span>
+    </span>
+  );
+}
+
 function emptyMoney(): MoneyBucket {
-  return { usd: 0, mvr: 0, usdEquivalent: 0 };
+  return { usd: 0, mvr: 0, mvrEquivalent: 0 };
 }
 
 function addMoney(bucket: MoneyBucket, value: MoneyBucket) {
   bucket.usd += value.usd;
   bucket.mvr += value.mvr;
-  bucket.usdEquivalent += value.usdEquivalent;
+  bucket.mvrEquivalent += value.mvrEquivalent;
   return bucket;
 }
 
 function addMoneyFromBooking<T extends { totalAmount: unknown; currency: string }>(bucket: MoneyBucket, booking: T) {
   const amount = Number(booking.totalAmount);
   if (booking.currency === "MVR") {
-    return addMoney(bucket, { usd: 0, mvr: amount, usdEquivalent: amount / 20 });
+    return addMoney(bucket, { usd: 0, mvr: amount, mvrEquivalent: amount });
   }
-  return addMoney(bucket, { usd: amount, mvr: 0, usdEquivalent: amount });
+  return addMoney(bucket, { usd: amount, mvr: 0, mvrEquivalent: amount * defaultPricing.exchangeRateMvrPerUsd });
 }
 
 function moneyLabel(bucket: MoneyBucket) {
-  if (bucket.usd > 0 && bucket.mvr > 0) return `USD ${bucket.usdEquivalent.toFixed(2)} eq`;
-  if (bucket.mvr > 0) return `MVR ${bucket.mvr.toFixed(2)}`;
-  return `USD ${bucket.usd.toFixed(2)}`;
+  return `MVR ${bucket.mvrEquivalent.toFixed(2)}`;
+}
+
+function usdDetail(bucket: MoneyBucket) {
+  return bucket.usd > 0 ? `USD ${bucket.usd.toFixed(2)}` : "No USD sales";
+}
+
+function mvrFromUsdLabel(usd: number) {
+  return `MVR ${(usd * defaultPricing.exchangeRateMvrPerUsd).toFixed(2)}`;
 }
 
 function Messages({ message, error }: { message?: string; error?: string }) {

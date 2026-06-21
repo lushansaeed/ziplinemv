@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { defaultPricing } from "@/lib/pricing";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -9,10 +10,10 @@ export default async function ReportsPage() {
   today.setHours(0, 0, 0, 0);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [dailyBookings, monthlyBookings, paidRevenue, addonSales, agentBookings, affiliateBookings, payableCommissions, cancelledBookings, customers] = await Promise.all([
+  const [dailyBookings, monthlyBookings, paidBookings, addonSales, agentBookings, affiliateBookings, payableCommissions, cancelledBookings, customers] = await Promise.all([
     db.booking.count({ where: { createdAt: { gte: today } } }),
     db.booking.count({ where: { createdAt: { gte: monthStart } } }),
-    db.booking.aggregate({ _sum: { totalAmount: true }, where: { paymentStatus: "PAID" } }),
+    db.booking.findMany({ where: { paymentStatus: "PAID" }, select: { totalAmount: true, currency: true } }),
     db.bookingAddon.aggregate({ _sum: { price: true } }),
     db.booking.count({ where: { agentId: { not: null } } }),
     db.booking.count({ where: { affiliateId: { not: null } } }),
@@ -30,11 +31,11 @@ export default async function ReportsPage() {
   const reports = [
     { label: "Daily bookings", value: String(dailyBookings), detail: "Created today" },
     { label: "Monthly bookings", value: String(monthlyBookings), detail: "Created this month" },
-    { label: "Revenue", value: `USD ${paidRevenue._sum.totalAmount?.toFixed(2) ?? "0.00"}`, detail: "Paid bookings" },
-    { label: "Add-on sales", value: `USD ${addonSales._sum.price?.toFixed(2) ?? "0.00"}`, detail: "All add-ons" },
+    { label: "Revenue", value: moneyLabel(paidBookings.reduce(addMoneyFromBooking, emptyMoney())), detail: usdDetail(paidBookings.reduce(addMoneyFromBooking, emptyMoney())) },
+    { label: "Add-on sales", value: mvrFromUsdLabel(Number(addonSales._sum.price ?? 0)), detail: `USD ${Number(addonSales._sum.price ?? 0).toFixed(2)}` },
     { label: "Agent sales", value: String(agentBookings), detail: "Bookings with agent" },
     { label: "Affiliate sales", value: String(affiliateBookings), detail: "Bookings with affiliate" },
-    { label: "Commission payable", value: `USD ${payableCommissions._sum.amount?.toFixed(2) ?? "0.00"}`, detail: "Eligible or approved" },
+    { label: "Commission payable", value: mvrFromUsdLabel(Number(payableCommissions._sum.amount ?? 0)), detail: `USD ${Number(payableCommissions._sum.amount ?? 0).toFixed(2)}` },
     { label: "Cancelled bookings", value: String(cancelledBookings), detail: "Cancelled status" }
   ];
 
@@ -62,4 +63,38 @@ export default async function ReportsPage() {
       </div>
     </DashboardShell>
   );
+}
+
+type MoneyBucket = {
+  usd: number;
+  mvr: number;
+  mvrEquivalent: number;
+};
+
+function emptyMoney(): MoneyBucket {
+  return { usd: 0, mvr: 0, mvrEquivalent: 0 };
+}
+
+function addMoneyFromBooking<T extends { totalAmount: unknown; currency: string }>(bucket: MoneyBucket, booking: T) {
+  const amount = Number(booking.totalAmount);
+  if (booking.currency === "MVR") {
+    bucket.mvr += amount;
+    bucket.mvrEquivalent += amount;
+  } else {
+    bucket.usd += amount;
+    bucket.mvrEquivalent += amount * defaultPricing.exchangeRateMvrPerUsd;
+  }
+  return bucket;
+}
+
+function moneyLabel(bucket: MoneyBucket) {
+  return `MVR ${bucket.mvrEquivalent.toFixed(2)}`;
+}
+
+function usdDetail(bucket: MoneyBucket) {
+  return bucket.usd > 0 ? `USD ${bucket.usd.toFixed(2)}` : "No USD sales";
+}
+
+function mvrFromUsdLabel(usd: number) {
+  return `MVR ${(usd * defaultPricing.exchangeRateMvrPerUsd).toFixed(2)}`;
 }

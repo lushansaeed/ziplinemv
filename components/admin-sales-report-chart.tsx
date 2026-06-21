@@ -136,7 +136,7 @@ export function SalesReportChart({ datasets }: { datasets: Record<SalesPeriod, S
                 <rect width="150" height="78" rx="14" fill="rgb(14 116 144)" />
                 <text x="16" y="24" className="fill-white/70 text-[11px] font-black uppercase tracking-[0.18em]">{activePoint.label}</text>
                 <text x="16" y="50" className="fill-white text-[20px] font-black">{formatCurrency(activePoint.amount)}</text>
-                <text x="16" y="67" className="fill-white/70 text-[11px] font-bold">USD {activePoint.usd.toFixed(0)} / MVR {activePoint.mvr.toFixed(0)}</text>
+                <text x="16" y="67" className="fill-white/70 text-[11px] font-bold">USD {activePoint.usd.toFixed(0)} visible / MVR {activePoint.mvr.toFixed(0)}</text>
               </g>
             ) : null}
           </svg>
@@ -151,7 +151,7 @@ export function SalesReportChart({ datasets }: { datasets: Record<SalesPeriod, S
 }
 
 function formatCurrency(value: number) {
-  return `USD ${Math.round(value).toLocaleString()}`;
+  return `MVR ${Math.round(value).toLocaleString()}`;
 }
 
 function compactCurrency(value: number) {

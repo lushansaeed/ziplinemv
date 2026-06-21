@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { updateAffiliate } from "@/lib/admin/actions";
+import { defaultPricing } from "@/lib/pricing";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -45,13 +46,13 @@ export default async function AffiliatesPage({
             String(affiliate.clicks),
             String(affiliate.bookings),
             `${affiliate.conversion.toFixed(1)}%`,
-            `USD ${affiliate.earned.toFixed(2)}`
+            <UsdCommission key="commission" usd={affiliate.earned} />
           ])}
           empty="No affiliate performance data yet."
         />
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <MiniMetric label="Pending" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.pendingCommission, 0).toFixed(2)}`} />
-          <MiniMetric label="Paid" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.paidCommission, 0).toFixed(2)}`} />
+          <MiniMetric label="Pending" value={mvrFromUsdLabel(affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.pendingCommission, 0))} detail={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.pendingCommission, 0).toFixed(2)}`} />
+          <MiniMetric label="Paid" value={mvrFromUsdLabel(affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.paidCommission, 0))} detail={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.paidCommission, 0).toFixed(2)}`} />
           <MiniMetric label="Clicks" value={String(affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.clicks, 0))} />
         </div>
       </DataCard>
@@ -79,13 +80,27 @@ export default async function AffiliatesPage({
   );
 }
 
-function MiniMetric({ label, value }: { label: string; value: string }) {
+function MiniMetric({ label, value, detail }: { label: string; value: string; detail?: string }) {
   return (
     <div className="rounded-2xl bg-white/65 p-4">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">{label}</p>
       <p className="mt-2 text-xl font-black text-ocean-950">{value}</p>
+      {detail ? <p className="mt-1 text-xs font-black text-ocean-950/45">{detail}</p> : null}
     </div>
   );
+}
+
+function UsdCommission({ usd }: { usd: number }) {
+  return (
+    <span className="block">
+      <span className="block font-black text-ocean-950">{mvrFromUsdLabel(usd)}</span>
+      <span className="block text-xs font-black text-ocean-950/45">USD {usd.toFixed(2)}</span>
+    </span>
+  );
+}
+
+function mvrFromUsdLabel(usd: number) {
+  return `MVR ${(usd * defaultPricing.exchangeRateMvrPerUsd).toFixed(2)}`;
 }
 
 function Messages({ message, error }: { message?: string; error?: string }) {
