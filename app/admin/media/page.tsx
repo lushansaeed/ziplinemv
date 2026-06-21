@@ -12,14 +12,12 @@ export default async function MediaManagementPage({
 }) {
   const params = await searchParams;
   const db = getDb();
-  const [media, bookings] = await Promise.all([
-    db.mediaFile.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
-    db.booking.findMany({
+  const media = await db.mediaFile.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] });
+  const bookings = await db.booking.findMany({
       include: { customer: true, addons: true },
       orderBy: { date: "desc" },
       take: 100
-    })
-  ]);
+  });
   const today = startOfDay(new Date());
   const mediaBookings = bookings.filter((booking) => booking.addons.some((addon) => mediaAddonLabel(addon.label)));
 

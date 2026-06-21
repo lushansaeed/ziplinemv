@@ -29,20 +29,11 @@ export default async function AdminPage() {
   const tomorrow = addDays(today, 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-  const [
-    allPaidBookings,
-    dashboardBookings,
-    allBookingStatuses,
-    allCommissions,
-    payments,
-    addonRows,
-    timeSlots
-  ] = await Promise.all([
-    db.booking.findMany({
+  const allPaidBookings = await db.booking.findMany({
       where: { paymentStatus: "PAID" },
       select: { date: true, createdAt: true, totalAmount: true, currency: true }
-    }),
-    db.booking.findMany({
+  });
+  const dashboardBookings = await db.booking.findMany({
       include: {
         customer: true,
         timeSlot: true,
@@ -54,15 +45,14 @@ export default async function AdminPage() {
       },
       orderBy: { createdAt: "desc" },
       take: 100
-    }),
-    db.booking.findMany({
+  });
+  const allBookingStatuses = await db.booking.findMany({
       select: { bookingStatus: true, paymentStatus: true, date: true, timeSlotId: true, totalAmount: true, currency: true }
-    }),
-    db.commission.findMany(),
-    db.payment.findMany(),
-    db.bookingAddon.findMany({ include: { booking: true } }),
-    db.timeSlot.findMany({ where: { isActive: true }, include: { bookings: true }, orderBy: { startsAt: "asc" } })
-  ]);
+  });
+  const allCommissions = await db.commission.findMany();
+  const payments = await db.payment.findMany();
+  const addonRows = await db.bookingAddon.findMany({ include: { booking: true } });
+  const timeSlots = await db.timeSlot.findMany({ where: { isActive: true }, include: { bookings: true }, orderBy: { startsAt: "asc" } });
 
   const salesDatasets = buildSalesDatasets(allPaidBookings, now);
   const todaySales = dashboardBookings

@@ -11,11 +11,9 @@ export default async function PricingManagementPage({
 }) {
   const params = await searchParams;
   const db = getDb();
-  const [rules, slots, agents] = await Promise.all([
-    db.pricingRule.findMany({ orderBy: [{ isActive: "desc" }, { name: "asc" }] }),
-    db.timeSlot.findMany({ orderBy: { startsAt: "asc" }, include: { bookings: true } }),
-    db.agent.findMany({ include: { user: true, rates: true }, orderBy: { agencyName: "asc" } })
-  ]);
+  const rules = await db.pricingRule.findMany({ orderBy: [{ isActive: "desc" }, { name: "asc" }] });
+  const slots = await db.timeSlot.findMany({ orderBy: { startsAt: "asc" }, include: { bookings: true } });
+  const agents = await db.agent.findMany({ include: { user: true, rates: true }, orderBy: { agencyName: "asc" } });
 
   return (
     <DashboardShell title="Pricing management" subtitle="Edit default prices, seasonal offers, group rates, agent rates, affiliate rules, exchange rate, add-ons, and slot capacity." nav={["Default", "Seasonal", "Offers", "Group rates", "Agent rates"]} showSignOut>

@@ -15,8 +15,7 @@ export default async function BookingManagementPage({
 }) {
   const params = await searchParams;
   const db = getDb();
-  const [bookings, timeSlots] = await Promise.all([
-    db.booking.findMany({
+  const bookings = await db.booking.findMany({
       include: {
         customer: true,
         timeSlot: true,
@@ -28,9 +27,8 @@ export default async function BookingManagementPage({
       },
       orderBy: { createdAt: "desc" },
       take: 100
-    }),
-    db.timeSlot.findMany({ where: { isActive: true }, orderBy: { startsAt: "asc" } })
-  ]);
+  });
+  const timeSlots = await db.timeSlot.findMany({ where: { isActive: true }, orderBy: { startsAt: "asc" } });
   const counts = bookings.reduce<Record<string, number>>((totals, booking) => {
     totals[booking.bookingStatus] = (totals[booking.bookingStatus] ?? 0) + 1;
     return totals;

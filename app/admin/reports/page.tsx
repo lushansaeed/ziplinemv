@@ -10,17 +10,15 @@ export default async function ReportsPage() {
   today.setHours(0, 0, 0, 0);
   const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 
-  const [dailyBookings, monthlyBookings, paidBookings, addonSales, agentBookings, affiliateBookings, payableCommissions, cancelledBookings, customers] = await Promise.all([
-    db.booking.count({ where: { createdAt: { gte: today } } }),
-    db.booking.count({ where: { createdAt: { gte: monthStart } } }),
-    db.booking.findMany({ where: { paymentStatus: "PAID" }, select: { totalAmount: true, currency: true } }),
-    db.bookingAddon.aggregate({ _sum: { price: true } }),
-    db.booking.count({ where: { agentId: { not: null } } }),
-    db.booking.count({ where: { affiliateId: { not: null } } }),
-    db.commission.aggregate({ _sum: { amount: true }, where: { status: { in: ["ELIGIBLE", "APPROVED"] } } }),
-    db.booking.count({ where: { bookingStatus: "CANCELLED" } }),
-    db.customer.findMany({ select: { nationality: true } })
-  ]);
+  const dailyBookings = await db.booking.count({ where: { createdAt: { gte: today } } });
+  const monthlyBookings = await db.booking.count({ where: { createdAt: { gte: monthStart } } });
+  const paidBookings = await db.booking.findMany({ where: { paymentStatus: "PAID" }, select: { totalAmount: true, currency: true } });
+  const addonSales = await db.bookingAddon.aggregate({ _sum: { price: true } });
+  const agentBookings = await db.booking.count({ where: { agentId: { not: null } } });
+  const affiliateBookings = await db.booking.count({ where: { affiliateId: { not: null } } });
+  const payableCommissions = await db.commission.aggregate({ _sum: { amount: true }, where: { status: { in: ["ELIGIBLE", "APPROVED"] } } });
+  const cancelledBookings = await db.booking.count({ where: { bookingStatus: "CANCELLED" } });
+  const customers = await db.customer.findMany({ select: { nationality: true } });
 
   const nationalityCounts = customers.reduce<Record<string, number>>((counts, customer) => {
     const key = customer.nationality || "Unknown";

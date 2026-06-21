@@ -11,16 +11,14 @@ export default async function RoleApprovalsPage({
 }) {
   const params = await searchParams;
   const db = getDb();
-  const [agents, affiliates] = await Promise.all([
-    db.agent.findMany({
-      include: { user: true },
-      orderBy: { id: "desc" }
-    }),
-    db.affiliate.findMany({
-      include: { user: true, codes: true },
-      orderBy: { id: "desc" }
-    })
-  ]);
+  const agents = await db.agent.findMany({
+    include: { user: true },
+    orderBy: { id: "desc" }
+  });
+  const affiliates = await db.affiliate.findMany({
+    include: { user: true, codes: true },
+    orderBy: { id: "desc" }
+  });
 
   return (
     <DashboardShell title="Role approvals" subtitle="Approve verified agent and affiliate requests, sync Supabase app roles, and keep an audit trail." nav={["Pending", "Approved", "Rejected"]} showSignOut>
