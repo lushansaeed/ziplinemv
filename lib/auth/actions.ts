@@ -32,6 +32,22 @@ function requestMessageRedirect(role: string, redirectTo: string, message: strin
   redirect(`/login?${params.toString()}`);
 }
 
+function registrationRedirect(role: string, message: string, error?: string) {
+  const params = new URLSearchParams({
+    role
+  });
+
+  if (message) {
+    params.set("message", message);
+  }
+
+  if (error) {
+    params.set("error", error);
+  }
+
+  redirect(`/${role}s/register?${params.toString()}`);
+}
+
 function roleToDbRole(role: AuthRole) {
   return role === "admin" ? "ADMIN" : role === "agent" ? "AGENT" : "AFFILIATE";
 }
@@ -215,13 +231,23 @@ export async function signUp(formData: FormData) {
   }
 
   if (data.user) {
-    await ensurePortalProfile({
-      authUserId: data.user.id,
-      email,
-      role: portalRole,
-      name: name || agencyName || email,
-      agencyName
-    });
+    try {
+      await ensurePortalProfile({
+        authUserId: data.user.id,
+        email,
+        role: portalRole,
+        name: name || agencyName || email,
+        agencyName
+      });
+    } catch (error) {
+      console.error("Portal profile creation failed", error);
+      await supabase.auth.signOut();
+      registrationRedirect(
+        role,
+        "Your Supabase auth account may have been created, but the portal profile could not be saved.",
+        "Registration profile save failed. Check DATABASE_URL, DIRECT_URL, migrations, and Supabase service configuration in Vercel."
+      );
+    }
   }
 
   if (data.session) {
