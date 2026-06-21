@@ -365,7 +365,7 @@ export async function resendEmailConfirmation(formData: FormData) {
     );
   }
 
-  requestMessageRedirect(portalRole, roleHome[portalRole], "Verification email sent. Confirm your email, then sign in again.");
+  requestMessageRedirect(portalRole, roleHome[portalRole], "If an unverified account exists for that email, a verification email has been sent.");
 }
 
 export async function signOut() {
