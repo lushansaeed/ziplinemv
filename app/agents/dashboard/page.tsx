@@ -1,32 +1,106 @@
+import { CalendarCheck, CreditCard, DollarSign, Ticket, TrendingUp, Users } from "lucide-react";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { ActionButton, DashboardTable, DataCard, ProgressBar, StatCard, StatusBadge } from "@/components/dashboard-ui";
 import { bookings } from "@/lib/data";
+
+const agentStats = [
+  { label: "Today's bookings", value: "6", detail: "2 pending confirmation", icon: CalendarCheck, tone: "lagoon" as const },
+  { label: "Upcoming bookings", value: "18", detail: "Across the next 7 days", icon: Ticket, tone: "ocean" as const },
+  { label: "Monthly sales", value: "$4.2k", detail: "42 bookings this month", icon: TrendingUp, tone: "mint" as const },
+  { label: "Pending commission", value: "$380", detail: "$740 earned total", icon: DollarSign, tone: "sunset" as const }
+];
 
 export default function AgentDashboardPage() {
   return (
-    <DashboardShell title="Agent dashboard" subtitle="Create bookings, update customer details before confirmation, and monitor bookings and commissions." nav={["Create booking", "Bookings", "Commission", "Reports"]} showSignOut>
-      <div className="grid gap-5 md:grid-cols-3">
-        {["Today bookings: 6", "Monthly bookings: 42", "Pending commission: $380"].map((item) => (
-          <div key={item} className="rounded-[2rem] bg-white p-6 text-2xl font-black shadow-sm">{item}</div>
-        ))}
+    <DashboardShell
+      title="Agent dashboard"
+      subtitle="Create bookings, update customer details before confirmation, and monitor bookings and commissions."
+      nav={["Dashboard", "Create booking", "Bookings", "Rate card", "Commission", "Reports"]}
+      showSignOut
+    >
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {agentStats.map((stat) => <StatCard key={stat.label} {...stat} />)}
       </div>
-      <Table />
-    </DashboardShell>
-  );
-}
 
-function Table() {
-  return (
-    <div className="mt-6 overflow-hidden rounded-[2rem] bg-white shadow-sm">
-      {bookings.map((booking) => (
-        <div key={booking.ref} className="grid gap-3 border-b border-ocean-950/10 p-4 text-sm md:grid-cols-6">
-          <strong>{booking.ref}</strong>
-          <span>{booking.customer}</span>
-          <span>{booking.date}</span>
-          <span>{booking.slot}</span>
-          <span>{booking.status}</span>
-          <span>{booking.payment}</span>
+      <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
+        <DataCard
+          title="Recent bookings"
+          eyebrow="Operations"
+          action={<ActionButton href="/book">Create booking</ActionButton>}
+        >
+          <DashboardTable
+            columns={["Reference", "Customer", "Date", "Slot", "Status", "Payment"]}
+            rows={bookings.map((booking) => [
+              <span key="ref" className="font-black text-ocean-950">{booking.ref}</span>,
+              booking.customer,
+              booking.date,
+              booking.slot,
+              <StatusBadge key="status" status={booking.status} />,
+              <StatusBadge key="payment" status={booking.payment} />
+            ])}
+          />
+        </DataCard>
+
+        <div className="grid gap-6">
+          <DataCard title="Commission summary" eyebrow="This month">
+            <div className="grid gap-4">
+              {[
+                ["Earned", "$740", "bg-emerald-50 text-emerald-700"],
+                ["Pending", "$380", "bg-sunset/15 text-orange-700"],
+                ["Paid", "$360", "bg-ocean-50 text-ocean-700"]
+              ].map(([label, value, className]) => (
+                <div key={label} className="flex items-center justify-between rounded-2xl bg-white/65 p-4">
+                  <span className="text-sm font-black text-ocean-950/55">{label}</span>
+                  <span className={`rounded-full px-3 py-1 text-sm font-black ${className}`}>{value}</span>
+                </div>
+              ))}
+              <ProgressBar label="Monthly target" value={72} />
+            </div>
+          </DataCard>
+
+          <DataCard title="Agent rate card" eyebrow="Active pricing">
+            <div className="grid gap-3">
+              {[
+                ["Adult rider", "$45", "Standard agent rate"],
+                ["Child rider", "$35", "Under approved child category"],
+                ["Photo + video", "$18", "Bundled add-on"]
+              ].map(([name, price, note]) => (
+                <div key={name} className="flex items-center justify-between gap-4 rounded-2xl bg-white/65 p-4">
+                  <div>
+                    <p className="font-black text-ocean-950">{name}</p>
+                    <p className="text-sm font-bold text-ocean-950/50">{note}</p>
+                  </div>
+                  <p className="text-xl font-black text-ocean-700">{price}</p>
+                </div>
+              ))}
+            </div>
+          </DataCard>
         </div>
-      ))}
-    </div>
+      </div>
+
+      <div className="mt-6 grid gap-6 md:grid-cols-2">
+        <DataCard title="Booking status overview" eyebrow="Pipeline">
+          <div className="grid gap-4">
+            <ProgressBar label="Confirmed" value={64} />
+            <ProgressBar label="Pending" value={22} />
+            <ProgressBar label="Completed" value={48} />
+          </div>
+        </DataCard>
+        <DataCard title="Quick actions" eyebrow="Next step">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <ActionButton href="/book">New customer booking</ActionButton>
+            <ActionButton href="/agents/dashboard" variant="soft">View commission</ActionButton>
+            <div className="rounded-2xl bg-white/65 p-4">
+              <Users className="h-5 w-5 text-lagoon" />
+              <p className="mt-3 font-black">Keep customer details ready before confirmation.</p>
+            </div>
+            <div className="rounded-2xl bg-white/65 p-4">
+              <CreditCard className="h-5 w-5 text-sunset" />
+              <p className="mt-3 font-black">Review unpaid bookings before end-of-day reporting.</p>
+            </div>
+          </div>
+        </DataCard>
+      </div>
+    </DashboardShell>
   );
 }
