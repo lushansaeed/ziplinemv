@@ -32,6 +32,19 @@ function requestMessageRedirect(role: string, redirectTo: string, message: strin
   redirect(`/login?${params.toString()}`);
 }
 
+function confirmationRedirect(role: string, email: string, message?: string) {
+  const params = new URLSearchParams({
+    role,
+    email
+  });
+
+  if (message) {
+    params.set("message", message);
+  }
+
+  redirect(`/auth/resend-confirmation?${params.toString()}`);
+}
+
 function registrationRedirect(role: string, message: string, error?: string) {
   const params = new URLSearchParams({
     role
@@ -173,6 +186,10 @@ export async function signIn(formData: FormData) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
+    if (error.message.toLowerCase().includes("email not confirmed")) {
+      confirmationRedirect(role, email, "Please verify your email before signing in.");
+    }
+
     authErrorRedirect(role, redirectTo, error.message);
   }
 
@@ -289,6 +306,41 @@ export async function signUp(formData: FormData) {
   }
 
   requestMessageRedirect(role, redirectTo, "Check your email to verify your account. After verification, an admin must approve portal access.");
+}
+
+export async function resendEmailConfirmation(formData: FormData) {
+  const email = String(formData.get("email") ?? "").trim();
+  const role = String(formData.get("role") ?? "agent");
+
+  if (!email || !isAuthRole(role)) {
+    redirect("/auth/resend-confirmation?error=Enter a valid portal role and email address.");
+  }
+
+  if (!hasSupabaseAuthConfig()) {
+    redirect(
+      `/auth/resend-confirmation?role=${encodeURIComponent(role)}&email=${encodeURIComponent(email)}&error=${encodeURIComponent(
+        "Supabase auth is not configured for this deployment."
+      )}`
+    );
+  }
+
+  const portalRole = role as AuthRole;
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email,
+    options: {
+      emailRedirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent("/login?role=" + portalRole)}`
+    }
+  });
+
+  if (error) {
+    redirect(
+      `/auth/resend-confirmation?role=${encodeURIComponent(portalRole)}&email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`
+    );
+  }
+
+  requestMessageRedirect(portalRole, roleHome[portalRole], "Verification email sent. Confirm your email, then sign in again.");
 }
 
 export async function signOut() {

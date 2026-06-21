@@ -56,6 +56,7 @@ export function AuthForm({
         <div className="flex flex-wrap gap-3 text-sm font-bold text-ocean-700">
           <Link href={`/${role}s/register`}>Create a {role} account</Link>
           <Link href={`/auth/forgot-password?role=${role}`}>Forgot password?</Link>
+          <Link href={`/auth/resend-confirmation?role=${role}`}>Resend verification email</Link>
         </div>
       ) : null}
     </form>
