@@ -2,6 +2,8 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { approvePortalUser, rejectPortalUser } from "@/lib/auth/actions";
 import { getDb } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export default async function RoleApprovalsPage({
   searchParams
 }: {

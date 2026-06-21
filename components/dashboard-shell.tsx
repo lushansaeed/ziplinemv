@@ -3,6 +3,19 @@ import { Footer } from "@/components/footer";
 import { Header } from "@/components/header";
 import { signOut } from "@/lib/auth/actions";
 
+const navLinks: Record<string, string> = {
+  Affiliates: "/admin/affiliates",
+  Agents: "/admin/agents",
+  Bookings: "/admin/bookings",
+  Commission: "/admin/commissions",
+  Customers: "/admin/customers",
+  Media: "/admin/media",
+  Pricing: "/admin/pricing",
+  Reports: "/admin/reports",
+  Roles: "/admin/roles",
+  Theme: "/admin/theme"
+};
+
 export function DashboardShell({
   title,
   subtitle,
@@ -29,7 +42,7 @@ export function DashboardShell({
             </div>
             <div className="mt-6 flex flex-wrap gap-2">
               {nav.map((item) => (
-                <Link key={item} href="#" className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-950 shadow-sm">
+                <Link key={item} href={navLinks[item] ?? "#"} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-950 shadow-sm">
                   {item}
                 </Link>
               ))}
