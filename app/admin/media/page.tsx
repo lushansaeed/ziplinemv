@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { ActionButton, DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { deleteMediaFile, saveMediaFile } from "@/lib/admin/actions";
 import { getDb } from "@/lib/db";
 
@@ -10,12 +11,49 @@ export default async function MediaManagementPage({
   searchParams: Promise<{ error?: string; message?: string }>;
 }) {
   const params = await searchParams;
-  const media = await getDb().mediaFile.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] });
+  const db = getDb();
+  const [media, bookings] = await Promise.all([
+    db.mediaFile.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }] }),
+    db.booking.findMany({
+      include: { customer: true, addons: true },
+      orderBy: { date: "desc" },
+      take: 100
+    })
+  ]);
+  const today = startOfDay(new Date());
+  const mediaBookings = bookings.filter((booking) => booking.addons.some((addon) => mediaAddonLabel(addon.label)));
 
   return (
     <DashboardShell title="Media management" subtitle="Upload hero video, gallery photos, promotional clips, delete media, reorder gallery, mark featured media, and add captions." nav={["Upload", "Hero", "Gallery", "Featured", "Captions"]} showSignOut>
       <Messages message={params.message} error={params.error} />
-      <div className="rounded-lg bg-white p-6 shadow-sm">
+      <DataCard title="Media delivery status" eyebrow="Packages">
+        <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+          {[
+            ["Media pending", mediaBookings.filter((booking) => booking.paymentStatus !== "PAID").length],
+            ["Media captured", mediaBookings.filter((booking) => ["CHECKED_IN", "COMPLETED"].includes(booking.bookingStatus)).length],
+            ["Media editing", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
+            ["Media uploaded", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED").length],
+            ["Media delivered", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
+            ["Delayed media", mediaBookings.filter((booking) => booking.date < addDays(today, -2) && booking.bookingStatus !== "COMPLETED").length]
+          ].map(([label, value]) => <MiniMetric key={label} label={String(label)} value={String(value)} />)}
+        </div>
+        <div className="mt-5">
+          <DashboardTable
+            columns={["Reference", "Customer", "Package", "Ride date", "Media status", "Action"]}
+            rows={mediaBookings.slice(0, 8).map((booking) => [
+              <span key="ref" className="font-black text-ocean-950">{booking.reference}</span>,
+              booking.customer.name,
+              booking.addons.filter((addon) => mediaAddonLabel(addon.label)).map((addon) => addon.label).join(", "),
+              booking.date.toISOString().slice(0, 10),
+              mediaStatus(booking.bookingStatus, booking.paymentStatus),
+              <ActionButton key="action" href="/admin/media" variant="soft">Manage</ActionButton>
+            ])}
+            empty="No media packages are attached to bookings yet."
+          />
+        </div>
+      </DataCard>
+
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
         <h2 className="text-2xl font-black">Add media URL</h2>
         <form action={saveMediaFile} className="mt-4 grid gap-3 md:grid-cols-3">
           <Select name="type" label="Type" options={["IMAGE", "VIDEO"]} defaultValue="IMAGE" />
@@ -64,6 +102,40 @@ export default async function MediaManagementPage({
       </div>
     </DashboardShell>
   );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/65 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">{label}</p>
+      <p className="mt-2 text-xl font-black text-ocean-950">{value}</p>
+    </div>
+  );
+}
+
+function mediaAddonLabel(label: string) {
+  const normalized = label.toLowerCase();
+  return normalized.includes("photo") || normalized.includes("video") || normalized.includes("drone") || normalized.includes("360");
+}
+
+function mediaStatus(bookingStatus: string, paymentStatus: string) {
+  if (paymentStatus !== "PAID") return "Media pending";
+  if (bookingStatus === "COMPLETED") return "Media delivered";
+  if (bookingStatus === "CHECKED_IN") return "Media captured";
+  if (bookingStatus === "CANCELLED" || bookingStatus === "NO_SHOW") return "Delayed media";
+  return "Media editing";
+}
+
+function startOfDay(date: Date) {
+  const next = new Date(date);
+  next.setHours(0, 0, 0, 0);
+  return next;
+}
+
+function addDays(date: Date, days: number) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
 }
 
 function Messages({ message, error }: { message?: string; error?: string }) {

@@ -1,17 +1,11 @@
-import Link from "next/link";
 import {
   AlertTriangle,
   CalendarCheck,
   Clock3,
   CreditCard,
   DollarSign,
-  FileText,
-  ImageUp,
-  Plus,
   TicketCheck,
-  Users,
-  WalletCards,
-  type LucideIcon
+  WalletCards
 } from "lucide-react";
 import { updateBooking } from "@/lib/admin/actions";
 import { defaultPricing } from "@/lib/pricing";
@@ -28,8 +22,6 @@ type MoneyBucket = {
   usdEquivalent: number;
 };
 
-const bookingStatuses = ["PENDING", "CONFIRMED", "PAID", "CHECKED_IN", "COMPLETED", "CANCELLED", "NO_SHOW", "REFUNDED"];
-
 export default async function AdminPage() {
   const db = getDb();
   const now = new Date();
@@ -41,8 +33,6 @@ export default async function AdminPage() {
     allPaidBookings,
     dashboardBookings,
     allBookingStatuses,
-    agents,
-    affiliates,
     allCommissions,
     payments,
     addonRows,
@@ -68,8 +58,6 @@ export default async function AdminPage() {
     db.booking.findMany({
       select: { bookingStatus: true, paymentStatus: true, date: true, timeSlotId: true, totalAmount: true, currency: true }
     }),
-    db.agent.findMany({ include: { bookings: true, commissions: true, user: true } }),
-    db.affiliate.findMany({ include: { bookings: true, commissions: true, codes: true, user: true } }),
     db.commission.findMany(),
     db.payment.findMany(),
     db.bookingAddon.findMany({ include: { booking: true } }),
@@ -106,37 +94,6 @@ export default async function AdminPage() {
     { label: "Commission payable", value: `USD ${commissionPayable.toFixed(2)}`, detail: "Pending, eligible, or approved", icon: WalletCards, tone: "rose" as const }
   ];
 
-  const agentPerformance = agents
-    .map((agent) => {
-      const paidBookings = agent.bookings.filter((booking) => booking.paymentStatus === "PAID");
-      return {
-        name: agent.agencyName || agent.user.name || agent.user.email,
-        bookings: agent.bookings.length,
-        sales: paidBookings.reduce(addMoneyFromBooking, emptyMoney()),
-        pendingCommission: agent.commissions.filter((commission) => ["PENDING", "ELIGIBLE", "APPROVED"].includes(commission.status)).reduce((sum, commission) => sum + Number(commission.amount), 0),
-        paidCommission: agent.commissions.filter((commission) => commission.status === "PAID").reduce((sum, commission) => sum + Number(commission.amount), 0)
-      };
-    })
-    .sort((a, b) => b.bookings - a.bookings);
-
-  const affiliatePerformance = affiliates
-    .map((affiliate) => {
-      const clicks = affiliate.codes.reduce((sum, code) => sum + code.clicks, 0);
-      const paidCommission = affiliate.commissions.filter((commission) => commission.status === "PAID").reduce((sum, commission) => sum + Number(commission.amount), 0);
-      const pendingCommission = affiliate.commissions.filter((commission) => ["PENDING", "ELIGIBLE", "APPROVED"].includes(commission.status)).reduce((sum, commission) => sum + Number(commission.amount), 0);
-      return {
-        name: affiliate.displayName || affiliate.user.name || affiliate.user.email,
-        codes: affiliate.codes.map((code) => code.code).join(", ") || "No code",
-        clicks,
-        bookings: affiliate.bookings.length,
-        conversion: clicks ? (affiliate.bookings.length / clicks) * 100 : 0,
-        earned: pendingCommission + paidCommission,
-        pendingCommission,
-        paidCommission
-      };
-    })
-    .sort((a, b) => b.bookings - a.bookings);
-
   const addOnSales = buildAddonSales(addonRows, totalBookings);
   const paymentOverview = buildPaymentOverview(payments, dashboardBookings);
   const mediaBookings = dashboardBookings.filter((booking) => booking.addons.some((addon) => mediaAddonLabel(addon.label)));
@@ -150,17 +107,6 @@ export default async function AdminPage() {
     cancelledBookings: counts.CANCELLED ?? 0,
     refundRequests: counts.REFUNDED ?? 0
   });
-  const quickActions: Array<[string, string, LucideIcon]> = [
-    ["/admin/bookings", "Create Booking", Plus],
-    ["/admin/agents", "Add Agent", Users],
-    ["/admin/affiliates", "Add Affiliate", Users],
-    ["/admin/media", "Upload Media", ImageUp],
-    ["/admin/pricing", "Update Pricing", CreditCard],
-    ["/admin/pricing", "Create Time Slot", Clock3],
-    ["/admin/bookings", "View Today's Schedule", CalendarCheck],
-    ["/admin/reports", "Export Report", FileText]
-  ];
-
   return (
     <DashboardShell
       title="Admin dashboard"
@@ -174,26 +120,7 @@ export default async function AdminPage() {
         {summaryCards.map((metric) => <StatCard key={metric.label} {...metric} />)}
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[0.75fr_1.25fr]">
-        <DataCard title="Booking overview" eyebrow="Status mix">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {bookingStatuses.map((status) => {
-              const count = counts[status] ?? 0;
-              return (
-                <div key={status} className="rounded-2xl bg-white/65 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <StatusBadge status={status} />
-                    <span className="text-2xl font-black text-ocean-950">{count}</span>
-                  </div>
-                  <div className="mt-4">
-                    <ProgressBar label={`${percent(count, totalBookings)} of bookings`} value={percentNumber(count, totalBookings)} />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </DataCard>
-
+      <div className="mt-6">
         <DataCard title="Recent bookings" eyebrow="Live operations" action={<ActionButton href="/admin/bookings">Open booking manager</ActionButton>}>
           <DashboardTable
             columns={["Reference", "Customer", "Date", "Slot", "Riders", "Add-ons", "Source", "Amount", "Payment", "Status", "Actions"]}
@@ -216,47 +143,6 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <DataCard title="Agent performance" eyebrow="Sales partners">
-          <DashboardTable
-            columns={["Agent", "Bookings", "Sales", "Pending commission", "Paid commission"]}
-            rows={agentPerformance.slice(0, 6).map((agent) => [
-              <span key="agent" className="font-black text-ocean-950">{agent.name}</span>,
-              String(agent.bookings),
-              moneyLabel(agent.sales),
-              `USD ${agent.pendingCommission.toFixed(2)}`,
-              `USD ${agent.paidCommission.toFixed(2)}`
-            ])}
-            empty="No agent performance data yet."
-          />
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <MiniMetric label="Agent bookings" value={String(agentPerformance.reduce((sum, agent) => sum + agent.bookings, 0))} />
-            <MiniMetric label="Agent sales" value={moneyLabel(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} />
-            <MiniMetric label="Payable" value={`USD ${agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0).toFixed(2)}`} />
-          </div>
-        </DataCard>
-
-        <DataCard title="Affiliate performance" eyebrow="Referral engine">
-          <DashboardTable
-            columns={["Affiliate", "Codes", "Clicks", "Bookings", "Conversion", "Commission"]}
-            rows={affiliatePerformance.slice(0, 6).map((affiliate) => [
-              <span key="affiliate" className="font-black text-ocean-950">{affiliate.name}</span>,
-              affiliate.codes,
-              String(affiliate.clicks),
-              String(affiliate.bookings),
-              `${affiliate.conversion.toFixed(1)}%`,
-              `USD ${affiliate.earned.toFixed(2)}`
-            ])}
-            empty="No affiliate performance data yet."
-          />
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
-            <MiniMetric label="Pending" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.pendingCommission, 0).toFixed(2)}`} />
-            <MiniMetric label="Paid" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.paidCommission, 0).toFixed(2)}`} />
-            <MiniMetric label="Clicks" value={String(affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.clicks, 0))} />
-          </div>
-        </DataCard>
-      </div>
-
-      <div className="mt-6 grid gap-6 xl:grid-cols-3">
         <DataCard title="Add-on sales" eyebrow="Media packages">
           <div className="grid gap-3">
             {addOnSales.map((addon) => (
@@ -293,48 +179,9 @@ export default async function AdminPage() {
           </div>
         </DataCard>
 
-        <DataCard title="Quick actions" eyebrow="Admin shortcuts">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
-            {quickActions.map(([href, label, Icon]) => (
-              <Link key={label} href={href} className="flex items-center gap-3 rounded-2xl bg-white/70 p-4 font-black text-ocean-950 transition hover:-translate-y-0.5 hover:bg-white">
-                <span className="rounded-xl bg-gradient-to-br from-lagoon/25 to-ocean-100 p-2 text-ocean-700">
-                  <Icon className="h-4 w-4" />
-                </span>
-                {label}
-              </Link>
-            ))}
-          </div>
-        </DataCard>
       </div>
 
-      <div className="mt-6 grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <DataCard title="Media delivery status" eyebrow="Packages">
-          <div className="grid gap-3 sm:grid-cols-3">
-            {[
-              ["Media pending", mediaBookings.filter((booking) => booking.paymentStatus !== "PAID").length],
-              ["Media captured", mediaBookings.filter((booking) => ["CHECKED_IN", "COMPLETED"].includes(booking.bookingStatus)).length],
-              ["Media editing", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
-              ["Media uploaded", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED").length],
-              ["Media delivered", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
-              ["Delayed media", mediaBookings.filter((booking) => booking.date < addDays(today, -2) && booking.bookingStatus !== "COMPLETED").length]
-            ].map(([label, value]) => <MiniMetric key={label} label={String(label)} value={String(value)} />)}
-          </div>
-          <div className="mt-5">
-            <DashboardTable
-              columns={["Reference", "Customer", "Package", "Ride date", "Media status", "Action"]}
-              rows={mediaBookings.slice(0, 5).map((booking) => [
-                <span key="ref" className="font-black text-ocean-950">{booking.reference}</span>,
-                booking.customer.name,
-                booking.addons.filter((addon) => mediaAddonLabel(addon.label)).map((addon) => addon.label).join(", "),
-                booking.date.toISOString().slice(0, 10),
-                mediaStatus(booking.bookingStatus, booking.paymentStatus),
-                <ActionButton key="action" href="/admin/media" variant="soft">Manage</ActionButton>
-              ])}
-              empty="No media packages are attached to bookings yet."
-            />
-          </div>
-        </DataCard>
-
+      <div className="mt-6">
         <DataCard title="Alerts" eyebrow="Needs attention">
           {alerts.length ? (
             <div className="grid gap-3">
@@ -564,14 +411,6 @@ function compareText(current: number, previous: number, suffix: string) {
 function mediaAddonLabel(label: string) {
   const normalized = label.toLowerCase();
   return normalized.includes("photo") || normalized.includes("video") || normalized.includes("drone") || normalized.includes("360");
-}
-
-function mediaStatus(bookingStatus: string, paymentStatus: string) {
-  if (paymentStatus !== "PAID") return "Media pending";
-  if (bookingStatus === "COMPLETED") return "Media delivered";
-  if (bookingStatus === "CHECKED_IN") return "Media captured";
-  if (bookingStatus === "CANCELLED" || bookingStatus === "NO_SHOW") return "Delayed media";
-  return "Media editing";
 }
 
 function startOfDay(date: Date) {

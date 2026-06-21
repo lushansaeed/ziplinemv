@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { DataCard, ProgressBar, StatusBadge } from "@/components/dashboard-ui";
 import { createBooking, deleteBooking, updateBooking } from "@/lib/admin/actions";
 import { getDb } from "@/lib/db";
 
@@ -30,12 +31,36 @@ export default async function BookingManagementPage({
     }),
     db.timeSlot.findMany({ where: { isActive: true }, orderBy: { startsAt: "asc" } })
   ]);
+  const counts = bookings.reduce<Record<string, number>>((totals, booking) => {
+    totals[booking.bookingStatus] = (totals[booking.bookingStatus] ?? 0) + 1;
+    return totals;
+  }, {});
+  const totalBookings = Math.max(bookings.length, 1);
 
   return (
     <DashboardShell title="Booking management" subtitle="Filter, approve, cancel, reschedule, mark paid, complete, add notes, assign media status, and export bookings." nav={["All", "Pending", "Confirmed", "Paid", "Completed", "Export CSV"]} showSignOut>
       <Messages message={params.message} error={params.error} />
 
-      <section className="rounded-lg bg-white p-5 shadow-sm">
+      <DataCard title="Booking overview" eyebrow="Status mix">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {bookingStatuses.map((status) => {
+            const count = counts[status] ?? 0;
+            return (
+              <div key={status} className="rounded-2xl bg-white/65 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <StatusBadge status={status} />
+                  <span className="text-2xl font-black text-ocean-950">{count}</span>
+                </div>
+                <div className="mt-4">
+                  <ProgressBar label={`${Math.round((count / totalBookings) * 100)}% of bookings`} value={Math.round((count / totalBookings) * 100)} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </DataCard>
+
+      <section className="mt-6 rounded-lg bg-white p-5 shadow-sm">
         <h2 className="text-2xl font-black">Create booking</h2>
         <form action={createBooking} className="mt-4 grid gap-3 md:grid-cols-4">
           <Field name="customerName" label="Customer" required />

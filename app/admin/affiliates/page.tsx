@@ -1,4 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { updateAffiliate } from "@/lib/admin/actions";
 import { getDb } from "@/lib/db";
 
@@ -14,11 +15,48 @@ export default async function AffiliatesPage({
     include: { user: true, bookings: true, commissions: true, codes: true },
     orderBy: { displayName: "asc" }
   });
+  const affiliatePerformance = affiliates
+    .map((affiliate) => {
+      const clicks = affiliate.codes.reduce((sum, code) => sum + code.clicks, 0);
+      const paidCommission = affiliate.commissions.filter((commission) => commission.status === "PAID").reduce((sum, commission) => sum + Number(commission.amount), 0);
+      const pendingCommission = affiliate.commissions.filter((commission) => ["PENDING", "ELIGIBLE", "APPROVED"].includes(commission.status)).reduce((sum, commission) => sum + Number(commission.amount), 0);
+      return {
+        name: affiliate.displayName || affiliate.user.name || affiliate.user.email,
+        codes: affiliate.codes.map((code) => code.code).join(", ") || "No code",
+        clicks,
+        bookings: affiliate.bookings.length,
+        conversion: clicks ? (affiliate.bookings.length / clicks) * 100 : 0,
+        earned: pendingCommission + paidCommission,
+        pendingCommission,
+        paidCommission
+      };
+    })
+    .sort((a, b) => b.bookings - a.bookings);
 
   return (
     <DashboardShell title="Affiliate management" subtitle="Manage affiliate profiles, approval flags, codes, clicks, bookings, and payable commissions." nav={["Affiliates", "Codes", "Approved", "Clicks"]} showSignOut>
       <Messages message={params.message} error={params.error} />
-      <div className="grid gap-4">
+      <DataCard title="Affiliate performance" eyebrow="Referral engine">
+        <DashboardTable
+          columns={["Affiliate", "Codes", "Clicks", "Bookings", "Conversion", "Commission"]}
+          rows={affiliatePerformance.slice(0, 8).map((affiliate) => [
+            <span key="affiliate" className="font-black text-ocean-950">{affiliate.name}</span>,
+            affiliate.codes,
+            String(affiliate.clicks),
+            String(affiliate.bookings),
+            `${affiliate.conversion.toFixed(1)}%`,
+            `USD ${affiliate.earned.toFixed(2)}`
+          ])}
+          empty="No affiliate performance data yet."
+        />
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <MiniMetric label="Pending" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.pendingCommission, 0).toFixed(2)}`} />
+          <MiniMetric label="Paid" value={`USD ${affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.paidCommission, 0).toFixed(2)}`} />
+          <MiniMetric label="Clicks" value={String(affiliatePerformance.reduce((sum, affiliate) => sum + affiliate.clicks, 0))} />
+        </div>
+      </DataCard>
+
+      <div className="mt-6 grid gap-4">
         {affiliates.length ? affiliates.map((affiliate) => (
           <form key={affiliate.id} action={updateAffiliate} className="grid gap-3 rounded-lg bg-white p-5 shadow-sm md:grid-cols-5">
             <input type="hidden" name="userId" value={affiliate.userId} />
@@ -38,6 +76,15 @@ export default async function AffiliatesPage({
         )) : <p className="rounded-lg bg-white p-5 text-sm font-bold text-ocean-950/60 shadow-sm">No affiliates yet.</p>}
       </div>
     </DashboardShell>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-white/65 p-4">
+      <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">{label}</p>
+      <p className="mt-2 text-xl font-black text-ocean-950">{value}</p>
+    </div>
   );
 }
 
