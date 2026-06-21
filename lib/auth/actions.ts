@@ -424,7 +424,7 @@ export async function approvePortalUser(formData: FormData) {
   const db = getDb();
   const admin = getSupabaseAdmin();
 
-  await db.user.update({
+  const user = await db.user.update({
     where: { id: userId },
     data: { isActive: true }
   });
@@ -448,8 +448,9 @@ export async function approvePortalUser(formData: FormData) {
     });
   }
 
+  const authRole = user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? "admin" : role;
   const { error } = await admin.auth.admin.updateUserById(userId, {
-    app_metadata: { role }
+    app_metadata: { role: authRole }
   });
 
   if (error) {
@@ -461,7 +462,7 @@ export async function approvePortalUser(formData: FormData) {
       action: "APPROVE_PORTAL_USER",
       entity: role,
       entityId: userId,
-      after: { role }
+      after: { role, authRole }
     }
   });
 
@@ -480,7 +481,7 @@ export async function rejectPortalUser(formData: FormData) {
   const db = getDb();
   const admin = getSupabaseAdmin();
 
-  await db.user.update({
+  const user = await db.user.update({
     where: { id: userId },
     data: { isActive: false }
   });
@@ -504,9 +505,15 @@ export async function rejectPortalUser(formData: FormData) {
     });
   }
 
-  await admin.auth.admin.updateUserById(userId, {
-    app_metadata: { role: "rejected" }
-  });
+  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+    await admin.auth.admin.updateUserById(userId, {
+      app_metadata: { role: "admin" }
+    });
+  } else {
+    await admin.auth.admin.updateUserById(userId, {
+      app_metadata: { role: "rejected" }
+    });
+  }
 
   await db.auditLog.create({
     data: {
