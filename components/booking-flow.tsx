@@ -1,17 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { addOns, timeSlots, whatsappNumber } from "@/lib/data";
-import { bookingReference, calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { useActionState, useMemo, useState } from "react";
+import { createBookingAction, type BookingActionState } from "@/app/book/actions";
+import { addOns, timeSlots } from "@/lib/data";
+import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
+
+const initialState: BookingActionState = {
+  ok: false,
+  message: ""
+};
 
 export function BookingFlow() {
+  const [state, formAction, pending] = useActionState(createBookingAction, initialState);
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [coupon, setCoupon] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const [reference, setReference] = useState("");
   const addOnUsdTotal = selectedAddOns.reduce((sum, id) => sum + (addOns.find((item) => item.id === id)?.usd ?? 0), 0);
   const price = useMemo(
     () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0),
@@ -22,25 +27,26 @@ export function BookingFlow() {
     setSelectedAddOns((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
 
-  const confirm = () => {
-    setReference(bookingReference());
-    setConfirmed(true);
-  };
-
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-      <form className="rounded-[2rem] bg-white p-5 shadow-sm md:p-8">
+      <form id="zipline-booking-form" action={formAction} className="rounded-[2rem] bg-white p-5 shadow-sm md:p-8">
+        <input type="hidden" name="customerType" value={customerType} />
+        <input type="hidden" name="adults" value={adults} />
+        <input type="hidden" name="children" value={children} />
+        {selectedAddOns.map((id) => (
+          <input key={id} type="hidden" name="addons" value={id} />
+        ))}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Customer name" placeholder="Full name" />
-          <Field label="Nationality" placeholder="Country" />
-          <Field label="Phone / WhatsApp" placeholder="+960..." />
-          <Field label="Email address" placeholder="you@example.com" type="email" />
-          <Field label="Preferred date" type="date" />
+          <Field name="customerName" label="Customer name" placeholder="Full name" required />
+          <Field name="nationality" label="Nationality" placeholder="Country" required />
+          <Field name="phone" label="Phone / WhatsApp" placeholder="+960..." required />
+          <Field name="email" label="Email address" placeholder="you@example.com" type="email" required />
+          <Field name="preferredDate" label="Preferred date" type="date" required />
           <label className="grid gap-2 text-sm font-bold text-ocean-950">
             Preferred time slot
-            <select className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
+            <select name="timeSlot" className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
               {timeSlots.map((slot, index) => (
-                <option key={slot} disabled={index === 2}>
+                <option key={slot} value={slot} disabled={index === 2}>
                   {slot} {index === 2 ? "Sold out" : `${8 - index} seats left`}
                 </option>
               ))}
@@ -50,7 +56,15 @@ export function BookingFlow() {
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <Segment label="Tourist" active={customerType === "tourist"} onClick={() => setCustomerType("tourist")} />
           <Segment label="Local" active={customerType === "local"} onClick={() => setCustomerType("local")} />
-          <Field label="Payment method" placeholder="Card / Cash / Transfer" />
+          <label className="grid gap-2 text-sm font-bold text-ocean-950">
+            Payment method
+            <select name="paymentMethod" className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
+              <option>Card</option>
+              <option>Cash on arrival</option>
+              <option>Bank transfer</option>
+              <option>Agent credit</option>
+            </select>
+          </label>
         </div>
         <div className="mt-5 grid gap-4 rounded-3xl bg-ocean-50 p-4 md:grid-cols-2">
           <Stepper label="Adults" value={adults} setValue={setAdults} min={0} />
@@ -79,13 +93,16 @@ export function BookingFlow() {
           </div>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <Field label="Coupon / affiliate code" placeholder="AFFILIATECODE" value={coupon} onChange={setCoupon} />
-          <Field label="Special notes" placeholder="Dietary, timing, group notes" />
+          <Field name="coupon" label="Coupon / affiliate code" placeholder="AFFILIATECODE" value={coupon} onChange={setCoupon} />
+          <Field name="specialNotes" label="Special notes" placeholder="Dietary, timing, group notes" />
         </div>
         <label className="mt-5 flex items-start gap-3 text-sm text-ocean-950/70">
-          <input type="checkbox" required className="mt-1" />
+          <input name="acceptedTerms" type="checkbox" required className="mt-1" />
           I accept the safety terms, rider requirements, and cancellation policy.
         </label>
+        <button disabled={pending} className="mt-6 w-full rounded-full bg-sunset px-6 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-60 lg:hidden">
+          {pending ? "Saving booking..." : "Confirm Booking"}
+        </button>
       </form>
       <aside className="h-fit rounded-[2rem] bg-ocean-950 p-6 text-white shadow-glow md:p-8">
         <p className="text-sm font-bold uppercase tracking-[0.22em] text-lagoon">Booking summary</p>
@@ -103,18 +120,18 @@ export function BookingFlow() {
             {price.currency} {price.total.toFixed(2)}
           </p>
         </div>
-        <button onClick={confirm} className="mt-5 w-full rounded-full bg-sunset px-6 py-4 font-black text-white">
-          Confirm Booking
+        <button form="zipline-booking-form" type="submit" disabled={pending} className="mt-5 hidden w-full rounded-full bg-sunset px-6 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-60 lg:block">
+          {pending ? "Saving booking..." : "Confirm Booking"}
         </button>
-        {confirmed ? (
-          <div className="mt-5 rounded-3xl bg-white/10 p-4">
-            <p className="font-bold">Reference: {reference}</p>
-            <a
-              className="mt-3 inline-flex rounded-full bg-green-500 px-4 py-2 text-sm font-bold"
-              href={`https://wa.me/${whatsappNumber}?text=Booking%20reference%20${reference}`}
-            >
-              Send confirmation via WhatsApp
-            </a>
+        {state.message ? (
+          <div className={`mt-5 rounded-3xl p-4 ${state.ok ? "bg-white/10" : "bg-sunset/20"}`}>
+            <p className="font-bold">{state.message}</p>
+            {state.reference ? <p className="mt-2 font-bold">Reference: {state.reference}</p> : null}
+            {state.whatsappUrl ? (
+              <a className="mt-3 inline-flex rounded-full bg-green-500 px-4 py-2 text-sm font-bold" href={state.whatsappUrl}>
+                Send confirmation via WhatsApp
+              </a>
+            ) : null}
           </div>
         ) : null}
       </aside>
@@ -123,26 +140,32 @@ export function BookingFlow() {
 }
 
 function Field({
+  name,
   label,
   placeholder,
   type = "text",
   value,
-  onChange
+  onChange,
+  required = false
 }: {
+  name: string;
   label: string;
   placeholder?: string;
   type?: string;
   value?: string;
   onChange?: (value: string) => void;
+  required?: boolean;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-ocean-950">
       {label}
       <input
+        name={name}
         type={type}
         placeholder={placeholder}
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
+        required={required}
         className="rounded-2xl border border-ocean-950/10 px-4 py-3 font-medium outline-none transition focus:border-ocean-500"
       />
     </label>
