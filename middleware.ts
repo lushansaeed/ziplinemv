@@ -1,6 +1,24 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { canAccessRole, getUserRole, type AuthRole } from "@/lib/auth/roles";
+
+type AuthRole = "admin" | "agent" | "affiliate";
+type AuthUser = {
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+};
+
+function isAuthRole(value: unknown): value is AuthRole {
+  return value === "admin" || value === "agent" || value === "affiliate";
+}
+
+function getUserRole(user: AuthUser | null): AuthRole | null {
+  const role = user?.app_metadata?.role ?? user?.user_metadata?.role;
+  return isAuthRole(role) ? role : null;
+}
+
+function canAccessRole(userRole: AuthRole | null, allowedRoles: AuthRole[]) {
+  return userRole !== null && allowedRoles.includes(userRole);
+}
 
 const protectedRoutes: { prefix: string; roles: AuthRole[]; loginRole: AuthRole }[] = [
   { prefix: "/admin", roles: ["admin"], loginRole: "admin" },
@@ -28,9 +46,12 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  const auth = supabase.auth as unknown as {
+    getUser: () => Promise<{ data: { user: AuthUser | null } }>;
+  };
   const {
     data: { user }
-  } = await supabase.auth.getUser();
+  } = await auth.getUser();
 
   const matchedRoute = protectedRoutes.find((route) => request.nextUrl.pathname.startsWith(route.prefix));
 
