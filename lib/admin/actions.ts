@@ -57,14 +57,87 @@ export async function createBooking(formData: FormData) {
     redirect("/admin/bookings?error=Add at least one adult or kid rider.");
   }
 
-  const selectedAddOns = addOns.filter((item) => formData.getAll("addons").map(String).includes(item.id));
-  const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + item.usd, 0);
+  const settings = await getBookingSettings();
+  const addOnSelections = addOns.map((item) => ({
+    ...item,
+    quantity: intValue(formData, `addonQuantity_${item.id}`)
+  })).filter((item) => item.quantity > 0);
+
+  if (addOnSelections.some((item) => item.quantity < 0)) {
+    redirect("/admin/bookings?error=Add-on quantity cannot be negative.");
+  }
+
+  if (!settings.allowAddonQuantityAboveRiderCount && addOnSelections.some((item) => item.quantity > riderCount)) {
+    redirect("/admin/bookings?error=Add-on quantity cannot exceed total riders.");
+  }
+
+  const addOnUsdTotal = addOnSelections.reduce((sum, item) => sum + item.usd * item.quantity, 0);
+  const couponCode = text(formData, "coupon");
+  const affiliateCode = couponCode
+    ? await db.affiliateCode.findUnique({
+        where: { code: couponCode },
+        include: { affiliate: true }
+      })
+    : null;
+
+  if (couponCode && couponCode.length < 4) {
+    redirect("/admin/bookings?error=Coupon or affiliate code is invalid.");
+  }
+
   const calculated = calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, Boolean(text(formData, "coupon")));
   const hasTotalOverride = Boolean(text(formData, "totalAmount"));
-  const totalAmount = hasTotalOverride ? decimalValue(formData, "totalAmount") : new Prisma.Decimal(calculated.total);
+  const discountType = text(formData, "discountType") || "percentage";
+  const discountValue = Number(text(formData, "discountValue") || 0);
   const currency = hasTotalOverride ? text(formData, "currency") || calculated.currency : calculated.currency;
+  const fixedDiscountLimit = currency === "MVR" ? settings.maxFixedDiscountMvr : settings.maxFixedDiscountMvr / 20;
+  const manualDiscount = discountType === "percentage" ? (calculated.total * discountValue) / 100 : discountValue;
+  const discountApprovalStatus = text(formData, "discountApprovalStatus") || "Not required";
+
+  if (discountValue < 0) {
+    redirect("/admin/bookings?error=Discount cannot be negative.");
+  }
+
+  if (discountValue > 0 && !text(formData, "discountReason")) {
+    redirect("/admin/bookings?error=Discount reason is required when a discount is applied.");
+  }
+
+  if (
+    discountApprovalStatus !== "Approved" &&
+    ((discountType === "percentage" && discountValue > settings.maxDiscountPercent) ||
+      (discountType === "fixed" && discountValue > fixedDiscountLimit))
+  ) {
+    redirect("/admin/bookings?error=Discount exceeds the maximum allowed limit. Admin approval is required.");
+  }
+
+  if (hasTotalOverride && !text(formData, "totalOverrideReason")) {
+    redirect("/admin/bookings?error=Total override reason is required.");
+  }
+
+  const calculatedFinalTotal = Math.max(calculated.total - manualDiscount, 0);
+  const totalAmount = hasTotalOverride ? decimalValue(formData, "totalAmount") : new Prisma.Decimal(calculatedFinalTotal);
+  const amountPaidInput = Number(text(formData, "amountPaid") || 0);
   const paymentStatus = text(formData, "paymentStatus") || "UNPAID";
   const bookingStatus = text(formData, "bookingStatus") || "PENDING";
+  const amountPaid = amountPaidInput > 0 ? new Prisma.Decimal(amountPaidInput) : paymentStatus === "PAID" ? totalAmount : new Prisma.Decimal(0);
+
+  if (Number(totalAmount) < 0) {
+    redirect("/admin/bookings?error=Final total cannot be negative.");
+  }
+
+  const pricingNotes = [
+    optionalText(formData, "internalNotes"),
+    `Customer type: ${customerType}`,
+    `Adults: ${adults}`,
+    `Kids: ${children}`,
+    addOnSelections.length ? `Add-ons: ${addOnSelections.map((item) => `${item.label} x ${item.quantity}`).join(", ")}` : "Add-ons: None",
+    couponCode ? `Coupon / affiliate code: ${couponCode}${affiliateCode ? " (affiliate)" : ""}` : null,
+    calculated.discount ? `Coupon discount: ${currency} ${calculated.discount.toFixed(2)}` : null,
+    discountValue ? `Manual discount: ${discountType} ${discountValue} (${currency} ${manualDiscount.toFixed(2)})` : null,
+    discountValue ? `Discount reason: ${text(formData, "discountReason")}` : null,
+    text(formData, "discountAppliedBy") ? `Discount applied by: ${text(formData, "discountAppliedBy")}` : null,
+    hasTotalOverride ? `Total override: ${currency} ${totalAmount.toString()}` : null,
+    hasTotalOverride ? `Override reason: ${text(formData, "totalOverrideReason")}` : null
+  ].filter(Boolean).join("\n");
 
   const reference = `ZMV-${Date.now().toString().slice(-8)}`;
   await db.$transaction(async (tx) => {
@@ -78,7 +151,7 @@ export async function createBooking(formData: FormData) {
       }
     });
 
-    await tx.booking.create({
+    const booking = await tx.booking.create({
       data: {
         reference,
         customerId: customer.id,
@@ -87,9 +160,12 @@ export async function createBooking(formData: FormData) {
         riderCount,
         totalAmount,
         currency,
+        affiliateId: affiliateCode?.affiliateId,
+        affiliateCodeId: affiliateCode?.id,
         bookingStatus: bookingStatus as never,
         paymentStatus: paymentStatus as never,
-        internalNotes: optionalText(formData, "internalNotes"),
+        internalNotes: pricingNotes,
+        commissionAmount: calculated.discount || manualDiscount ? new Prisma.Decimal(calculated.discount + manualDiscount) : null,
         riders: {
           create: [
             ...Array.from({ length: adults }, () => ({ type: "ADULT" })),
@@ -97,16 +173,18 @@ export async function createBooking(formData: FormData) {
           ]
         },
         addons: {
-          create: selectedAddOns.map((item) => ({
-            addonKey: item.id,
-            label: item.label,
-            price: currency === "USD" ? item.usd : item.usd * 20,
-            currency
-          }))
+          create: addOnSelections.flatMap((item) =>
+            Array.from({ length: item.quantity }, () => ({
+              addonKey: item.id,
+              label: item.label,
+              price: currency === "USD" ? item.usd : item.usd * 20,
+              currency
+            }))
+          )
         },
         payments: {
           create: {
-            amount: totalAmount,
+            amount: amountPaid,
             currency,
             method: text(formData, "paymentMethod") || "Admin/manual",
             status: paymentStatus as never
@@ -114,11 +192,56 @@ export async function createBooking(formData: FormData) {
         }
       }
     });
+
+    if (discountValue || hasTotalOverride || addOnSelections.length) {
+      await tx.auditLog.create({
+        data: {
+          action: "CREATE_BOOKING_PRICING_DETAILS",
+          entity: "Booking",
+          entityId: booking.id,
+          after: {
+            couponCode,
+            addonQuantities: Object.fromEntries(addOnSelections.map((item) => [item.id, item.quantity])),
+            couponDiscount: calculated.discount,
+            manualDiscountType: discountType,
+            manualDiscountValue: discountValue,
+            manualDiscountAmount: manualDiscount,
+            discountReason: text(formData, "discountReason") || null,
+            totalOverrideAmount: hasTotalOverride ? totalAmount.toString() : null,
+            totalOverrideReason: text(formData, "totalOverrideReason") || null,
+            finalTotal: totalAmount.toString(),
+            currency
+          }
+        }
+      });
+    }
   });
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");
   redirectWith("/admin/bookings", "Booking created.");
+}
+
+async function getBookingSettings() {
+  const db = getDb();
+  const settings = await db.setting.findMany({
+    where: {
+      key: {
+        in: [
+          "allowAddonQuantityAboveRiderCount",
+          "maxCounterDiscountPercent",
+          "maxCounterFixedDiscountMvr"
+        ]
+      }
+    }
+  });
+  const values = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]));
+
+  return {
+    allowAddonQuantityAboveRiderCount: values.allowAddonQuantityAboveRiderCount === true,
+    maxDiscountPercent: typeof values.maxCounterDiscountPercent === "number" ? values.maxCounterDiscountPercent : 10,
+    maxFixedDiscountMvr: typeof values.maxCounterFixedDiscountMvr === "number" ? values.maxCounterFixedDiscountMvr : 500
+  };
 }
 
 export async function updateBooking(formData: FormData) {

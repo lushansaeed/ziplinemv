@@ -1,7 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
+import { AdminCreateBookingForm } from "@/components/admin-create-booking-form";
 import { DataCard, ProgressBar, StatusBadge } from "@/components/dashboard-ui";
-import { createBooking, deleteBooking, updateBooking } from "@/lib/admin/actions";
-import { addOns } from "@/lib/data";
+import { deleteBooking, updateBooking } from "@/lib/admin/actions";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -59,53 +59,7 @@ export default async function BookingManagementPage({
         </div>
       </DataCard>
 
-      <section className="mt-6 rounded-lg bg-white p-5 shadow-sm">
-        <h2 className="text-2xl font-black">Create booking</h2>
-        <form action={createBooking} className="mt-4 grid gap-3 md:grid-cols-4">
-          <Field name="customerName" label="Customer" required />
-          <Field name="phone" label="Phone" required />
-          <Field name="email" label="Email" type="email" />
-          <Field name="nationality" label="Nationality" />
-          <Field name="date" label="Date" type="date" required />
-          <label className="grid gap-1 text-sm font-bold">
-            Time slot
-            <select name="timeSlotId" required className="rounded-lg border border-ocean-950/10 px-3 py-2">
-              <option value="">Select slot</option>
-              {timeSlots.map((slot) => (
-                <option key={slot.id} value={slot.id}>{slot.label}</option>
-              ))}
-            </select>
-          </label>
-          <Select name="customerType" label="Customer type" options={["tourist", "local"]} defaultValue="tourist" />
-          <Field name="adults" label="Adults" type="number" min="0" defaultValue="1" required />
-          <Field name="children" label="Kids" type="number" min="0" defaultValue="0" required />
-          <Field name="totalAmount" label="Total override" type="number" step="0.01" placeholder="Leave blank to auto-calculate" />
-          <Select name="currency" label="Currency" options={["USD", "MVR"]} defaultValue="USD" />
-          <Select name="bookingStatus" label="Booking status" options={bookingStatuses} defaultValue="PENDING" />
-          <Select name="paymentStatus" label="Payment status" options={paymentStatuses} defaultValue="UNPAID" />
-          <Select name="paymentMethod" label="Payment method" options={["Admin/manual", "Card", "Cash on arrival", "Bank transfer", "Agent credit"]} defaultValue="Admin/manual" />
-          <Field name="coupon" label="Coupon / affiliate code" placeholder="Optional" />
-          <fieldset className="grid gap-3 rounded-2xl bg-ocean-50 p-4 md:col-span-4">
-            <legend className="text-sm font-black text-ocean-950">Add-ons</legend>
-            <div className="grid gap-3 md:grid-cols-3">
-              {addOns.map((item) => (
-                <label key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm font-bold">
-                  <span>
-                    <span className="block text-ocean-950">{item.label}</span>
-                    <span className="block text-xs text-ocean-950/55">USD {item.usd}</span>
-                  </span>
-                  <input name="addons" type="checkbox" value={item.id} />
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label className="grid gap-1 text-sm font-bold md:col-span-4">
-            Admin notes
-            <textarea name="internalNotes" className="rounded-lg border border-ocean-950/10 px-3 py-2" />
-          </label>
-          <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white md:col-span-4">Create booking</button>
-        </form>
-      </section>
+      <AdminCreateBookingForm timeSlots={timeSlots.map((slot) => ({ id: slot.id, label: slot.label }))} />
 
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-sm">
         {bookings.length ? bookings.map((booking) => (
