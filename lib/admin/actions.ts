@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
+import { addOns } from "@/lib/data";
 import { getDb } from "@/lib/db";
+import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -42,35 +44,76 @@ export async function createBooking(formData: FormData) {
   const customerName = text(formData, "customerName");
   const phone = text(formData, "phone");
   const timeSlotId = text(formData, "timeSlotId");
+  const customerType = (text(formData, "customerType") || "tourist") as CustomerType;
+  const adults = intValue(formData, "adults", 1);
+  const children = intValue(formData, "children", 0);
+  const riderCount = adults + children;
 
   if (!customerName || !phone || !timeSlotId) {
     redirect("/admin/bookings?error=Customer name, phone, and time slot are required.");
   }
 
-  const customer = await db.customer.create({
-    data: {
-      name: customerName,
-      phone,
-      email: optionalText(formData, "email"),
-      nationality: optionalText(formData, "nationality"),
-      isTourist: boolValue(formData, "isTourist")
-    }
-  });
+  if (riderCount < 1) {
+    redirect("/admin/bookings?error=Add at least one adult or kid rider.");
+  }
+
+  const selectedAddOns = addOns.filter((item) => formData.getAll("addons").map(String).includes(item.id));
+  const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + item.usd, 0);
+  const calculated = calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, Boolean(text(formData, "coupon")));
+  const hasTotalOverride = Boolean(text(formData, "totalAmount"));
+  const totalAmount = hasTotalOverride ? decimalValue(formData, "totalAmount") : new Prisma.Decimal(calculated.total);
+  const currency = hasTotalOverride ? text(formData, "currency") || calculated.currency : calculated.currency;
+  const paymentStatus = text(formData, "paymentStatus") || "UNPAID";
+  const bookingStatus = text(formData, "bookingStatus") || "PENDING";
 
   const reference = `ZMV-${Date.now().toString().slice(-8)}`;
-  await db.booking.create({
-    data: {
-      reference,
-      customerId: customer.id,
-      date: new Date(text(formData, "date")),
-      timeSlotId,
-      riderCount: intValue(formData, "riderCount", 1),
-      totalAmount: decimalValue(formData, "totalAmount"),
-      currency: text(formData, "currency") || "USD",
-      bookingStatus: text(formData, "bookingStatus") as never,
-      paymentStatus: text(formData, "paymentStatus") as never,
-      internalNotes: optionalText(formData, "internalNotes")
-    }
+  await db.$transaction(async (tx) => {
+    const customer = await tx.customer.create({
+      data: {
+        name: customerName,
+        phone,
+        email: optionalText(formData, "email"),
+        nationality: optionalText(formData, "nationality"),
+        isTourist: customerType === "tourist"
+      }
+    });
+
+    await tx.booking.create({
+      data: {
+        reference,
+        customerId: customer.id,
+        date: new Date(text(formData, "date")),
+        timeSlotId,
+        riderCount,
+        totalAmount,
+        currency,
+        bookingStatus: bookingStatus as never,
+        paymentStatus: paymentStatus as never,
+        internalNotes: optionalText(formData, "internalNotes"),
+        riders: {
+          create: [
+            ...Array.from({ length: adults }, () => ({ type: "ADULT" })),
+            ...Array.from({ length: children }, () => ({ type: "CHILD" }))
+          ]
+        },
+        addons: {
+          create: selectedAddOns.map((item) => ({
+            addonKey: item.id,
+            label: item.label,
+            price: currency === "USD" ? item.usd : item.usd * 20,
+            currency
+          }))
+        },
+        payments: {
+          create: {
+            amount: totalAmount,
+            currency,
+            method: text(formData, "paymentMethod") || "Admin/manual",
+            status: paymentStatus as never
+          }
+        }
+      }
+    });
   });
 
   revalidatePath("/admin/bookings");

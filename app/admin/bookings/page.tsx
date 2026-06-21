@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { DataCard, ProgressBar, StatusBadge } from "@/components/dashboard-ui";
 import { createBooking, deleteBooking, updateBooking } from "@/lib/admin/actions";
+import { addOns } from "@/lib/data";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -75,16 +76,31 @@ export default async function BookingManagementPage({
               ))}
             </select>
           </label>
-          <Field name="riderCount" label="Riders" type="number" defaultValue="1" required />
-          <Field name="totalAmount" label="Total" type="number" step="0.01" required />
-          <Field name="currency" label="Currency" defaultValue="USD" required />
+          <Select name="customerType" label="Customer type" options={["tourist", "local"]} defaultValue="tourist" />
+          <Field name="adults" label="Adults" type="number" min="0" defaultValue="1" required />
+          <Field name="children" label="Kids" type="number" min="0" defaultValue="0" required />
+          <Field name="totalAmount" label="Total override" type="number" step="0.01" placeholder="Leave blank to auto-calculate" />
+          <Select name="currency" label="Currency" options={["USD", "MVR"]} defaultValue="USD" />
           <Select name="bookingStatus" label="Booking status" options={bookingStatuses} defaultValue="PENDING" />
           <Select name="paymentStatus" label="Payment status" options={paymentStatuses} defaultValue="UNPAID" />
-          <label className="flex items-center gap-2 pt-7 text-sm font-bold">
-            <input name="isTourist" type="checkbox" defaultChecked /> Tourist
-          </label>
+          <Select name="paymentMethod" label="Payment method" options={["Admin/manual", "Card", "Cash on arrival", "Bank transfer", "Agent credit"]} defaultValue="Admin/manual" />
+          <Field name="coupon" label="Coupon / affiliate code" placeholder="Optional" />
+          <fieldset className="grid gap-3 rounded-2xl bg-ocean-50 p-4 md:col-span-4">
+            <legend className="text-sm font-black text-ocean-950">Add-ons</legend>
+            <div className="grid gap-3 md:grid-cols-3">
+              {addOns.map((item) => (
+                <label key={item.id} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-sm font-bold">
+                  <span>
+                    <span className="block text-ocean-950">{item.label}</span>
+                    <span className="block text-xs text-ocean-950/55">USD {item.usd}</span>
+                  </span>
+                  <input name="addons" type="checkbox" value={item.id} />
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <label className="grid gap-1 text-sm font-bold md:col-span-4">
-            Notes
+            Admin notes
             <textarea name="internalNotes" className="rounded-lg border border-ocean-950/10 px-3 py-2" />
           </label>
           <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white md:col-span-4">Create booking</button>
@@ -94,15 +110,19 @@ export default async function BookingManagementPage({
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-sm">
         {bookings.length ? bookings.map((booking) => (
           <article key={booking.id} className="border-b border-ocean-950/10 p-4">
-            <div className="grid gap-3 text-sm md:grid-cols-7">
+            <div className="grid gap-3 text-sm md:grid-cols-8">
               <strong>{booking.reference}</strong>
               <span>{booking.customer.name}</span>
               <span>{booking.date.toISOString().slice(0, 10)}</span>
               <span>{booking.timeSlot.label}</span>
+              <span>{booking.riders.filter((rider) => rider.type === "ADULT").length} adults / {booking.riders.filter((rider) => rider.type === "CHILD").length} kids</span>
               <span>{booking.agent ? "Agent" : booking.affiliate ? "Affiliate" : "Direct"}</span>
               <span>{booking.bookingStatus}</span>
               <span>{booking.currency} {booking.totalAmount.toFixed(2)}</span>
             </div>
+            {booking.addons.length ? (
+              <p className="mt-2 text-xs font-bold text-ocean-950/55">Add-ons: {booking.addons.map((addon) => addon.label).join(", ")}</p>
+            ) : null}
             <form action={updateBooking} className="mt-3 grid gap-3 md:grid-cols-4">
               <input type="hidden" name="id" value={booking.id} />
               <Select name="bookingStatus" label="Booking" options={bookingStatuses} defaultValue={booking.bookingStatus} />
