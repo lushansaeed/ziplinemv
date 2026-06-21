@@ -64,6 +64,16 @@ function registrationRedirect(role: string, message: string, error?: string) {
   redirect(`/${role}s/register?${params.toString()}`);
 }
 
+function signupErrorMessage(message: string) {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes("timeout") || normalized.includes("email") || normalized.includes("smtp")) {
+    return `Registration could not send the verification email: ${message}. Check Supabase Auth SMTP settings, then submit again.`;
+  }
+
+  return message;
+}
+
 function hasSupabaseAuthConfig() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
@@ -270,7 +280,13 @@ export async function signUp(formData: FormData) {
     });
   } catch (error) {
     console.error("Supabase signup failed", error);
-    registrationRedirect(role, "", "Supabase signup failed. Check auth URL, anon key, and allowed redirect URLs in Supabase.");
+    registrationRedirect(
+      role,
+      "",
+      error instanceof Error
+        ? signupErrorMessage(error.message)
+        : "Supabase signup failed. Check auth URL, anon key, allowed redirect URLs, and SMTP settings in Supabase."
+    );
   }
 
   if (!signUpResult) {
@@ -281,7 +297,7 @@ export async function signUp(formData: FormData) {
   const { data, error } = completedSignUp;
 
   if (error) {
-    authErrorRedirect(role, redirectTo, error.message);
+    registrationRedirect(role, "", signupErrorMessage(error.message));
   }
 
   if (data.user) {
