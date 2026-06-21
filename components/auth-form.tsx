@@ -53,9 +53,10 @@ export function AuthForm({
       </label>
       <button className="rounded-full bg-sunset px-5 py-3 text-center font-bold text-white">{submitLabel}</button>
       {mode === "sign-in" && showSignUpLink ? (
-        <Link href={`/${role}s/register`} className="text-sm font-bold text-ocean-700">
-          Create a {role} account
-        </Link>
+        <div className="flex flex-wrap gap-3 text-sm font-bold text-ocean-700">
+          <Link href={`/${role}s/register`}>Create a {role} account</Link>
+          <Link href={`/auth/forgot-password?role=${role}`}>Forgot password?</Link>
+        </div>
       ) : null}
     </form>
   );

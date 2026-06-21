@@ -12,7 +12,7 @@ function isAuthRole(value: unknown): value is AuthRole {
 }
 
 function getUserRole(user: AuthUser | null): AuthRole | null {
-  const role = user?.app_metadata?.role ?? user?.user_metadata?.role;
+  const role = user?.app_metadata?.role;
   return isAuthRole(role) ? role : null;
 }
 

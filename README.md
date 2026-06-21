@@ -39,9 +39,11 @@ If pnpm asks to approve dependency build scripts, approve Prisma, Prisma engines
 DATABASE_URL="postgresql://prisma.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:6543/postgres"
 DIRECT_URL="postgresql://prisma.PROJECT_REF:PASSWORD@REGION.pooler.supabase.com:5432/postgres"
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key-for-admin-approval-actions"
 ```
 
 For Vercel, set `DATABASE_URL` to the Supabase Supavisor transaction pooler string for serverless runtime access. Set `DIRECT_URL` to the session pooler or direct connection string for Prisma migrations.
+Set `SUPABASE_SERVICE_ROLE_KEY` only in server environments. It is required for admin approval actions that sync approved portal roles into Supabase Auth `app_metadata`.
 
 ## Production notes
 

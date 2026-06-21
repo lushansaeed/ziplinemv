@@ -21,7 +21,8 @@ export default function AdminPage() {
           ["/admin/media", "Media management"],
           ["/admin/commissions", "Commission management"],
           ["/admin/reports", "Reports"],
-          ["/admin/theme", "Theme settings"]
+          ["/admin/theme", "Theme settings"],
+          ["/admin/roles", "Role approvals"]
         ].map(([href, label]) => (
           <Link key={href} href={href} className="rounded-[2rem] bg-white p-5 font-black shadow-sm">{label}</Link>
         ))}
