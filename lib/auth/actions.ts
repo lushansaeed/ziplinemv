@@ -67,6 +67,10 @@ function registrationRedirect(role: string, message: string, error?: string) {
 function signupErrorMessage(message: string) {
   const normalized = message.toLowerCase();
 
+  if (normalized.includes("rate limit")) {
+    return "Too many verification emails were requested. Please wait a few minutes before trying again, or increase the email rate limit in Supabase Auth settings.";
+  }
+
   if (normalized.includes("timeout") || normalized.includes("email") || normalized.includes("smtp")) {
     return `Registration could not send the verification email: ${message}. Check Supabase Auth SMTP settings, then submit again.`;
   }
@@ -355,7 +359,9 @@ export async function resendEmailConfirmation(formData: FormData) {
 
   if (error) {
     redirect(
-      `/auth/resend-confirmation?role=${encodeURIComponent(portalRole)}&email=${encodeURIComponent(email)}&error=${encodeURIComponent(error.message)}`
+      `/auth/resend-confirmation?role=${encodeURIComponent(portalRole)}&email=${encodeURIComponent(email)}&error=${encodeURIComponent(
+        signupErrorMessage(error.message)
+      )}`
     );
   }
 
