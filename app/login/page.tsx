@@ -10,6 +10,7 @@ export default async function LoginPage({
   const params = await searchParams;
   const role: AuthRole = isAuthRole(params.role) ? params.role : "agent";
   const redirectTo = params.redirectTo?.startsWith("/") ? params.redirectTo : roleHome[role];
+  const roleTitle = role.split("_").map((word) => `${word[0].toUpperCase()}${word.slice(1)}`).join(" ");
 
   return (
     <DashboardShell title="Portal login" subtitle="Sign in with your approved portal account." nav={["Admin", "Agents", "Affiliates"]}>
@@ -17,12 +18,12 @@ export default async function LoginPage({
         <AuthForm
           mode="sign-in"
           role={role}
-          title={`${role[0].toUpperCase()}${role.slice(1)} login`}
+          title={`${roleTitle} Login`}
           submitLabel="Sign in"
           redirectTo={redirectTo}
           error={params.error}
           message={params.message}
-          showSignUpLink={role !== "admin"}
+          showSignUpLink={role === "agent" || role === "affiliate"}
         />
       </div>
     </DashboardShell>

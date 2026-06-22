@@ -1,10 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { approvePortalUser, rejectPortalUser } from "@/lib/auth/actions";
+import type { ReactNode } from "react";
+import { approvePortalUser, createTeamMember, deactivateTeamMember, rejectPortalUser, updateTeamMember } from "@/lib/auth/actions";
 
 type RequestStatus = "Pending" | "Approved" | "Rejected";
 type RequestRole = "agent" | "affiliate";
+type WorkspaceTab = RequestRole | "team";
+type TeamRole = "counter_staff" | "launching_staff" | "landing_staff";
 
 export type RoleRequestRow = {
   id: string;
@@ -17,28 +20,40 @@ export type RoleRequestRow = {
   status: RequestStatus;
 };
 
+export type TeamMemberRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: TeamRole;
+  isActive: boolean;
+  createdAt: string;
+};
+
 const PAGE_SIZE = 10;
 
 export function AdminRoleRequestsWorkspace({
   agentRows,
-  affiliateRows
+  affiliateRows,
+  teamRows
 }: {
   agentRows: RoleRequestRow[];
   affiliateRows: RoleRequestRow[];
+  teamRows: TeamMemberRow[];
 }) {
-  const [activeTab, setActiveTab] = useState<RequestRole>("agent");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>("agent");
 
   return (
     <section className="mt-6 rounded-[2rem] bg-white/85 p-3 shadow-sm">
       <div className="flex flex-wrap gap-2 rounded-[1.5rem] bg-ocean-50/80 p-2">
         {[
           ["agent", "Agent Requests"],
-          ["affiliate", "Affiliate Requests"]
+          ["affiliate", "Affiliate Requests"],
+          ["team", "Team Members"]
         ].map(([tab, label]) => (
           <button
             key={tab}
             type="button"
-            onClick={() => setActiveTab(tab as RequestRole)}
+            onClick={() => setActiveTab(tab as WorkspaceTab)}
             className={`rounded-2xl px-5 py-3 text-sm font-black transition ${
               activeTab === tab ? "bg-ocean-950 text-white shadow-glow" : "text-ocean-950/60 hover:bg-white"
             }`}
@@ -56,13 +71,15 @@ export function AdminRoleRequestsWorkspace({
             rows={agentRows}
             columns={["Agency Name", "Contact Person", "Email", "Phone", "Requested Date", "Status", "Actions"]}
           />
-        ) : (
+        ) : activeTab === "affiliate" ? (
           <RequestsTable
             title="Affiliate Requests"
             empty="No Affiliate Registrations Yet."
             rows={affiliateRows}
             columns={["Affiliate Name", "Email", "Phone", "Requested Date", "Status", "Actions"]}
           />
+        ) : (
+          <TeamMembersPanel rows={teamRows} />
         )}
       </div>
     </section>
@@ -209,6 +226,7 @@ function RequestsTable({
 
 function RequestTableRow({ row }: { row: RoleRequestRow }) {
   const isAgent = row.role === "agent";
+  const isPending = row.status === "Pending";
 
   return (
     <tr className="align-middle transition hover:bg-ocean-50/40">
@@ -223,24 +241,192 @@ function RequestTableRow({ row }: { row: RoleRequestRow }) {
         <StatusBadge status={row.status} />
       </td>
       <td className="px-4 py-4">
+        {isPending ? (
+          <div className="flex flex-wrap gap-2">
+            <form action={approvePortalUser}>
+              <input type="hidden" name="userId" value={row.id} />
+              <input type="hidden" name="role" value={row.role} />
+              <button className="rounded-full bg-ocean-950 px-3 py-1.5 text-xs font-black text-white transition hover:bg-ocean-800">Approve</button>
+            </form>
+            <form action={rejectPortalUser}>
+              <input type="hidden" name="userId" value={row.id} />
+              <input type="hidden" name="role" value={row.role} />
+              <button className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">
+                Reject
+              </button>
+            </form>
+          </div>
+        ) : (
+          <span className="text-xs font-black text-ocean-950/40">No Actions</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function TeamMembersPanel({ rows }: { rows: TeamMemberRow[] }) {
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"All" | TeamRole>("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Active" | "Inactive">("All");
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      const matchesSearch = query ? [row.name, row.email, teamRoleLabel(row.role)].some((value) => value.toLowerCase().includes(query)) : true;
+      const matchesRole = roleFilter === "All" || row.role === roleFilter;
+      const matchesStatus = statusFilter === "All" || (statusFilter === "Active" ? row.isActive : !row.isActive);
+      return matchesSearch && matchesRole && matchesStatus;
+    });
+  }, [rows, search, roleFilter, statusFilter]);
+
+  return (
+    <div className="grid gap-5">
+      <form action={createTeamMember} className="rounded-[1.75rem] bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl font-black text-ocean-950">Add Team Member</h2>
+          <p className="text-xs font-semibold text-ocean-950/45">Create operational accounts with limited admin access.</p>
+        </div>
+        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_220px_1fr_auto]">
+          <Field label="Name">
+            <input name="name" className={inputClass} required />
+          </Field>
+          <Field label="Email">
+            <input name="email" type="email" className={inputClass} required />
+          </Field>
+          <Field label="Permission Level">
+            <TeamRoleSelect name="role" />
+          </Field>
+          <Field label="Temporary Password">
+            <input name="password" type="password" minLength={8} className={inputClass} required />
+          </Field>
+          <div className="flex items-end">
+            <button className="h-12 w-full rounded-2xl bg-ocean-950 px-5 text-sm font-black text-white transition hover:bg-ocean-800 lg:w-auto">Add Member</button>
+          </div>
+        </div>
+      </form>
+
+      <div className="rounded-[1.75rem] bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-ocean-950">Team Members</h2>
+            <p className="mt-1 text-xs font-semibold text-ocean-950/45">{filteredRows.length} Members Found.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search Team"
+              className="h-11 min-w-0 rounded-2xl border border-ocean-950/10 bg-white px-4 text-sm font-bold text-ocean-950 outline-none transition placeholder:text-ocean-950/35 focus:border-lagoon sm:w-64"
+            />
+            <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value as "All" | TeamRole)} className={selectClass}>
+              <option value="All">All Roles</option>
+              <option value="counter_staff">Counter Staff</option>
+              <option value="launching_staff">Launching Staff</option>
+              <option value="landing_staff">Landing Staff</option>
+            </select>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as "All" | "Active" | "Inactive")} className={selectClass}>
+              <option value="All">All Status</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-5 overflow-x-auto rounded-[1.5rem] border border-ocean-950/10">
+          <table className="min-w-[1100px] w-full border-collapse bg-white text-left">
+            <thead className="bg-ocean-50/80">
+              <tr>
+                {["Name", "Email", "Permission Level", "Access", "Created Date", "New Password", "Actions"].map((column) => (
+                  <th key={column} className="px-4 py-3 text-xs font-black uppercase tracking-[0.08em] text-ocean-950/55">{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ocean-950/10">
+              {filteredRows.length ? (
+                filteredRows.map((row) => <TeamMemberTableRow key={row.id} row={row} />)
+              ) : (
+                <tr>
+                  <td colSpan={7} className="px-4 py-8 text-center text-sm font-bold text-ocean-950/50">No Team Members Yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamMemberTableRow({ row }: { row: TeamMemberRow }) {
+  return (
+    <tr className="align-middle transition hover:bg-ocean-50/40">
+      <td className="px-4 py-4">
+        <input form={`team-${row.id}`} name="name" defaultValue={row.name} className={`${inputClass} min-w-48`} required />
+      </td>
+      <td className="max-w-[260px] px-4 py-4 text-sm font-bold text-ocean-950/70">
+        <span className="block truncate">{row.email}</span>
+      </td>
+      <td className="px-4 py-4">
+        <TeamRoleSelect form={`team-${row.id}`} name="role" defaultValue={row.role} />
+      </td>
+      <td className="px-4 py-4">
+        <select form={`team-${row.id}`} name="isActive" defaultValue={row.isActive ? "true" : "false"} className={selectClass}>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </td>
+      <td className="px-4 py-4 text-sm font-bold text-ocean-950/70">{formatDate(row.createdAt)}</td>
+      <td className="px-4 py-4">
+        <input form={`team-${row.id}`} name="password" type="password" minLength={8} placeholder="Optional" className={`${inputClass} min-w-44`} />
+      </td>
+      <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2">
-          <form action={approvePortalUser}>
+          <form id={`team-${row.id}`} action={updateTeamMember}>
             <input type="hidden" name="userId" value={row.id} />
-            <input type="hidden" name="role" value={row.role} />
-            <button className="rounded-full bg-ocean-950 px-3 py-1.5 text-xs font-black text-white transition hover:bg-ocean-800">Approve</button>
+            <button className="rounded-full bg-ocean-950 px-3 py-1.5 text-xs font-black text-white transition hover:bg-ocean-800">Save</button>
           </form>
-          <form action={rejectPortalUser}>
-            <input type="hidden" name="userId" value={row.id} />
-            <input type="hidden" name="role" value={row.role} />
-            <button className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">
-              Reject
-            </button>
-          </form>
+          {row.isActive ? (
+            <form action={deactivateTeamMember}>
+              <input type="hidden" name="userId" value={row.id} />
+              <button className="rounded-full bg-white px-3 py-1.5 text-xs font-black text-red-600 ring-1 ring-red-200 transition hover:bg-red-50">Deactivate</button>
+            </form>
+          ) : null}
         </div>
       </td>
     </tr>
   );
 }
+
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <label className="grid gap-2 text-sm font-black text-ocean-950">
+      {label}
+      {children}
+    </label>
+  );
+}
+
+function TeamRoleSelect({ name, defaultValue, form }: { name: string; defaultValue?: TeamRole; form?: string }) {
+  return (
+    <select form={form} name={name} defaultValue={defaultValue ?? "counter_staff"} className={selectClass}>
+      <option value="counter_staff">Counter Staff</option>
+      <option value="launching_staff">Launching Staff</option>
+      <option value="landing_staff">Landing Staff</option>
+    </select>
+  );
+}
+
+function teamRoleLabel(role: TeamRole) {
+  return {
+    counter_staff: "Counter Staff",
+    launching_staff: "Launching Staff",
+    landing_staff: "Landing Staff"
+  }[role];
+}
+
+const inputClass = "h-12 rounded-2xl border border-ocean-950/10 bg-white px-4 text-sm font-bold text-ocean-950 outline-none transition placeholder:text-ocean-950/35 focus:border-lagoon";
+const selectClass = "h-12 rounded-2xl border border-ocean-950/10 bg-white px-4 text-sm font-black text-ocean-950 outline-none transition focus:border-lagoon";
 
 function StatusBadge({ status }: { status: RequestStatus }) {
   const classes = {

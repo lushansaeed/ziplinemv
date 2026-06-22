@@ -1,14 +1,14 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-type AuthRole = "admin" | "agent" | "affiliate";
+type AuthRole = "admin" | "counter_staff" | "launching_staff" | "landing_staff" | "agent" | "affiliate";
 type AuthUser = {
   app_metadata?: Record<string, unknown>;
   user_metadata?: Record<string, unknown>;
 };
 
 function isAuthRole(value: unknown): value is AuthRole {
-  return value === "admin" || value === "agent" || value === "affiliate";
+  return value === "admin" || value === "counter_staff" || value === "launching_staff" || value === "landing_staff" || value === "agent" || value === "affiliate";
 }
 
 function getUserRole(user: AuthUser | null): AuthRole | null {
@@ -21,6 +21,17 @@ function canAccessRole(userRole: AuthRole | null, allowedRoles: AuthRole[]) {
 }
 
 const protectedRoutes: { prefix: string; roles: AuthRole[]; loginRole: AuthRole }[] = [
+  { prefix: "/admin/settings", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/pricing", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/theme", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/roles", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/agents", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/affiliates", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/reports", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/commissions", roles: ["admin"], loginRole: "admin" },
+  { prefix: "/admin/customers", roles: ["admin", "counter_staff"], loginRole: "admin" },
+  { prefix: "/admin/media", roles: ["admin", "launching_staff"], loginRole: "admin" },
+  { prefix: "/admin/bookings", roles: ["admin", "counter_staff", "launching_staff", "landing_staff"], loginRole: "admin" },
   { prefix: "/admin", roles: ["admin"], loginRole: "admin" },
   { prefix: "/agents/dashboard", roles: ["agent", "admin"], loginRole: "agent" },
   { prefix: "/affiliates/dashboard", roles: ["affiliate", "admin"], loginRole: "affiliate" }

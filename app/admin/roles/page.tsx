@@ -19,6 +19,10 @@ export default async function RoleApprovalsPage({
     include: { user: true, codes: true },
     orderBy: { id: "desc" }
   });
+  const teamMembers = await db.user.findMany({
+    where: { role: { in: ["COUNTER_STAFF", "LAUNCHING_STAFF", "LANDING_STAFF"] } },
+    orderBy: { createdAt: "desc" }
+  });
 
   return (
     <DashboardShell title="Settings" subtitle="Pricing, themes, and roles." nav={["Settings"]} showSignOut>
@@ -48,9 +52,23 @@ export default async function RoleApprovalsPage({
           requestedDate: affiliate.user.createdAt.toISOString(),
           status: affiliate.isApproved ? "Approved" : "Pending"
         }))}
+        teamRows={teamMembers.map((member) => ({
+          id: member.id,
+          name: member.name ?? member.email,
+          email: member.email,
+          role: dbRoleToTeamRole(member.role),
+          isActive: member.isActive,
+          createdAt: member.createdAt.toISOString()
+        }))}
       />
     </DashboardShell>
   );
+}
+
+function dbRoleToTeamRole(role: string): "counter_staff" | "launching_staff" | "landing_staff" {
+  if (role === "LAUNCHING_STAFF") return "launching_staff";
+  if (role === "LANDING_STAFF") return "landing_staff";
+  return "counter_staff";
 }
 
 function SettingsNav({ active }: { active: "Pricing" | "Themes" | "Roles" }) {

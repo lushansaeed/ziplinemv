@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import type { UserRole } from "@prisma/client";
 import { getDb } from "@/lib/db";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -82,8 +83,25 @@ function hasSupabaseAuthConfig() {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 }
 
-function roleToDbRole(role: AuthRole) {
-  return role === "admin" ? "ADMIN" : role === "agent" ? "AGENT" : "AFFILIATE";
+function roleToDbRole(role: AuthRole): UserRole {
+  if (role === "admin") return "ADMIN";
+  if (role === "counter_staff") return "COUNTER_STAFF";
+  if (role === "launching_staff") return "LAUNCHING_STAFF";
+  if (role === "landing_staff") return "LANDING_STAFF";
+  return role === "agent" ? "AGENT" : "AFFILIATE";
+}
+
+function isTeamRole(value: unknown): value is Extract<AuthRole, "counter_staff" | "launching_staff" | "landing_staff"> {
+  return value === "counter_staff" || value === "launching_staff" || value === "landing_staff";
+}
+
+function dbRoleToAuthRole(role: UserRole): AuthRole {
+  if (role === "COUNTER_STAFF") return "counter_staff";
+  if (role === "LAUNCHING_STAFF") return "launching_staff";
+  if (role === "LANDING_STAFF") return "landing_staff";
+  if (role === "AGENT") return "agent";
+  if (role === "AFFILIATE") return "affiliate";
+  return "admin";
 }
 
 async function ensurePortalProfile({
@@ -244,8 +262,8 @@ export async function signUp(formData: FormData) {
     authErrorRedirect(role, redirectTo, "Enter an email, password, and portal role.");
   }
 
-  if (role === "admin") {
-    authErrorRedirect(role, redirectTo, "Admin accounts must be created by an existing administrator.");
+  if (role === "admin" || isTeamRole(role)) {
+    authErrorRedirect(role, redirectTo, "Team accounts must be created by an administrator.");
   }
 
   const portalRole = role as Exclude<AuthRole, "admin">;
@@ -525,4 +543,151 @@ export async function rejectPortalUser(formData: FormData) {
 
   revalidatePath("/admin/roles");
   redirect("/admin/roles?message=Portal user rejected.");
+}
+
+export async function createTeamMember(formData: FormData) {
+  const name = String(formData.get("name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const role = String(formData.get("role") ?? "");
+
+  if (!name || !email || password.length < 8 || !isTeamRole(role)) {
+    redirect("/admin/roles?error=Enter a name, valid email, password of at least 8 characters, and team role.");
+  }
+
+  const admin = getSupabaseAdmin();
+  const db = getDb();
+
+  const { data, error } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { display_name: name },
+    app_metadata: { role }
+  });
+
+  if (error || !data.user) {
+    redirect(`/admin/roles?error=${encodeURIComponent(error?.message ?? "Could not create team member.")}`);
+  }
+
+  await db.user.upsert({
+    where: { email },
+    update: {
+      id: data.user.id,
+      name,
+      role: roleToDbRole(role),
+      isActive: true
+    },
+    create: {
+      id: data.user.id,
+      email,
+      name,
+      role: roleToDbRole(role),
+      isActive: true
+    }
+  });
+
+  await db.auditLog.create({
+    data: {
+      action: "CREATE_TEAM_MEMBER",
+      entity: "team_member",
+      entityId: data.user.id,
+      after: { email, name, role }
+    }
+  });
+
+  revalidatePath("/admin/roles");
+  redirect("/admin/roles?message=Team member created.");
+}
+
+export async function updateTeamMember(formData: FormData) {
+  const userId = String(formData.get("userId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "");
+  const password = String(formData.get("password") ?? "");
+  const isActive = String(formData.get("isActive") ?? "") === "true";
+
+  if (!userId || !name || !isTeamRole(role)) {
+    redirect("/admin/roles?error=Enter a valid team member, name, and role.");
+  }
+
+  if (password && password.length < 8) {
+    redirect("/admin/roles?error=New password must be at least 8 characters.");
+  }
+
+  const admin = getSupabaseAdmin();
+  const db = getDb();
+  const dbRole = roleToDbRole(role);
+  const authUpdate: Parameters<typeof admin.auth.admin.updateUserById>[1] = {
+    user_metadata: { display_name: name },
+    app_metadata: { role: isActive ? role : "rejected" }
+  };
+
+  if (password) {
+    authUpdate.password = password;
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, authUpdate);
+
+  if (error) {
+    redirect(`/admin/roles?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await db.user.update({
+    where: { id: userId },
+    data: {
+      name,
+      role: dbRole,
+      isActive
+    }
+  });
+
+  await db.auditLog.create({
+    data: {
+      action: "UPDATE_TEAM_MEMBER",
+      entity: "team_member",
+      entityId: userId,
+      after: { name, role, isActive }
+    }
+  });
+
+  revalidatePath("/admin/roles");
+  redirect("/admin/roles?message=Team member updated.");
+}
+
+export async function deactivateTeamMember(formData: FormData) {
+  const userId = String(formData.get("userId") ?? "");
+
+  if (!userId) {
+    redirect("/admin/roles?error=Invalid team member.");
+  }
+
+  const admin = getSupabaseAdmin();
+  const db = getDb();
+  const user = await db.user.findUnique({ where: { id: userId } });
+
+  if (!user || !isTeamRole(dbRoleToAuthRole(user.role))) {
+    redirect("/admin/roles?error=Only team member accounts can be deactivated here.");
+  }
+
+  const { error } = await admin.auth.admin.updateUserById(userId, {
+    app_metadata: { role: "rejected" }
+  });
+
+  if (error) {
+    redirect(`/admin/roles?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await db.user.update({ where: { id: userId }, data: { isActive: false } });
+
+  await db.auditLog.create({
+    data: {
+      action: "DEACTIVATE_TEAM_MEMBER",
+      entity: "team_member",
+      entityId: userId
+    }
+  });
+
+  revalidatePath("/admin/roles");
+  redirect("/admin/roles?message=Team member deactivated.");
 }
