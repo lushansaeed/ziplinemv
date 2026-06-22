@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { approvePortalUser, rejectPortalUser } from "@/lib/auth/actions";
+import { AdminRoleRequestsWorkspace } from "@/components/admin-role-requests-workspace";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -28,31 +28,27 @@ export default async function RoleApprovalsPage({
       </div>
       <SettingsNav active="Roles" />
 
-      <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <ApprovalList
-          title="Agent Requests"
-          empty="No agent registrations yet."
-          rows={agents.map((agent) => ({
-            id: agent.userId,
-            role: "agent",
-            name: agent.agencyName,
-            email: agent.user.email,
-            status: agent.isSuspended ? "Rejected" : agent.isApproved ? "Approved" : "Pending"
-          }))}
-        />
-        <ApprovalList
-          title="Affiliate Requests"
-          empty="No affiliate registrations yet."
-          rows={affiliates.map((affiliate) => ({
-            id: affiliate.userId,
-            role: "affiliate",
-            name: affiliate.displayName,
-            email: affiliate.user.email,
-            status: affiliate.isApproved ? "Approved" : "Pending",
-            detail: affiliate.codes[0]?.code ? `Code: ${affiliate.codes[0].code}` : undefined
-          }))}
-        />
-      </section>
+      <AdminRoleRequestsWorkspace
+        agentRows={agents.map((agent) => ({
+          id: agent.userId,
+          role: "agent",
+          primaryName: agent.agencyName,
+          contactPerson: agent.user.name ?? "",
+          email: agent.user.email,
+          phone: "",
+          requestedDate: agent.user.createdAt.toISOString(),
+          status: agent.isSuspended ? "Rejected" : agent.isApproved ? "Approved" : "Pending"
+        }))}
+        affiliateRows={affiliates.map((affiliate) => ({
+          id: affiliate.userId,
+          role: "affiliate",
+          primaryName: affiliate.displayName,
+          email: affiliate.user.email,
+          phone: "",
+          requestedDate: affiliate.user.createdAt.toISOString(),
+          status: affiliate.isApproved ? "Approved" : "Pending"
+        }))}
+      />
     </DashboardShell>
   );
 }
@@ -69,51 +65,5 @@ function SettingsNav({ active }: { active: "Pricing" | "Themes" | "Roles" }) {
         <a key={label} href={href} className={`rounded-2xl px-5 py-3 text-sm font-black ${active === label ? "bg-ocean-950 text-white shadow-glow" : "text-ocean-950/60 hover:bg-white"}`}>{label}</a>
       ))}
     </nav>
-  );
-}
-
-function ApprovalList({
-  title,
-  empty,
-  rows
-}: {
-  title: string;
-  empty: string;
-  rows: { id: string; role: "agent" | "affiliate"; name: string; email: string; status: string; detail?: string }[];
-}) {
-  return (
-    <div className="rounded-[2rem] bg-white p-5 shadow-sm">
-      <h2 className="text-2xl font-black">{title}</h2>
-      <div className="mt-5 grid gap-3">
-        {rows.length ? (
-          rows.map((row) => (
-            <article key={`${row.role}-${row.id}`} className="rounded-3xl border border-ocean-950/10 p-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-black">{row.name}</h3>
-                  <p className="text-sm text-ocean-950/60">{row.email}</p>
-                  {row.detail ? <p className="mt-1 text-xs font-bold text-ocean-700">{row.detail}</p> : null}
-                </div>
-                <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-black text-ocean-950">{row.status}</span>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <form action={approvePortalUser}>
-                  <input type="hidden" name="userId" value={row.id} />
-                  <input type="hidden" name="role" value={row.role} />
-                  <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Approve</button>
-                </form>
-                <form action={rejectPortalUser}>
-                  <input type="hidden" name="userId" value={row.id} />
-                  <input type="hidden" name="role" value={row.role} />
-                  <button className="rounded-full bg-white px-4 py-2 text-sm font-bold text-red-600 ring-1 ring-red-200">Reject</button>
-                </form>
-              </div>
-            </article>
-          ))
-        ) : (
-          <p className="rounded-3xl bg-ocean-50 p-4 text-sm font-bold text-ocean-950/60">{empty}</p>
-        )}
-      </div>
-    </div>
   );
 }
