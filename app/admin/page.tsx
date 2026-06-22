@@ -22,15 +22,24 @@ type MoneyBucket = {
   mvrEquivalent: number;
 };
 
+type BookingStats = {
+  totalBookings: number;
+  todayBookings: number;
+  bookingCounts: Record<string, number>;
+  paymentCounts: Record<string, number>;
+};
+
 export default async function AdminPage() {
   const db = getDb();
   const now = new Date();
   const today = startOfDay(now);
   const tomorrow = addDays(today, 1);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const previousYearStart = new Date(now.getFullYear() - 1, 0, 1);
 
   const allPaidBookings = await db.booking.findMany({
-      where: { paymentStatus: "PAID" },
+      where: { paymentStatus: "PAID", date: { gte: previousYearStart } },
+      orderBy: { date: "asc" },
       select: { date: true, createdAt: true, totalAmount: true, currency: true }
   });
   const dashboardBookings = await db.booking.findMany({
@@ -40,35 +49,64 @@ export default async function AdminPage() {
         agent: true,
         affiliate: true,
         addons: true,
-        payments: true,
         commissions: true
       },
       orderBy: { createdAt: "desc" },
-      take: 100
+      take: 25
   });
-  const allBookingStatuses = await db.booking.findMany({
-      select: { bookingStatus: true, paymentStatus: true, date: true, timeSlotId: true, totalAmount: true, currency: true }
+  const bookingStatsRows = await db.$queryRaw<BookingStats[]>`
+    SELECT
+      (SELECT COUNT(*)::int FROM "Booking") AS "totalBookings",
+      (SELECT COUNT(*)::int FROM "Booking" WHERE "date" >= ${today} AND "date" < ${tomorrow}) AS "todayBookings",
+      COALESCE(
+        (SELECT jsonb_object_agg("bookingStatus", count) FROM (SELECT "bookingStatus", COUNT(*)::int AS count FROM "Booking" GROUP BY "bookingStatus") statuses),
+        '{}'::jsonb
+      ) AS "bookingCounts",
+      COALESCE(
+        (SELECT jsonb_object_agg("paymentStatus", count) FROM (SELECT "paymentStatus", COUNT(*)::int AS count FROM "Booking" GROUP BY "paymentStatus") payments),
+        '{}'::jsonb
+      ) AS "paymentCounts"
+  `;
+  const allCommissions = await db.commission.findMany({
+    where: { status: { in: ["PENDING", "ELIGIBLE", "APPROVED"] } },
+    select: { amount: true, status: true }
   });
-  const allCommissions = await db.commission.findMany();
-  const payments = await db.payment.findMany();
-  const addonRows = await db.bookingAddon.findMany({ include: { booking: true } });
-  const timeSlots = await db.timeSlot.findMany({ where: { isActive: true }, include: { bookings: true }, orderBy: { startsAt: "asc" } });
+  const payments = await db.payment.findMany({
+    select: { amount: true, currency: true, method: true, status: true },
+    orderBy: { createdAt: "desc" },
+    take: 500
+  });
+  const addonRows = await db.bookingAddon.findMany({
+    select: { label: true, price: true, bookingId: true },
+    take: 500
+  });
+  const timeSlots = await db.timeSlot.findMany({
+    where: { isActive: true },
+    include: {
+      bookings: {
+        where: { date: { gte: today, lt: tomorrow } },
+        select: { date: true, riderCount: true }
+      }
+    },
+    orderBy: { startsAt: "asc" }
+  });
 
   const salesDatasets = buildSalesDatasets(allPaidBookings, now);
-  const todaySales = dashboardBookings
-    .filter((booking) => booking.paymentStatus === "PAID" && booking.createdAt >= today && booking.createdAt < tomorrow)
+  const todaySales = allPaidBookings
+    .filter((booking) => booking.createdAt >= today && booking.createdAt < tomorrow)
     .reduce(addMoneyFromBooking, emptyMoney());
-  const monthlyRevenue = dashboardBookings
-    .filter((booking) => booking.paymentStatus === "PAID" && booking.createdAt >= monthStart)
+  const monthlyRevenue = allPaidBookings
+    .filter((booking) => booking.createdAt >= monthStart)
     .reduce(addMoneyFromBooking, emptyMoney());
-  const yesterdaySales = dashboardBookings
-    .filter((booking) => booking.paymentStatus === "PAID" && booking.createdAt >= addDays(today, -1) && booking.createdAt < today)
+  const yesterdaySales = allPaidBookings
+    .filter((booking) => booking.createdAt >= addDays(today, -1) && booking.createdAt < today)
     .reduce(addMoneyFromBooking, emptyMoney());
 
-  const counts = countBy(allBookingStatuses.map((booking) => booking.bookingStatus));
-  const paymentCounts = countBy(allBookingStatuses.map((booking) => booking.paymentStatus));
-  const totalBookings = Math.max(allBookingStatuses.length, 1);
-  const todayBookings = allBookingStatuses.filter((booking) => booking.date >= today && booking.date < tomorrow).length;
+  const bookingStats = bookingStatsRows[0] ?? { totalBookings: 0, todayBookings: 0, bookingCounts: {}, paymentCounts: {} };
+  const counts = bookingStats.bookingCounts;
+  const paymentCounts = bookingStats.paymentCounts;
+  const totalBookings = Math.max(Number(bookingStats.totalBookings), 1);
+  const todayBookings = Number(bookingStats.todayBookings);
   const pendingBookings = counts.PENDING ?? 0;
   const completedRides = counts.COMPLETED ?? 0;
   const commissionPayable = allCommissions
@@ -78,7 +116,7 @@ export default async function AdminPage() {
   const summaryCards = [
     { label: "Today's sales", value: moneyLabel(todaySales), detail: `${compareText(todaySales.mvrEquivalent, yesterdaySales.mvrEquivalent, "vs yesterday")} / ${usdDetail(todaySales)}`, icon: DollarSign, tone: "lagoon" as const },
     { label: "Today's bookings", value: String(todayBookings), detail: `${pendingBookings} pending confirmation`, icon: CalendarCheck, tone: "ocean" as const },
-    { label: "Monthly revenue", value: moneyLabel(monthlyRevenue), detail: `${dashboardBookings.filter((booking) => booking.createdAt >= monthStart).length} bookings / ${usdDetail(monthlyRevenue)}`, icon: CreditCard, tone: "mint" as const },
+    { label: "Monthly revenue", value: moneyLabel(monthlyRevenue), detail: `${allPaidBookings.filter((booking) => booking.createdAt >= monthStart).length} paid bookings / ${usdDetail(monthlyRevenue)}`, icon: CreditCard, tone: "mint" as const },
     { label: "Pending bookings", value: String(pendingBookings), detail: "Awaiting admin action", icon: Clock3, tone: "sunset" as const },
     { label: "Completed rides", value: String(completedRides), detail: `${percent(completedRides, totalBookings)} of all bookings`, icon: TicketCheck, tone: "ocean" as const },
     { label: "Commission payable", value: mvrFromUsdLabel(commissionPayable), detail: `USD ${commissionPayable.toFixed(2)} pending, eligible, or approved`, icon: WalletCards, tone: "rose" as const }

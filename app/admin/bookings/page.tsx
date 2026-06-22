@@ -22,7 +22,6 @@ export default async function BookingManagementPage({
         timeSlot: true,
         agent: true,
         affiliate: true,
-        payments: true,
         riders: true,
         addons: true
       },
