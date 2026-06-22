@@ -51,6 +51,14 @@ export default async function AgentsPage({
       commissionsCount: agent.commissions.length,
       ratesCount: agent.rates.length,
       rateLabel: agent.rates.length ? agent.rates.map((rate) => `${rate.name}: ${rate.currency} ${Number(rate.price).toFixed(2)}`).join(", ") : "Default Rate",
+      rates: agent.rates.map((rate) => ({
+        id: rate.id,
+        name: rate.name,
+        price: Number(rate.price),
+        currency: rate.currency,
+        validFrom: rate.validFrom?.toISOString() ?? null,
+        validTo: rate.validTo?.toISOString() ?? null
+      })),
       performance: {
         name: agent.agencyName || agent.user.name || agent.user.email,
         bookings: agent.bookings.length,
@@ -74,7 +82,7 @@ export default async function AgentsPage({
   });
 
   return (
-    <DashboardShell title="Agent Management" subtitle="Manage agent profiles, rates, and commission." nav={["Agents", "Approved", "Suspended", "Rates"]} showSignOut>
+    <DashboardShell title="Agent Management" subtitle="Manage agent profiles, rates, and commission." nav={["Agents"]} showSignOut>
       <Messages message={params.message} error={params.error} />
       <AdminAgentManagementWorkspace agents={mappedAgents} exchangeRate={defaultPricing.exchangeRateMvrPerUsd} />
     </DashboardShell>

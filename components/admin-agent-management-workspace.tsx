@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { updateAgent, updateAgentStatus } from "@/lib/admin/actions";
 
@@ -26,6 +25,14 @@ export type AgentManagementAgent = {
   commissionsCount: number;
   ratesCount: number;
   rateLabel: string;
+  rates: Array<{
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    validFrom: string | null;
+    validTo: string | null;
+  }>;
   performance: {
     name: string;
     bookings: number;
@@ -48,18 +55,28 @@ export type AgentManagementAgent = {
 };
 
 type AgentStatus = "active" | "inactive" | "suspended";
+type AgentTab = "performance" | "agents" | "bookings" | "rates";
+type AgentRateRow = {
+  agent: AgentManagementAgent;
+  rate: AgentManagementAgent["rates"][number] | null;
+};
 
 export function AdminAgentManagementWorkspace({ agents, exchangeRate }: { agents: AgentManagementAgent[]; exchangeRate: number }) {
-  const [activeTab, setActiveTab] = useState<"performance" | "agents">("performance");
+  const [activeTab, setActiveTab] = useState<AgentTab>("performance");
 
   return (
     <div className="grid gap-6">
       <div className="flex flex-wrap gap-2 rounded-3xl bg-white/75 p-2 shadow-sm">
         <TabButton active={activeTab === "performance"} onClick={() => setActiveTab("performance")}>Agent Performance</TabButton>
         <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")}>Agents</TabButton>
+        <TabButton active={activeTab === "bookings"} onClick={() => setActiveTab("bookings")}>Recent Agent Bookings</TabButton>
+        <TabButton active={activeTab === "rates"} onClick={() => setActiveTab("rates")}>Rates</TabButton>
       </div>
 
-      {activeTab === "performance" ? <AgentPerformanceTab agents={agents} exchangeRate={exchangeRate} /> : <AgentsTab agents={agents} />}
+      {activeTab === "performance" ? <AgentPerformanceTab agents={agents} exchangeRate={exchangeRate} /> : null}
+      {activeTab === "agents" ? <AgentsTab agents={agents} onOpenRates={() => setActiveTab("rates")} /> : null}
+      {activeTab === "bookings" ? <RecentAgentBookingsTab agents={agents} /> : null}
+      {activeTab === "rates" ? <RatesTab agents={agents} /> : null}
     </div>
   );
 }
@@ -69,7 +86,6 @@ function AgentPerformanceTab({ agents, exchangeRate }: { agents: AgentManagement
   const [selectedAgentId, setSelectedAgentId] = useState("all");
   const visibleAgents = selectedAgentId === "all" ? activeAgents : activeAgents.filter((agent) => agent.id === selectedAgentId);
   const totals = buildPerformanceTotals(visibleAgents);
-  const recentBookings = visibleAgents.flatMap((agent) => agent.recentBookings.map((booking) => ({ ...booking, agentName: agent.performance.name }))).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
 
   return (
     <section className="grid gap-6">
@@ -99,22 +115,21 @@ function AgentPerformanceTab({ agents, exchangeRate }: { agents: AgentManagement
         <MetricCard label="Payable Commission" value={mvrFromUsdLabel(totals.payableCommission, exchangeRate)} detail={`USD ${totals.payableCommission.toFixed(2)}`} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <PerformanceTable agents={visibleAgents} exchangeRate={exchangeRate} />
-        <RecentAgentBookings bookings={recentBookings} />
-      </div>
+      <PerformanceTable agents={visibleAgents} exchangeRate={exchangeRate} />
     </section>
   );
 }
 
-function AgentsTab({ agents }: { agents: AgentManagementAgent[] }) {
+function AgentsTab({ agents, onOpenRates }: { agents: AgentManagementAgent[]; onOpenRates: () => void }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AgentStatus>("all");
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const filteredAgents = agents.filter((agent) => {
     const status = getAgentStatus(agent);
     const haystack = [agent.agencyName, agent.contactName, agent.email, agent.phone, agent.rateLabel].join(" ").toLowerCase();
     return (statusFilter === "all" || status === statusFilter) && haystack.includes(search.trim().toLowerCase());
   });
+  const editingAgent = editingAgentId ? agents.find((agent) => agent.id === editingAgentId) ?? null : null;
 
   return (
     <section className="grid gap-6">
@@ -143,18 +158,14 @@ function AgentsTab({ agents }: { agents: AgentManagementAgent[] }) {
         </div>
       </div>
 
-      <AgentsTable agents={filteredAgents} />
+      <AgentsTable agents={filteredAgents} onEdit={(agentId) => setEditingAgentId(agentId)} onOpenRates={onOpenRates} />
 
-      <div className="grid gap-6">
-        {filteredAgents.map((agent) => (
-          <AgentEditCard key={agent.id} agent={agent} />
-        ))}
-      </div>
+      {editingAgent ? <AgentEditCard agent={editingAgent} onClose={() => setEditingAgentId(null)} /> : null}
     </section>
   );
 }
 
-function AgentsTable({ agents }: { agents: AgentManagementAgent[] }) {
+function AgentsTable({ agents, onEdit, onOpenRates }: { agents: AgentManagementAgent[]; onEdit: (agentId: string) => void; onOpenRates: () => void }) {
   if (!agents.length) {
     return <EmptyCard title="No agents found." />;
   }
@@ -187,8 +198,8 @@ function AgentsTable({ agents }: { agents: AgentManagementAgent[] }) {
               </td>
               <td className="border-t border-ocean-950/10 px-5 py-4">
                 <div className="flex flex-wrap gap-2">
-                  <a href={`#edit-${agent.id}`} className="rounded-full bg-ocean-950 px-3 py-2 text-xs font-black text-white">Edit</a>
-                  <Link href="/admin/pricing" className="rounded-full bg-ocean-50 px-3 py-2 text-xs font-black text-ocean-950">Manage Rates</Link>
+                  <button type="button" onClick={() => onEdit(agent.id)} className="rounded-full bg-ocean-950 px-3 py-2 text-xs font-black text-white">Edit</button>
+                  <button type="button" onClick={onOpenRates} className="rounded-full bg-ocean-50 px-3 py-2 text-xs font-black text-ocean-950">Manage Rates</button>
                 </div>
               </td>
             </tr>
@@ -199,7 +210,7 @@ function AgentsTable({ agents }: { agents: AgentManagementAgent[] }) {
   );
 }
 
-function AgentEditCard({ agent }: { agent: AgentManagementAgent }) {
+function AgentEditCard({ agent, onClose }: { agent: AgentManagementAgent; onClose: () => void }) {
   const status = getAgentStatus(agent);
 
   return (
@@ -214,7 +225,10 @@ function AgentEditCard({ agent }: { agent: AgentManagementAgent }) {
           <h3 className="truncate text-xl font-black text-ocean-950">{agent.agencyName || agent.contactName || agent.email}</h3>
           <p className="mt-1 text-xs font-bold text-ocean-950/45">{agent.bookingsCount} Bookings / {agent.commissionsCount} Commissions / {agent.ratesCount} Rates</p>
         </div>
-        <StatusPill status={status} />
+        <div className="flex items-center gap-2">
+          <StatusPill status={status} />
+          <button type="button" onClick={onClose} className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-black text-ocean-950">Close</button>
+        </div>
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
@@ -275,6 +289,87 @@ function AgentStatusSelect({ agent }: { agent: AgentManagementAgent }) {
       </select>
       {message ? <span className={`text-xs font-black ${message === "Could Not Save" ? "text-red-600" : "text-ocean-950/45"}`}>{isPending ? "Saving..." : message}</span> : null}
     </div>
+  );
+}
+
+function RecentAgentBookingsTab({ agents }: { agents: AgentManagementAgent[] }) {
+  const activeAgents = useMemo(() => agents.filter((agent) => isActiveAgent(agent)), [agents]);
+  const [selectedAgentId, setSelectedAgentId] = useState("all");
+  const visibleAgents = selectedAgentId === "all" ? activeAgents : activeAgents.filter((agent) => agent.id === selectedAgentId);
+  const bookings = visibleAgents.flatMap((agent) => agent.recentBookings.map((booking) => ({ ...booking, agentName: agent.performance.name }))).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  return (
+    <section className="grid gap-6">
+      <div className="rounded-3xl bg-white p-5 shadow-[0_18px_60px_rgba(8,51,68,0.08)] md:p-7">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-ocean-950">Recent Agent Bookings</h2>
+            <p className="mt-1 text-xs font-bold text-ocean-950/45">Latest bookings created by active agents.</p>
+          </div>
+          <label className="grid gap-2 text-sm font-black text-ocean-950 md:min-w-72">
+            Agent Filter
+            <select value={selectedAgentId} onChange={(event) => setSelectedAgentId(event.target.value)} className="h-12 rounded-2xl border border-ocean-950/10 bg-white px-4 text-sm font-bold outline-none focus:border-ocean-500 focus:ring-4 focus:ring-ocean-500/10">
+              <option value="all">All Agents</option>
+              {activeAgents.map((agent) => (
+                <option key={agent.id} value={agent.id}>{agent.performance.name}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <RecentAgentBookings bookings={bookings} />
+    </section>
+  );
+}
+
+function RatesTab({ agents }: { agents: AgentManagementAgent[] }) {
+  const rows = agents.reduce<AgentRateRow[]>((items, agent) => {
+    if (!agent.rates.length) {
+      items.push({ agent, rate: null });
+      return items;
+    }
+
+    agent.rates.forEach((rate) => items.push({ agent, rate }));
+    return items;
+  }, []);
+
+  return (
+    <section className="grid gap-6">
+      <div className="rounded-3xl bg-white p-5 shadow-[0_18px_60px_rgba(8,51,68,0.08)] md:p-7">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-ocean-950">Rates</h2>
+            <p className="mt-1 text-xs font-bold text-ocean-950/45">Agent rate cards currently assigned.</p>
+          </div>
+          <a href="/admin/pricing" className="inline-flex justify-center rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white">Open Pricing</a>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-3xl bg-white shadow-[0_18px_60px_rgba(8,51,68,0.08)]">
+        <table className="w-full min-w-[820px] border-separate border-spacing-0 text-left text-sm">
+          <thead>
+            <tr className="bg-ocean-50/80 text-ocean-950/65">
+              {["Agency", "Contact Person", "Rate Name", "Price", "Valid From", "Valid To"].map((column) => (
+                <th key={column} className="px-5 py-4 text-sm font-black">{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ agent, rate }) => (
+              <tr key={`${agent.id}-${rate?.id ?? "default"}`}>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-black text-ocean-950">{agent.agencyName}</td>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-bold text-ocean-950/75">{agent.contactName || "Not Set"}</td>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-bold text-ocean-950/75">{rate?.name ?? "Default Rate"}</td>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-black text-ocean-950">{rate ? `${rate.currency} ${rate.price.toFixed(2)}` : "Default Pricing"}</td>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-bold text-ocean-950/55">{rate?.validFrom ? formatDate(rate.validFrom) : "Anytime"}</td>
+                <td className="border-t border-ocean-950/10 px-5 py-4 font-bold text-ocean-950/55">{rate?.validTo ? formatDate(rate.validTo) : "Anytime"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 
