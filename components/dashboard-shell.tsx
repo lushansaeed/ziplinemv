@@ -92,6 +92,8 @@ const iconMap: Record<string, LucideIcon> = {
   Theme: Settings
 };
 
+const hiddenAdminPrimaryNav = new Set(["Customers", "Agents", "Affiliates"]);
+
 export function DashboardShell({
   title,
   subtitle,
@@ -110,7 +112,12 @@ export function DashboardShell({
   const isAffiliate = title.toLowerCase().includes("affiliate");
   const kicker = isAdmin ? "Operations" : isAffiliate ? "Partner portal" : "Zipline portal";
   const initials = isAdmin ? "AD" : isAffiliate ? "AF" : "AG";
-  const navigation = isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item))] : nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item));
+  const navigation = (isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav] : nav).filter(
+    (item, index, items) =>
+      !["Pricing", "Theme", "Roles"].includes(item) &&
+      !(isAdmin && hiddenAdminPrimaryNav.has(item)) &&
+      items.indexOf(item) === index
+  );
 
   useEffect(() => {
     setLeftPanelHidden(window.localStorage.getItem("zipline-left-panel-hidden") === "true");
