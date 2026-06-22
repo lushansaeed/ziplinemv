@@ -9,22 +9,28 @@ export const defaultPricing = {
   touristChildUsd: 30,
   localAdultMvr: 600,
   localChildMvr: 400,
+  defaultCurrency: "USD",
   exchangeRateMvrPerUsd: 20,
   affiliateDiscountPercent: 10
 };
 
-export function calculateRideTotal(customerType: CustomerType, riders: RiderMix, addOnUsdTotal: number, hasCoupon: boolean) {
+export type RidePricingConfig = typeof defaultPricing;
+
+export function calculateRideTotal(customerType: CustomerType, riders: RiderMix, addOnUsdTotal: number, hasCoupon: boolean, pricing: RidePricingConfig = defaultPricing) {
   const base =
     customerType === "tourist"
-      ? riders.adults * defaultPricing.touristAdultUsd + riders.children * defaultPricing.touristChildUsd + addOnUsdTotal
-      : riders.adults * defaultPricing.localAdultMvr +
-        riders.children * defaultPricing.localChildMvr +
-        addOnUsdTotal * defaultPricing.exchangeRateMvrPerUsd;
+      ? riders.adults * pricing.touristAdultUsd + riders.children * pricing.touristChildUsd + addOnUsdTotal
+      : riders.adults * pricing.localAdultMvr +
+        riders.children * pricing.localChildMvr +
+        addOnUsdTotal * pricing.exchangeRateMvrPerUsd;
 
-  const discount = hasCoupon ? base * (defaultPricing.affiliateDiscountPercent / 100) : 0;
+  const discount = hasCoupon ? base * (pricing.affiliateDiscountPercent / 100) : 0;
   return {
     currency: customerType === "tourist" ? "USD" : "MVR",
     subtotal: base,
+    adultPrice: customerType === "tourist" ? pricing.touristAdultUsd : pricing.localAdultMvr,
+    childPrice: customerType === "tourist" ? pricing.touristChildUsd : pricing.localChildMvr,
+    exchangeRate: pricing.exchangeRateMvrPerUsd,
     discount,
     total: Math.max(base - discount, 0)
   };

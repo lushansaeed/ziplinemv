@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { createBooking } from "@/lib/admin/actions";
-import { addOns } from "@/lib/data";
-import { calculateRideTotal, defaultPricing, type CustomerType } from "@/lib/pricing";
+import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { addOnDisplayPrice, addOnUnitUsd, defaultPricingAddOns, type PricingEngineConfig } from "@/lib/pricing-engine";
 
 type TimeSlotOption = {
   value: string;
@@ -20,6 +20,7 @@ const paymentMethods = ["Admin/manual", "Card", "Cash on arrival", "Bank transfe
 const todayDateValue = getTodayInputValue();
 
 export function AdminCreateBookingForm() {
+  const [pricingEngine, setPricingEngine] = useState<PricingEngineConfig | null>(null);
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
   const [bookingDate, setBookingDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -35,17 +36,19 @@ export function AdminCreateBookingForm() {
   const [amountPaid, setAmountPaid] = useState(0);
   const [showConfirm, setShowConfirm] = useState(false);
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>(
-    Object.fromEntries(addOns.map((item) => [item.id, 0]))
+    Object.fromEntries(defaultPricingAddOns.map((item) => [item.id, 0]))
   );
 
+  const pricing = pricingEngine?.pricing;
+  const availableAddOns = pricingEngine?.addOns.filter((item) => item.enabled) ?? defaultPricingAddOns.filter((item) => item.enabled);
   const riderCount = adults + children;
-  const addOnUsdTotal = addOns.reduce((sum, item) => sum + item.usd * (addonQuantities[item.id] ?? 0), 0);
+  const addOnUsdTotal = availableAddOns.reduce((sum, item) => sum + (pricing ? addOnUnitUsd(item, pricing.exchangeRateMvrPerUsd) : item.price) * (addonQuantities[item.id] ?? 0), 0);
   const calculated = useMemo(
-    () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0),
-    [customerType, adults, children, addOnUsdTotal, coupon]
+    () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0, pricing),
+    [customerType, adults, children, addOnUsdTotal, coupon, pricing]
   );
   const displayCurrency = calculated.currency;
-  const currencyRate = displayCurrency === "MVR" ? defaultPricing.exchangeRateMvrPerUsd : 1;
+  const currencyRate = displayCurrency === "MVR" ? calculated.exchangeRate : 1;
   const rideTotal = calculated.subtotal - addOnUsdTotal * currencyRate;
   const addOnsTotal = addOnUsdTotal * currencyRate;
   const couponDiscount = calculated.discount;
@@ -56,6 +59,13 @@ export function AdminCreateBookingForm() {
   const balanceDue = Math.max(finalTotal - amountPaid, 0);
   const invalidAddonQuantity = Object.values(addonQuantities).some((quantity) => quantity < 0 || quantity > riderCount);
   const canOpenConfirm = riderCount > 0 && finalTotal >= 0 && !invalidAddonQuantity;
+
+  useEffect(() => {
+    fetch("/api/pricing-engine")
+      .then((response) => response.json())
+      .then((payload: PricingEngineConfig) => setPricingEngine(payload))
+      .catch(() => setPricingEngine(null));
+  }, []);
 
   useEffect(() => {
     if (!bookingDate) {
@@ -111,7 +121,7 @@ export function AdminCreateBookingForm() {
         <input type="hidden" name="customerType" value={customerType} />
         <input type="hidden" name="adults" value={adults} />
         <input type="hidden" name="children" value={children} />
-        {addOns.map((item) => (
+        {availableAddOns.map((item) => (
           <input key={item.id} type="hidden" name={`addonQuantity_${item.id}`} value={addonQuantities[item.id] ?? 0} />
         ))}
 
@@ -164,11 +174,11 @@ export function AdminCreateBookingForm() {
           </FormSectionCard>
 
           <FormSectionCard title="Add-Ons" columns="md:grid-cols-3">
-            {addOns.map((item) => (
+            {availableAddOns.map((item) => (
               <AddOnQuantityCard
                 key={item.id}
                 label={item.label}
-                unitPriceUsd={item.usd}
+                unitPrice={pricing ? addOnDisplayPrice(item, displayCurrency, pricing.exchangeRateMvrPerUsd) : item.price}
                 currency={displayCurrency}
                 quantity={addonQuantities[item.id] ?? 0}
                 riderCount={riderCount}
@@ -202,7 +212,7 @@ export function AdminCreateBookingForm() {
           canOpenConfirm={canOpenConfirm}
           showConfirm={showConfirm}
           setShowConfirm={setShowConfirm}
-          selectedAddOns={addOns.filter((item) => (addonQuantities[item.id] ?? 0) > 0).map((item) => `${item.label} x ${addonQuantities[item.id]}`)}
+          selectedAddOns={availableAddOns.filter((item) => (addonQuantities[item.id] ?? 0) > 0).map((item) => `${item.label} x ${addonQuantities[item.id]}`)}
           riderText={`${adults} adults / ${children} kids`}
           discountText={discountValue ? `${discountType} ${discountValue}` : "None"}
         />
@@ -267,8 +277,8 @@ function QuantitySelector({ label, value, onChange, min }: { label: string; valu
   );
 }
 
-function AddOnQuantityCard({ label, unitPriceUsd, currency, quantity, riderCount, onChange }: { label: string; unitPriceUsd: number; currency: string; quantity: number; riderCount: number; onChange: (value: number) => void }) {
-  const unit = currency === "MVR" ? unitPriceUsd * defaultPricing.exchangeRateMvrPerUsd : unitPriceUsd;
+function AddOnQuantityCard({ label, unitPrice, currency, quantity, riderCount, onChange }: { label: string; unitPrice: number; currency: string; quantity: number; riderCount: number; onChange: (value: number) => void }) {
+  const unit = unitPrice;
   const exceeds = quantity > riderCount;
 
   return (

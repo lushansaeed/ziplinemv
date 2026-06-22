@@ -3,9 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { Prisma } from "@prisma/client";
-import { addOns } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { defaultPricingAddOns, getPricingEngineConfig, saveAddOnSettings, saveDefaultPricingSettings, saveExchangeRateSetting, type PricingAddOn } from "@/lib/pricing-engine";
 import { createClient } from "@/lib/supabase/server";
 import { ensureBookableTimeSlot, saveBookingTimeSlotSettings, type BookingTimeSlotSettings } from "@/lib/booking-time-slots";
 
@@ -61,7 +61,9 @@ export async function createBooking(formData: FormData) {
   }
 
   const settings = await getBookingSettings();
-  const addOnSelections = addOns.map((item) => ({
+  const pricingEngine = await getPricingEngineConfig();
+  const availableAddOns = pricingEngine.addOns.filter((item) => item.enabled);
+  const addOnSelections = availableAddOns.map((item) => ({
     ...item,
     quantity: intValue(formData, `addonQuantity_${item.id}`)
   })).filter((item) => item.quantity > 0);
@@ -74,7 +76,7 @@ export async function createBooking(formData: FormData) {
     redirect("/admin/bookings?error=Add-on quantity cannot exceed total riders.");
   }
 
-  const addOnUsdTotal = addOnSelections.reduce((sum, item) => sum + item.usd * item.quantity, 0);
+  const addOnUsdTotal = addOnSelections.reduce((sum, item) => sum + (item.currency === "USD" ? item.price : item.price / pricingEngine.pricing.exchangeRateMvrPerUsd) * item.quantity, 0);
   const couponCode = text(formData, "coupon");
   const affiliateCode = couponCode
     ? await db.affiliateCode.findUnique({
@@ -87,7 +89,7 @@ export async function createBooking(formData: FormData) {
     redirect("/admin/bookings?error=Coupon or affiliate code is invalid.");
   }
 
-  const calculated = calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, Boolean(text(formData, "coupon")));
+  const calculated = calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, Boolean(text(formData, "coupon")), pricingEngine.pricing);
   const discountType = text(formData, "discountType") || "percentage";
   const discountValue = Number(text(formData, "discountValue") || 0);
   const currency = calculated.currency;
@@ -174,7 +176,7 @@ export async function createBooking(formData: FormData) {
               Array.from({ length: item.quantity }, () => ({
                 addonKey: item.id,
                 label: item.label,
-                price: currency === "USD" ? item.usd : item.usd * 20,
+                price: currency === item.currency ? item.price : currency === "MVR" ? item.price * pricingEngine.pricing.exchangeRateMvrPerUsd : item.price / pricingEngine.pricing.exchangeRateMvrPerUsd,
                 currency
               }))
             )
@@ -301,7 +303,86 @@ export async function deletePricingRule(formData: FormData) {
   redirectWith("/admin/pricing", "Pricing rule deleted.");
 }
 
+export async function savePricingEngineDefaults(formData: FormData) {
+  await saveDefaultPricingSettings({
+    touristAdultUsd: Number(text(formData, "touristAdultUsd") || 50),
+    touristChildUsd: Number(text(formData, "touristChildUsd") || 30),
+    localAdultMvr: Number(text(formData, "localAdultMvr") || 600),
+    localChildMvr: Number(text(formData, "localChildMvr") || 400),
+    defaultCurrency: text(formData, "defaultCurrency") || "USD",
+    exchangeRateMvrPerUsd: Number(text(formData, "exchangeRateMvrPerUsd") || 20),
+    affiliateDiscountPercent: Number(text(formData, "affiliateDiscountPercent") || 10)
+  });
+
+  revalidatePath("/admin/pricing");
+  revalidatePath("/book");
+  revalidatePath("/admin/bookings");
+  redirectWith("/admin/pricing", "Default prices saved.");
+}
+
+export async function savePricingEngineExchangeRate(formData: FormData) {
+  await saveExchangeRateSetting(Number(text(formData, "exchangeRateMvrPerUsd") || 20), text(formData, "effectiveFrom"), boolValue(formData, "isActive"));
+
+  revalidatePath("/admin/pricing");
+  revalidatePath("/book");
+  revalidatePath("/admin/bookings");
+  redirectWith("/admin/pricing", "Exchange rate saved.");
+}
+
+export async function savePricingEngineAddOns(formData: FormData) {
+  const addOnsToSave: PricingAddOn[] = defaultPricingAddOns.map((item) => ({
+    id: item.id,
+    label: text(formData, `${item.id}_label`) || item.label,
+    price: Number(text(formData, `${item.id}_price`) || item.price),
+    currency: text(formData, `${item.id}_currency`) === "MVR" ? "MVR" : "USD",
+    enabled: boolValue(formData, `${item.id}_enabled`),
+    description: text(formData, `${item.id}_description`)
+  }));
+
+  await saveAddOnSettings(addOnsToSave);
+  revalidatePath("/admin/pricing");
+  revalidatePath("/book");
+  revalidatePath("/admin/bookings");
+  redirectWith("/admin/pricing", "Add-ons saved.");
+}
+
+export async function saveAgentRate(formData: FormData) {
+  const db = getDb();
+  const id = text(formData, "id");
+  const data = {
+    agentId: text(formData, "agentId"),
+    name: text(formData, "name") || "Agent Rate",
+    price: decimalValue(formData, "price"),
+    currency: text(formData, "currency") || "USD",
+    validFrom: dateValue(formData, "validFrom"),
+    validTo: dateValue(formData, "validTo")
+  };
+
+  if (id) {
+    await db.agentRate.update({ where: { id }, data });
+  } else {
+    await db.agentRate.create({ data });
+  }
+
+  await db.agent.update({
+    where: { id: data.agentId },
+    data: { commissionPercent: decimalValue(formData, "commissionPercent", "10") }
+  });
+
+  revalidatePath("/admin/pricing");
+  revalidatePath("/admin/agents");
+  redirectWith("/admin/pricing", id ? "Agent rate saved." : "Agent rate created.");
+}
+
+export async function deleteAgentRate(formData: FormData) {
+  await getDb().agentRate.delete({ where: { id: text(formData, "id") } });
+  revalidatePath("/admin/pricing");
+  revalidatePath("/admin/agents");
+  redirectWith("/admin/pricing", "Agent rate deleted.");
+}
+
 export async function saveBookingTimeSlotSettingsAction(formData: FormData) {
+  const redirectPath = text(formData, "redirectPath") || "/admin/settings";
   const settings: BookingTimeSlotSettings = {
     startTime: text(formData, "startTime"),
     endTime: text(formData, "endTime"),
@@ -315,13 +396,14 @@ export async function saveBookingTimeSlotSettingsAction(formData: FormData) {
   try {
     await saveBookingTimeSlotSettings(settings);
   } catch (error) {
-    redirectWith("/admin/settings", error instanceof Error ? error.message : "Booking time slot settings could not be saved.");
+    redirectWith(redirectPath, error instanceof Error ? error.message : "Booking time slot settings could not be saved.");
   }
 
   revalidatePath("/admin/settings");
+  revalidatePath("/admin/pricing");
   revalidatePath("/admin/bookings");
   revalidatePath("/book");
-  redirectWith("/admin/settings", "Booking time slot settings saved.");
+  redirectWith(redirectPath, "Booking time slot settings saved.");
 }
 
 export async function saveTimeSlot(formData: FormData) {

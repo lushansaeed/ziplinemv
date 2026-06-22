@@ -2,8 +2,8 @@
 
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createBookingAction, type BookingActionState } from "@/app/book/actions";
-import { addOns } from "@/lib/data";
 import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { addOnDisplayPrice, addOnIconMap, addOnUnitUsd, defaultPricingAddOns, type PricingEngineConfig } from "@/lib/pricing-engine";
 
 const initialState: BookingActionState = {
   ok: false,
@@ -13,6 +13,7 @@ const todayDateValue = getTodayInputValue();
 
 export function BookingFlow() {
   const [state, formAction, pending] = useActionState(createBookingAction, initialState);
+  const [pricingEngine, setPricingEngine] = useState<PricingEngineConfig | null>(null);
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
   const [preferredDate, setPreferredDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -22,11 +23,23 @@ export function BookingFlow() {
   const [children, setChildren] = useState(0);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [coupon, setCoupon] = useState("");
-  const addOnUsdTotal = selectedAddOns.reduce((sum, id) => sum + (addOns.find((item) => item.id === id)?.usd ?? 0), 0);
+  const pricing = pricingEngine?.pricing;
+  const availableAddOns = pricingEngine?.addOns.filter((item) => item.enabled) ?? defaultPricingAddOns.filter((item) => item.enabled);
+  const addOnUsdTotal = selectedAddOns.reduce((sum, id) => {
+    const item = availableAddOns.find((addOn) => addOn.id === id);
+    return sum + (item && pricing ? addOnUnitUsd(item, pricing.exchangeRateMvrPerUsd) : 0);
+  }, 0);
   const price = useMemo(
-    () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0),
-    [customerType, adults, children, addOnUsdTotal, coupon]
+    () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0, pricing),
+    [customerType, adults, children, addOnUsdTotal, coupon, pricing]
   );
+
+  useEffect(() => {
+    fetch("/api/pricing-engine")
+      .then((response) => response.json())
+      .then((payload: PricingEngineConfig) => setPricingEngine(payload))
+      .catch(() => setPricingEngine(null));
+  }, []);
 
   const toggleAddOn = (id: string) => {
     setSelectedAddOns((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
@@ -110,8 +123,9 @@ export function BookingFlow() {
         <div className="mt-5">
           <p className="text-sm font-bold text-ocean-950">Add-Ons</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
-            {addOns.map((item) => {
-              const Icon = item.icon;
+            {availableAddOns.map((item) => {
+              const Icon = addOnIconMap[item.id] ?? addOnIconMap.photography;
+              const displayPrice = pricing ? addOnDisplayPrice(item, price.currency, pricing.exchangeRateMvrPerUsd) : item.price;
               return (
                 <button
                   type="button"
@@ -123,7 +137,7 @@ export function BookingFlow() {
                 >
                   <Icon size={20} className="text-ocean-700" />
                   <span className="mt-3 block font-bold">{item.label}</span>
-                  <span className="text-sm text-ocean-950/60">USD {item.usd}</span>
+                  <span className="text-sm text-ocean-950/60">{price.currency} {displayPrice.toFixed(2)}</span>
                 </button>
               );
             })}

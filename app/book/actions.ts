@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import type { PrismaClient } from "@prisma/client";
 import { z } from "zod";
-import { addOns, whatsappNumber } from "@/lib/data";
+import { whatsappNumber } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { bookingReference, calculateRideTotal, type CustomerType } from "@/lib/pricing";
 import { ensureBookableTimeSlot } from "@/lib/booking-time-slots";
+import { getPricingEngineConfig } from "@/lib/pricing-engine";
 
 export type BookingActionState = {
   ok: boolean;
@@ -72,9 +73,10 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
     return { ok: false, message: "Add at least one rider." };
   }
 
-  const selectedAddOns = addOns.filter((item) => values.addons.includes(item.id));
-  const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + item.usd, 0);
-  const price = calculateRideTotal(values.customerType as CustomerType, { adults: values.adults, children: values.children }, addOnUsdTotal, Boolean(values.coupon));
+  const pricingEngine = await getPricingEngineConfig();
+  const selectedAddOns = pricingEngine.addOns.filter((item) => item.enabled && values.addons.includes(item.id));
+  const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + (item.currency === "USD" ? item.price : item.price / pricingEngine.pricing.exchangeRateMvrPerUsd), 0);
+  const price = calculateRideTotal(values.customerType as CustomerType, { adults: values.adults, children: values.children }, addOnUsdTotal, Boolean(values.coupon), pricingEngine.pricing);
   const db = getDb();
 
   try {
@@ -114,7 +116,7 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
             create: selectedAddOns.map((item) => ({
               addonKey: item.id,
               label: item.label,
-              price: values.customerType === "tourist" ? item.usd : item.usd * 20,
+              price: price.currency === item.currency ? item.price : price.currency === "MVR" ? item.price * pricingEngine.pricing.exchangeRateMvrPerUsd : item.price / pricingEngine.pricing.exchangeRateMvrPerUsd,
               currency: price.currency
             }))
           },
