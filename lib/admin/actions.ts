@@ -309,6 +309,8 @@ export async function savePricingEngineDefaults(formData: FormData) {
     touristChildUsd: Number(text(formData, "touristChildUsd") || 30),
     localAdultMvr: Number(text(formData, "localAdultMvr") || 600),
     localChildMvr: Number(text(formData, "localChildMvr") || 400),
+    maafushiAdultMvr: Number(text(formData, "maafushiAdultMvr") || 450),
+    maafushiChildMvr: Number(text(formData, "maafushiChildMvr") || 300),
     defaultCurrency: text(formData, "defaultCurrency") || "USD",
     exchangeRateMvrPerUsd: Number(text(formData, "exchangeRateMvrPerUsd") || 20),
     affiliateDiscountPercent: Number(text(formData, "affiliateDiscountPercent") || 10)
@@ -330,14 +332,18 @@ export async function savePricingEngineExchangeRate(formData: FormData) {
 }
 
 export async function savePricingEngineAddOns(formData: FormData) {
-  const addOnsToSave: PricingAddOn[] = defaultPricingAddOns.map((item) => ({
-    id: item.id,
-    label: text(formData, `${item.id}_label`) || item.label,
-    price: Number(text(formData, `${item.id}_price`) || item.price),
-    currency: text(formData, `${item.id}_currency`) === "MVR" ? "MVR" : "USD",
-    enabled: boolValue(formData, `${item.id}_enabled`),
-    description: text(formData, `${item.id}_description`)
-  }));
+  const ids = formData.getAll("addonId").map((value) => String(value).trim()).filter(Boolean);
+  const addOnsToSave: PricingAddOn[] = ids.map((id) => {
+    const fallback = defaultPricingAddOns.find((item) => item.id === id);
+    return {
+      id,
+      label: text(formData, `${id}_label`) || fallback?.label || "Add-On",
+      price: Number(text(formData, `${id}_price`) || fallback?.price || 0),
+      currency: text(formData, `${id}_currency`) === "MVR" ? "MVR" : "USD",
+      enabled: boolValue(formData, `${id}_enabled`),
+      description: text(formData, `${id}_description`)
+    };
+  });
 
   await saveAddOnSettings(addOnsToSave);
   revalidatePath("/admin/pricing");
@@ -372,6 +378,40 @@ export async function saveAgentRate(formData: FormData) {
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/agents");
   redirectWith("/admin/pricing", id ? "Agent rate saved." : "Agent rate created.");
+}
+
+export async function saveAgentRateMatrix(formData: FormData) {
+  const db = getDb();
+  const agentId = text(formData, "agentId");
+  const rates = [
+    ["Tourist Adult Agent Rate", "touristAdultAgentRate", "USD"],
+    ["Tourist Kid Agent Rate", "touristKidAgentRate", "USD"],
+    ["Local Adult Agent Rate", "localAdultAgentRate", "MVR"],
+    ["Local Kid Agent Rate", "localKidAgentRate", "MVR"],
+    ["Maafushi Resident Agent Rate", "maafushiResidentAgentRate", "MVR"],
+    ["Maafushi Kid Agent Rate", "maafushiKidAgentRate", "MVR"]
+  ] as const;
+
+  await db.agent.update({
+    where: { id: agentId },
+    data: { commissionPercent: decimalValue(formData, "commissionPercent", "10") }
+  });
+
+  for (const [name, key, currency] of rates) {
+    const value = text(formData, key);
+    if (!value) continue;
+    const existing = await db.agentRate.findFirst({ where: { agentId, name } });
+    const data = { agentId, name, price: decimalValue(formData, key), currency };
+    if (existing) {
+      await db.agentRate.update({ where: { id: existing.id }, data });
+    } else {
+      await db.agentRate.create({ data });
+    }
+  }
+
+  revalidatePath("/admin/pricing");
+  revalidatePath("/admin/agents");
+  redirectWith("/admin/pricing", "Agent rates saved.");
 }
 
 export async function deleteAgentRate(formData: FormData) {

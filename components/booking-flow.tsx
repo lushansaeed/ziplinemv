@@ -106,6 +106,7 @@ export function BookingFlow() {
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           <Segment label="Tourist" active={customerType === "tourist"} onClick={() => setCustomerType("tourist")} />
           <Segment label="Local" active={customerType === "local"} onClick={() => setCustomerType("local")} />
+          <Segment label="Maafushi" active={customerType === "maafushi"} onClick={() => setCustomerType("maafushi")} />
           <label className="grid gap-2 text-sm font-bold text-ocean-950">
             Payment Method
             <select name="paymentMethod" className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">

@@ -131,7 +131,7 @@ export default async function AdminPage() {
     <DashboardShell
       title="Admin Dashboard"
       subtitle="Operational control for bookings, sales, payments, and partners."
-      nav={["Dashboard", "Bookings", "Customers", "Agents", "Affiliates", "Pricing", "Media", "Commission", "Reports", "Settings", "Theme", "Roles"]}
+      nav={["Dashboard", "Bookings", "Customers", "Agents", "Affiliates", "Media", "Commission", "Reports", "Settings"]}
       showSignOut
     >
       <SalesReportChart datasets={salesDatasets} />

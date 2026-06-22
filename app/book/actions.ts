@@ -19,7 +19,7 @@ export type BookingActionState = {
 const bookingSchema = z.object({
   customerName: z.string().trim().min(2, "Enter the customer name."),
   nationality: z.string().trim().min(2, "Enter the nationality."),
-  customerType: z.enum(["tourist", "local"]),
+  customerType: z.enum(["tourist", "local", "maafushi"]),
   phone: z.string().trim().min(6, "Enter a valid phone or WhatsApp number."),
   email: z.string().trim().email("Enter a valid email address."),
   preferredDate: z.string().min(1, "Choose a preferred date."),

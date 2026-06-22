@@ -21,11 +21,12 @@ export default async function RoleApprovalsPage({
   });
 
   return (
-    <DashboardShell title="Role Approvals" subtitle="Approve portal access requests." nav={["Pending", "Approved", "Rejected"]} showSignOut>
+    <DashboardShell title="Settings" subtitle="Pricing, themes, and roles." nav={["Settings"]} showSignOut>
       <div className="grid gap-4">
         {params.message ? <p className="rounded-2xl bg-white p-4 text-sm font-bold text-ocean-700 shadow-sm">{params.message}</p> : null}
         {params.error ? <p className="rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">{params.error}</p> : null}
       </div>
+      <SettingsNav active="Roles" />
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
         <ApprovalList
@@ -53,6 +54,21 @@ export default async function RoleApprovalsPage({
         />
       </section>
     </DashboardShell>
+  );
+}
+
+function SettingsNav({ active }: { active: "Pricing" | "Themes" | "Roles" }) {
+  const items = [
+    ["Pricing", "/admin/pricing"],
+    ["Themes", "/admin/theme"],
+    ["Roles", "/admin/roles"]
+  ] as const;
+  return (
+    <nav className="mt-6 flex flex-wrap gap-2 rounded-3xl bg-white/75 p-2 shadow-sm">
+      {items.map(([label, href]) => (
+        <a key={label} href={href} className={`rounded-2xl px-5 py-3 text-sm font-black ${active === label ? "bg-ocean-950 text-white shadow-glow" : "text-ocean-950/60 hover:bg-white"}`}>{label}</a>
+      ))}
+    </nav>
   );
 }
 

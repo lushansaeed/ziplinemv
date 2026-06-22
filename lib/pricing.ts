@@ -1,4 +1,4 @@
-export type CustomerType = "tourist" | "local";
+export type CustomerType = "tourist" | "local" | "maafushi";
 export type RiderMix = {
   adults: number;
   children: number;
@@ -9,6 +9,8 @@ export const defaultPricing = {
   touristChildUsd: 30,
   localAdultMvr: 600,
   localChildMvr: 400,
+  maafushiAdultMvr: 450,
+  maafushiChildMvr: 300,
   defaultCurrency: "USD",
   exchangeRateMvrPerUsd: 20,
   affiliateDiscountPercent: 10
@@ -20,16 +22,18 @@ export function calculateRideTotal(customerType: CustomerType, riders: RiderMix,
   const base =
     customerType === "tourist"
       ? riders.adults * pricing.touristAdultUsd + riders.children * pricing.touristChildUsd + addOnUsdTotal
-      : riders.adults * pricing.localAdultMvr +
-        riders.children * pricing.localChildMvr +
-        addOnUsdTotal * pricing.exchangeRateMvrPerUsd;
+      : customerType === "maafushi"
+        ? riders.adults * pricing.maafushiAdultMvr + riders.children * pricing.maafushiChildMvr + addOnUsdTotal * pricing.exchangeRateMvrPerUsd
+        : riders.adults * pricing.localAdultMvr +
+          riders.children * pricing.localChildMvr +
+          addOnUsdTotal * pricing.exchangeRateMvrPerUsd;
 
   const discount = hasCoupon ? base * (pricing.affiliateDiscountPercent / 100) : 0;
   return {
     currency: customerType === "tourist" ? "USD" : "MVR",
     subtotal: base,
-    adultPrice: customerType === "tourist" ? pricing.touristAdultUsd : pricing.localAdultMvr,
-    childPrice: customerType === "tourist" ? pricing.touristChildUsd : pricing.localChildMvr,
+    adultPrice: customerType === "tourist" ? pricing.touristAdultUsd : customerType === "maafushi" ? pricing.maafushiAdultMvr : pricing.localAdultMvr,
+    childPrice: customerType === "tourist" ? pricing.touristChildUsd : customerType === "maafushi" ? pricing.maafushiChildMvr : pricing.localChildMvr,
     exchangeRate: pricing.exchangeRateMvrPerUsd,
     discount,
     total: Math.max(base - discount, 0)

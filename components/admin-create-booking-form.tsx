@@ -134,7 +134,7 @@ export function AdminCreateBookingForm() {
             <div className="grid gap-2 text-sm font-bold">
               Customer Type
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-ocean-50 p-1">
-                {(["tourist", "local"] as const).map((type) => (
+                {(["tourist", "local", "maafushi"] as const).map((type) => (
                   <button
                     key={type}
                     type="button"
@@ -144,7 +144,7 @@ export function AdminCreateBookingForm() {
                     }}
                     className={`rounded-xl px-4 py-3 font-black capitalize transition ${customerType === type ? "bg-ocean-950 text-white shadow-sm" : "text-ocean-950/60"}`}
                   >
-                    {type}
+                    {type === "maafushi" ? "Maafushi" : type}
                   </button>
                 ))}
               </div>

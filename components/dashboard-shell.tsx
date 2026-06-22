@@ -104,7 +104,7 @@ export function DashboardShell({
   const isAffiliate = title.toLowerCase().includes("affiliate");
   const kicker = isAdmin ? "Operations" : isAffiliate ? "Partner portal" : "Zipline portal";
   const initials = isAdmin ? "AD" : isAffiliate ? "AF" : "AG";
-  const navigation = isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav] : nav;
+  const navigation = isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item))] : nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item));
 
   return (
     <main className="min-h-screen overflow-hidden bg-ocean-50 text-ocean-950">
@@ -226,6 +226,7 @@ function isActiveNavItem(item: string, title: string, isAdmin: boolean, index: n
 
   if (isAdmin) {
     if (item === "Dashboard") return normalizedTitle === "admin dashboard";
+    if (item === "Settings") return ["settings", "pricing", "theme", "role"].some((word) => normalizedTitle.includes(word));
     return normalizedTitle.includes(normalizedItem);
   }
 

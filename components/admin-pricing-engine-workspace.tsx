@@ -5,6 +5,7 @@ import {
   deleteAgentRate,
   deletePricingRule,
   saveAgentRate,
+  saveAgentRateMatrix,
   saveBookingTimeSlotSettingsAction,
   savePricingEngineAddOns,
   savePricingEngineDefaults,
@@ -93,9 +94,11 @@ function DefaultPricesTab({ pricing }: { pricing: RidePricingConfig }) {
       <form action={savePricingEngineDefaults} className="grid gap-4 md:grid-cols-3">
         <Field name="touristAdultUsd" label="Tourist Adult Price" type="number" step="0.01" defaultValue={pricing.touristAdultUsd} />
         <Field name="touristChildUsd" label="Tourist Kid Price" type="number" step="0.01" defaultValue={pricing.touristChildUsd} />
-        <Select name="defaultCurrency" label="Default Currency" defaultValue={pricing.defaultCurrency} options={["USD", "MVR"]} />
         <Field name="localAdultMvr" label="Local Adult Price" type="number" step="0.01" defaultValue={pricing.localAdultMvr} />
         <Field name="localChildMvr" label="Local Kid Price" type="number" step="0.01" defaultValue={pricing.localChildMvr} />
+        <Field name="maafushiAdultMvr" label="Maafushi Resident Price" type="number" step="0.01" defaultValue={pricing.maafushiAdultMvr} />
+        <Field name="maafushiChildMvr" label="Maafushi Kids Price" type="number" step="0.01" defaultValue={pricing.maafushiChildMvr} />
+        <Select name="defaultCurrency" label="Default Currency" defaultValue={pricing.defaultCurrency} options={["USD", "MVR"]} />
         <Field name="exchangeRateMvrPerUsd" label="USD To MVR Rate" type="number" step="0.01" defaultValue={pricing.exchangeRateMvrPerUsd} />
         <Field name="affiliateDiscountPercent" label="Coupon Discount %" type="number" step="0.01" defaultValue={pricing.affiliateDiscountPercent} />
         <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white md:col-span-3">Save Default Prices</button>
@@ -174,7 +177,7 @@ function AgentRatesTab({ agents }: { agents: AgentRow[] }) {
               <p className="text-sm font-black text-ocean-950">{agent.commissionPercent}% Commission</p>
             </div>
             <div className="mt-4 grid gap-3">
-              <AgentRateForm agent={agent} />
+              <AgentRateMatrixForm agent={agent} />
               {agent.rates.map((rate) => (
                 <div key={rate.id} className="grid gap-3 rounded-2xl bg-ocean-50/55 p-3">
                   <AgentRateForm agent={agent} rate={rate} />
@@ -189,6 +192,26 @@ function AgentRatesTab({ agents }: { agents: AgentRow[] }) {
         ))}
       </div>
     </Card>
+  );
+}
+
+function AgentRateMatrixForm({ agent }: { agent: AgentRow }) {
+  const values = Object.fromEntries(agent.rates.map((rate) => [rate.name, rate.price]));
+  return (
+    <form action={saveAgentRateMatrix} className="grid gap-3 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-3">
+      <input type="hidden" name="agentId" value={agent.id} />
+      <Field name="touristAdultAgentRate" label="Tourist Adult Agent Rate, USD" type="number" step="0.01" defaultValue={values["Tourist Adult Agent Rate"] ?? ""} />
+      <Field name="touristKidAgentRate" label="Tourist Kid Agent Rate, USD" type="number" step="0.01" defaultValue={values["Tourist Kid Agent Rate"] ?? ""} />
+      <Field name="localAdultAgentRate" label="Local Adult Agent Rate, MVR" type="number" step="0.01" defaultValue={values["Local Adult Agent Rate"] ?? ""} />
+      <Field name="localKidAgentRate" label="Local Kid Agent Rate, MVR" type="number" step="0.01" defaultValue={values["Local Kid Agent Rate"] ?? ""} />
+      <Field name="maafushiResidentAgentRate" label="Maafushi Resident Agent Rate, MVR" type="number" step="0.01" defaultValue={values["Maafushi Resident Agent Rate"] ?? ""} />
+      <Field name="maafushiKidAgentRate" label="Maafushi Kid Agent Rate, MVR" type="number" step="0.01" defaultValue={values["Maafushi Kid Agent Rate"] ?? ""} />
+      <Field name="commissionPercent" label="Commission Percentage" type="number" step="0.01" defaultValue={agent.commissionPercent} />
+      <label className="flex items-center gap-2 self-end text-sm font-black text-ocean-950">
+        <input name="isActive" type="checkbox" defaultChecked /> Active
+      </label>
+      <button className="rounded-full bg-ocean-950 px-4 py-3 text-sm font-black text-white md:col-span-3">Save Agent Rates</button>
+    </form>
   );
 }
 
@@ -224,11 +247,17 @@ function ExchangeRateTab({ pricing }: { pricing: RidePricingConfig }) {
 }
 
 function AddOnsTab({ addOns }: { addOns: PricingAddOn[] }) {
+  const [items, setItems] = useState(addOns);
+  const addNew = () => setItems((current) => [...current, { id: `addon_${Date.now()}`, label: "", price: 0, currency: "USD", enabled: true, description: "" }]);
   return (
     <Card title="Add-Ons">
       <form action={savePricingEngineAddOns} className="grid gap-4">
-        {addOns.map((item) => (
+        <div className="flex justify-end">
+          <button type="button" onClick={addNew} className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-black text-ocean-950">Add New Add-On</button>
+        </div>
+        {items.map((item) => (
           <section key={item.id} className="grid gap-3 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-5">
+            <input type="hidden" name="addonId" value={item.id} />
             <Field name={`${item.id}_label`} label="Add-On Name" defaultValue={item.label} />
             <Field name={`${item.id}_price`} label="Price" type="number" step="0.01" defaultValue={item.price} />
             <Select name={`${item.id}_currency`} label="Currency" defaultValue={item.currency} options={["USD", "MVR"]} />
