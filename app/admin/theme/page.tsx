@@ -4,8 +4,8 @@ import { ThemeCustomizer } from "@/components/theme-customizer";
 export default function ThemeSettingsPage() {
   return (
     <DashboardShell
-      title="Theme settings"
-      subtitle="Change the website color theme, preview it instantly, and save palettes for the public site."
+      title="Theme Settings"
+      subtitle="Preview and save website colors."
       nav={["Presets", "Custom colors", "Preview", "Publish", "Audit log"]}
       showSignOut
     >

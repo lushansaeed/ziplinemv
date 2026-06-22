@@ -33,7 +33,7 @@ export default async function CommissionManagementPage({
   }));
 
   return (
-    <DashboardShell title="Commission management" subtitle="View, approve, adjust, reject, mark paid, and export agent and affiliate commissions." nav={["Agents", "Affiliates", "Eligible", "Approved", "Paid", "Export"]} showSignOut>
+    <DashboardShell title="Commission Management" subtitle="Manage agent and affiliate commissions." nav={["Agents", "Affiliates", "Eligible", "Approved", "Paid", "Export"]} showSignOut>
       <Messages message={params.message} error={params.error} />
       <div className="grid gap-4 md:grid-cols-3">
         {totals.map((item) => (
@@ -71,7 +71,7 @@ export default async function CommissionManagementPage({
             </form>
             <form action={deleteCommission} className="mt-2">
               <input type="hidden" name="id" value={commission.id} />
-              <button className="text-sm font-bold text-red-600">Delete commission</button>
+              <button className="text-sm font-bold text-red-600">Delete Commission</button>
             </form>
           </article>
         )) : <p className="p-5 text-sm font-bold text-ocean-950/60">No commissions yet.</p>}

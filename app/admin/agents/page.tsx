@@ -30,11 +30,11 @@ export default async function AgentsPage({
     .sort((a, b) => b.bookings - a.bookings);
 
   return (
-    <DashboardShell title="Agent management" subtitle="Manage agency profiles, approval flags, suspension status, rates, bookings, and commissions." nav={["Agents", "Approved", "Suspended", "Rates"]} showSignOut>
+    <DashboardShell title="Agent Management" subtitle="Manage profiles, rates, and commission." nav={["Agents", "Approved", "Suspended", "Rates"]} showSignOut>
       <Messages message={params.message} error={params.error} />
-      <DataCard title="Agent performance" eyebrow="Sales partners">
+      <DataCard title="Agent Performance" eyebrow="Sales Partners">
         <DashboardTable
-          columns={["Agent", "Bookings", "Sales", "Pending commission", "Paid commission"]}
+          columns={["Agent", "Bookings", "Sales", "Pending Commission", "Paid Commission"]}
           rows={agentPerformance.slice(0, 8).map((agent) => [
             <span key="agent" className="font-black text-ocean-950">{agent.name}</span>,
             String(agent.bookings),
@@ -45,8 +45,8 @@ export default async function AgentsPage({
           empty="No agent performance data yet."
         />
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <MiniMetric label="Agent bookings" value={String(agentPerformance.reduce((sum, agent) => sum + agent.bookings, 0))} />
-          <MiniMetric label="Agent sales" value={moneyLabel(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} detail={usdDetail(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} />
+          <MiniMetric label="Agent Bookings" value={String(agentPerformance.reduce((sum, agent) => sum + agent.bookings, 0))} />
+          <MiniMetric label="Agent Sales" value={moneyLabel(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} detail={usdDetail(agentPerformance.reduce((bucket, agent) => addMoney(bucket, agent.sales), emptyMoney()))} />
           <MiniMetric label="Payable" value={mvrFromUsdLabel(agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0))} detail={`USD ${agentPerformance.reduce((sum, agent) => sum + agent.pendingCommission, 0).toFixed(2)}`} />
         </div>
       </DataCard>

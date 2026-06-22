@@ -22,22 +22,22 @@ export default async function MediaManagementPage({
   const mediaBookings = bookings.filter((booking) => booking.addons.some((addon) => mediaAddonLabel(addon.label)));
 
   return (
-    <DashboardShell title="Media management" subtitle="Upload hero video, gallery photos, promotional clips, delete media, reorder gallery, mark featured media, and add captions." nav={["Upload", "Hero", "Gallery", "Featured", "Captions"]} showSignOut>
+    <DashboardShell title="Media Management" subtitle="Manage uploads, gallery media, and captions." nav={["Upload", "Hero", "Gallery", "Featured", "Captions"]} showSignOut>
       <Messages message={params.message} error={params.error} />
-      <DataCard title="Media delivery status" eyebrow="Packages">
+      <DataCard title="Media Delivery Status" eyebrow="Packages">
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
           {[
-            ["Media pending", mediaBookings.filter((booking) => booking.paymentStatus !== "PAID").length],
-            ["Media captured", mediaBookings.filter((booking) => ["CHECKED_IN", "COMPLETED"].includes(booking.bookingStatus)).length],
-            ["Media editing", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
-            ["Media uploaded", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED").length],
-            ["Media delivered", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
-            ["Delayed media", mediaBookings.filter((booking) => booking.date < addDays(today, -2) && booking.bookingStatus !== "COMPLETED").length]
+            ["Media Pending", mediaBookings.filter((booking) => booking.paymentStatus !== "PAID").length],
+            ["Media Captured", mediaBookings.filter((booking) => ["CHECKED_IN", "COMPLETED"].includes(booking.bookingStatus)).length],
+            ["Media Editing", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
+            ["Media Uploaded", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED").length],
+            ["Media Delivered", mediaBookings.filter((booking) => booking.bookingStatus === "COMPLETED" && booking.paymentStatus === "PAID").length],
+            ["Delayed Media", mediaBookings.filter((booking) => booking.date < addDays(today, -2) && booking.bookingStatus !== "COMPLETED").length]
           ].map(([label, value]) => <MiniMetric key={label} label={String(label)} value={String(value)} />)}
         </div>
         <div className="mt-5">
           <DashboardTable
-            columns={["Reference", "Customer", "Package", "Ride date", "Media status", "Action"]}
+            columns={["Reference", "Customer", "Package", "Ride Date", "Media Status", "Action"]}
             rows={mediaBookings.slice(0, 8).map((booking) => [
               <span key="ref" className="font-black text-ocean-950">{booking.reference}</span>,
               booking.customer.name,
@@ -52,18 +52,18 @@ export default async function MediaManagementPage({
       </DataCard>
 
       <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-black">Add media URL</h2>
+        <h2 className="text-2xl font-black">Add Media URL</h2>
         <form action={saveMediaFile} className="mt-4 grid gap-3 md:grid-cols-3">
           <Select name="type" label="Type" options={["IMAGE", "VIDEO"]} defaultValue="IMAGE" />
           <Field name="url" label="URL" required />
           <Field name="fallbackUrl" label="Fallback/poster URL" />
           <Field name="caption" label="Caption" />
           <Field name="placement" label="Placement" defaultValue="gallery" required />
-          <Field name="sortOrder" label="Sort order" type="number" defaultValue="0" />
+          <Field name="sortOrder" label="Sort Order" type="number" defaultValue="0" />
           <label className="flex items-center gap-2 pt-7 text-sm font-bold">
             <input name="isFeatured" type="checkbox" /> Featured
           </label>
-          <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white md:col-span-3">Add media</button>
+          <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white md:col-span-3">Add Media</button>
         </form>
       </div>
 
@@ -89,7 +89,7 @@ export default async function MediaManagementPage({
               <label className="flex items-center gap-2 text-sm font-bold">
                 <input name="isFeatured" type="checkbox" defaultChecked={item.isFeatured} /> Featured
               </label>
-              <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Save media</button>
+              <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Save Media</button>
             </form>
             <form action={deleteMediaFile} className="mt-2">
               <input type="hidden" name="id" value={item.id} />

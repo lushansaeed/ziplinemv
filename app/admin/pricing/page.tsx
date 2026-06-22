@@ -15,21 +15,21 @@ export default async function PricingManagementPage({
   const agents = await db.agent.findMany({ include: { user: true, rates: true }, orderBy: { agencyName: "asc" } });
 
   return (
-    <DashboardShell title="Pricing management" subtitle="Edit default prices, seasonal offers, group rates, agent rates, affiliate rules, exchange rate, and add-ons." nav={["Default", "Seasonal", "Offers", "Group rates", "Agent rates", "Settings"]} showSignOut>
+    <DashboardShell title="Pricing Management" subtitle="Edit pricing rules and agent rates." nav={["Default", "Seasonal", "Offers", "Group Rates", "Agent Rates", "Settings"]} showSignOut>
       <Messages message={params.message} error={params.error} />
 
       <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
         <div className="rounded-lg bg-white p-5 shadow-sm">
-          <h2 className="text-2xl font-black">Pricing rules</h2>
+          <h2 className="text-2xl font-black">Pricing Rules</h2>
           <form action={savePricingRule} className="mt-4 grid gap-3 md:grid-cols-4">
             <Field name="name" label="Name" required />
             <Field name="audience" label="Audience" defaultValue="tourist" required />
-            <Field name="adultPrice" label="Adult price" type="number" step="0.01" required />
-            <Field name="childPrice" label="Child price" type="number" step="0.01" required />
+            <Field name="adultPrice" label="Adult Price" type="number" step="0.01" required />
+            <Field name="childPrice" label="Child Price" type="number" step="0.01" required />
             <Field name="currency" label="Currency" defaultValue="USD" required />
-            <Field name="minGroup" label="Min group" type="number" />
-            <Field name="validFrom" label="Valid from" type="date" />
-            <Field name="validTo" label="Valid to" type="date" />
+            <Field name="minGroup" label="Min Group" type="number" />
+            <Field name="validFrom" label="Valid From" type="date" />
+            <Field name="validTo" label="Valid To" type="date" />
             <label className="flex items-center gap-2 text-sm font-bold md:col-span-4">
               <input name="isActive" type="checkbox" defaultChecked /> Active
             </label>
@@ -45,9 +45,9 @@ export default async function PricingManagementPage({
                 <Field name="adultPrice" label="Adult" type="number" step="0.01" defaultValue={rule.adultPrice.toString()} required />
                 <Field name="childPrice" label="Child" type="number" step="0.01" defaultValue={rule.childPrice.toString()} required />
                 <Field name="currency" label="Currency" defaultValue={rule.currency} required />
-                <Field name="minGroup" label="Min group" type="number" defaultValue={rule.minGroup ?? ""} />
-                <Field name="validFrom" label="Valid from" type="date" defaultValue={rule.validFrom?.toISOString().slice(0, 10) ?? ""} />
-                <Field name="validTo" label="Valid to" type="date" defaultValue={rule.validTo?.toISOString().slice(0, 10) ?? ""} />
+                <Field name="minGroup" label="Min Group" type="number" defaultValue={rule.minGroup ?? ""} />
+                <Field name="validFrom" label="Valid From" type="date" defaultValue={rule.validFrom?.toISOString().slice(0, 10) ?? ""} />
+                <Field name="validTo" label="Valid To" type="date" defaultValue={rule.validTo?.toISOString().slice(0, 10) ?? ""} />
                 <label className="flex items-center gap-2 text-sm font-bold">
                   <input name="isActive" type="checkbox" defaultChecked={rule.isActive} /> Active
                 </label>
@@ -65,7 +65,7 @@ export default async function PricingManagementPage({
 
         <div className="grid gap-6">
           <div className="rounded-lg bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black">Agent rates</h2>
+            <h2 className="text-2xl font-black">Agent Rates</h2>
             <div className="mt-4 grid gap-3">
               {agents.length ? agents.map((agent) => (
                 <article key={agent.id} className="rounded-lg border border-ocean-950/10 p-4">

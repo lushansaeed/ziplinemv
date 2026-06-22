@@ -134,83 +134,87 @@ export async function createBooking(formData: FormData) {
   ].filter(Boolean).join("\n");
 
   const reference = `ZMV-${Date.now().toString().slice(-8)}`;
-  await db.$transaction(async (tx) => {
-    const timeSlot = await ensureBookableTimeSlot(tx, bookingDate, timeSlotLabel, riderCount);
-    const customer = await tx.customer.create({
-      data: {
-        name: customerName,
-        phone,
-        email: optionalText(formData, "email"),
-        nationality: optionalText(formData, "nationality"),
-        isTourist: customerType === "tourist"
-      }
-    });
-
-    const booking = await tx.booking.create({
-      data: {
-        reference,
-        customerId: customer.id,
-        date: new Date(bookingDate),
-        timeSlotId: timeSlot.id,
-        riderCount,
-        totalAmount,
-        currency,
-        affiliateId: affiliateCode?.affiliateId,
-        affiliateCodeId: affiliateCode?.id,
-        createdById,
-        bookingStatus: bookingStatus as never,
-        paymentStatus: paymentStatus as never,
-        internalNotes: pricingNotes,
-        commissionAmount: calculated.discount || manualDiscount ? new Prisma.Decimal(calculated.discount + manualDiscount) : null,
-        riders: {
-          create: [
-            ...Array.from({ length: adults }, () => ({ type: "ADULT" })),
-            ...Array.from({ length: children }, () => ({ type: "CHILD" }))
-          ]
-        },
-        addons: {
-          create: addOnSelections.flatMap((item) =>
-            Array.from({ length: item.quantity }, () => ({
-              addonKey: item.id,
-              label: item.label,
-              price: currency === "USD" ? item.usd : item.usd * 20,
-              currency
-            }))
-          )
-        },
-        payments: {
-          create: {
-            amount: amountPaid,
-            currency,
-            method: text(formData, "paymentMethod") || "Admin/manual",
-            status: paymentStatus as never
-          }
-        }
-      }
-    });
-
-    if (discountValue || addOnSelections.length) {
-      await tx.auditLog.create({
+  try {
+    await db.$transaction(async (tx) => {
+      const timeSlot = await ensureBookableTimeSlot(tx, bookingDate, timeSlotLabel, riderCount);
+      const customer = await tx.customer.create({
         data: {
-          action: "CREATE_BOOKING_PRICING_DETAILS",
-          entity: "Booking",
-          entityId: booking.id,
-          userId: currentUserId,
-          after: {
-            couponCode,
-            addonQuantities: Object.fromEntries(addOnSelections.map((item) => [item.id, item.quantity])),
-            couponDiscount: calculated.discount,
-            manualDiscountType: discountType,
-            manualDiscountValue: discountValue,
-            manualDiscountAmount: manualDiscount,
-            discountAppliedBy,
-            finalTotal: totalAmount.toString(),
-            currency
+          name: customerName,
+          phone,
+          email: optionalText(formData, "email"),
+          nationality: optionalText(formData, "nationality"),
+          isTourist: customerType === "tourist"
+        }
+      });
+
+      const booking = await tx.booking.create({
+        data: {
+          reference,
+          customerId: customer.id,
+          date: timeSlot.startsAt,
+          timeSlotId: timeSlot.id,
+          riderCount,
+          totalAmount,
+          currency,
+          affiliateId: affiliateCode?.affiliateId,
+          affiliateCodeId: affiliateCode?.id,
+          createdById,
+          bookingStatus: bookingStatus as never,
+          paymentStatus: paymentStatus as never,
+          internalNotes: pricingNotes,
+          commissionAmount: calculated.discount || manualDiscount ? new Prisma.Decimal(calculated.discount + manualDiscount) : null,
+          riders: {
+            create: [
+              ...Array.from({ length: adults }, () => ({ type: "ADULT" })),
+              ...Array.from({ length: children }, () => ({ type: "CHILD" }))
+            ]
+          },
+          addons: {
+            create: addOnSelections.flatMap((item) =>
+              Array.from({ length: item.quantity }, () => ({
+                addonKey: item.id,
+                label: item.label,
+                price: currency === "USD" ? item.usd : item.usd * 20,
+                currency
+              }))
+            )
+          },
+          payments: {
+            create: {
+              amount: amountPaid,
+              currency,
+              method: text(formData, "paymentMethod") || "Admin/manual",
+              status: paymentStatus as never
+            }
           }
         }
       });
-    }
-  });
+
+      if (discountValue || addOnSelections.length) {
+        await tx.auditLog.create({
+          data: {
+            action: "CREATE_BOOKING_PRICING_DETAILS",
+            entity: "Booking",
+            entityId: booking.id,
+            userId: currentUserId,
+            after: {
+              couponCode,
+              addonQuantities: Object.fromEntries(addOnSelections.map((item) => [item.id, item.quantity])),
+              couponDiscount: calculated.discount,
+              manualDiscountType: discountType,
+              manualDiscountValue: discountValue,
+              manualDiscountAmount: manualDiscount,
+              discountAppliedBy,
+              finalTotal: totalAmount.toString(),
+              currency
+            }
+          }
+        });
+      }
+    });
+  } catch (error) {
+    redirect(`/admin/bookings?error=${encodeURIComponent(error instanceof Error ? error.message : "This time slot is not available.")}`);
+  }
 
   revalidatePath("/admin/bookings");
   revalidatePath("/admin");

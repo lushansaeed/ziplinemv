@@ -21,7 +21,7 @@ export default async function RoleApprovalsPage({
   });
 
   return (
-    <DashboardShell title="Role approvals" subtitle="Approve verified agent and affiliate requests, sync Supabase app roles, and keep an audit trail." nav={["Pending", "Approved", "Rejected"]} showSignOut>
+    <DashboardShell title="Role Approvals" subtitle="Approve portal access requests." nav={["Pending", "Approved", "Rejected"]} showSignOut>
       <div className="grid gap-4">
         {params.message ? <p className="rounded-2xl bg-white p-4 text-sm font-bold text-ocean-700 shadow-sm">{params.message}</p> : null}
         {params.error ? <p className="rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">{params.error}</p> : null}
@@ -29,7 +29,7 @@ export default async function RoleApprovalsPage({
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
         <ApprovalList
-          title="Agent requests"
+          title="Agent Requests"
           empty="No agent registrations yet."
           rows={agents.map((agent) => ({
             id: agent.userId,
@@ -40,7 +40,7 @@ export default async function RoleApprovalsPage({
           }))}
         />
         <ApprovalList
-          title="Affiliate requests"
+          title="Affiliate Requests"
           empty="No affiliate registrations yet."
           rows={affiliates.map((affiliate) => ({
             id: affiliate.userId,

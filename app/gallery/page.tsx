@@ -10,7 +10,7 @@ export default function GalleryPage() {
       <main className="bg-ocean-50 pt-28">
         <section className="section">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading eyebrow="Gallery" title="Drone videos, 360 clips, and customer photos" text="A responsive media wall that can be managed from the admin media dashboard." />
+            <SectionHeading eyebrow="Gallery" title="Drone Videos, 360 Clips, And Customer Photos" text="A responsive media wall managed from the admin media dashboard." />
             <MediaGallery />
           </div>
         </section>

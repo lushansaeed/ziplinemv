@@ -9,6 +9,7 @@ const initialState: BookingActionState = {
   ok: false,
   message: ""
 };
+const todayDateValue = getTodayInputValue();
 
 export function BookingFlow() {
   const [state, formAction, pending] = useActionState(createBookingAction, initialState);
@@ -72,13 +73,13 @@ export function BookingFlow() {
           <input key={id} type="hidden" name="addons" value={id} />
         ))}
         <div className="grid gap-4 md:grid-cols-2">
-          <Field name="customerName" label="Customer name" placeholder="Full name" required />
+          <Field name="customerName" label="Customer Name" placeholder="Full name" required />
           <Field name="nationality" label="Nationality" placeholder="Country" required />
           <Field name="phone" label="Phone / WhatsApp" placeholder="+960..." required />
-          <Field name="email" label="Email address" placeholder="you@example.com" type="email" required />
-          <Field name="preferredDate" label="Preferred date" type="date" value={preferredDate} onChange={setPreferredDate} required />
+          <Field name="email" label="Email Address" placeholder="you@example.com" type="email" required />
+          <Field name="preferredDate" label="Preferred Date" type="date" min={todayDateValue} value={preferredDate} onChange={setPreferredDate} required />
           <label className="grid gap-2 text-sm font-bold text-ocean-950">
-            Preferred time slot
+            Preferred Time Slot
             <select name="timeSlot" value={selectedSlot} onChange={(event) => setSelectedSlot(event.target.value)} required className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
               <option value="">{preferredDate ? slotsLoading ? "Loading slots..." : "Select slot" : "Select date first"}</option>
               {timeSlots.map((slot) => (
@@ -93,7 +94,7 @@ export function BookingFlow() {
           <Segment label="Tourist" active={customerType === "tourist"} onClick={() => setCustomerType("tourist")} />
           <Segment label="Local" active={customerType === "local"} onClick={() => setCustomerType("local")} />
           <label className="grid gap-2 text-sm font-bold text-ocean-950">
-            Payment method
+            Payment Method
             <select name="paymentMethod" className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
               <option>Card</option>
               <option>Cash on arrival</option>
@@ -107,7 +108,7 @@ export function BookingFlow() {
           <Stepper label="Kids" value={children} setValue={setChildren} min={0} />
         </div>
         <div className="mt-5">
-          <p className="text-sm font-bold text-ocean-950">Add-ons</p>
+          <p className="text-sm font-bold text-ocean-950">Add-Ons</p>
           <div className="mt-3 grid gap-3 md:grid-cols-3">
             {addOns.map((item) => {
               const Icon = item.icon;
@@ -129,35 +130,35 @@ export function BookingFlow() {
           </div>
         </div>
         <div className="mt-5 grid gap-4 md:grid-cols-2">
-          <Field name="coupon" label="Coupon / affiliate code" placeholder="AFFILIATECODE" value={coupon} onChange={setCoupon} />
-          <Field name="specialNotes" label="Special notes" placeholder="Dietary, timing, group notes" />
+          <Field name="coupon" label="Coupon / Affiliate Code" placeholder="AFFILIATECODE" value={coupon} onChange={setCoupon} />
+          <Field name="specialNotes" label="Special Notes" placeholder="Dietary, timing, group notes" />
         </div>
         <label className="mt-5 flex items-start gap-3 text-sm text-ocean-950/70">
           <input name="acceptedTerms" type="checkbox" required className="mt-1" />
           I accept the safety terms, rider requirements, and cancellation policy.
         </label>
         <button disabled={pending} className="mt-6 w-full rounded-full bg-sunset px-6 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-60 lg:hidden">
-          {pending ? "Saving booking..." : "Confirm Booking"}
+          {pending ? "Saving Booking..." : "Confirm Booking"}
         </button>
       </form>
       <aside className="h-fit rounded-[2rem] bg-ocean-950 p-6 text-white shadow-glow md:p-8">
-        <p className="text-sm font-bold uppercase tracking-[0.22em] text-lagoon">Booking summary</p>
-        <h2 className="mt-3 text-3xl font-black">Reserve your flight</h2>
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-lagoon">Booking Summary</p>
+        <h2 className="mt-3 text-3xl font-black">Reserve Your Flight</h2>
         <div className="mt-6 grid gap-3 text-sm">
           <Summary label="Riders" value={`${adults} adult, ${children} kid`} />
-          <Summary label="Customer type" value={customerType} />
-          <Summary label="Add-ons" value={selectedAddOns.length ? selectedAddOns.join(", ") : "None"} />
+          <Summary label="Customer Type" value={customerType} />
+          <Summary label="Add-Ons" value={selectedAddOns.length ? selectedAddOns.join(", ") : "None"} />
           <Summary label="Subtotal" value={`${price.currency} ${price.subtotal.toFixed(2)}`} />
           <Summary label="Discount" value={`${price.currency} ${price.discount.toFixed(2)}`} />
         </div>
         <div className="mt-6 rounded-3xl bg-white p-5 text-ocean-950">
-          <p className="text-sm font-bold text-ocean-950/60">Final total</p>
+          <p className="text-sm font-bold text-ocean-950/60">Final Total</p>
           <p className="text-4xl font-black">
             {price.currency} {price.total.toFixed(2)}
           </p>
         </div>
         <button form="zipline-booking-form" type="submit" disabled={pending} className="mt-5 hidden w-full rounded-full bg-sunset px-6 py-4 font-black text-white disabled:cursor-not-allowed disabled:opacity-60 lg:block">
-          {pending ? "Saving booking..." : "Confirm Booking"}
+          {pending ? "Saving Booking..." : "Confirm Booking"}
         </button>
         {state.message ? (
           <div className={`mt-5 rounded-3xl p-4 ${state.ok ? "bg-white/10" : "bg-sunset/20"}`}>
@@ -182,7 +183,8 @@ function Field({
   type = "text",
   value,
   onChange,
-  required = false
+  required = false,
+  min
 }: {
   name: string;
   label: string;
@@ -191,6 +193,7 @@ function Field({
   value?: string;
   onChange?: (value: string) => void;
   required?: boolean;
+  min?: string;
 }) {
   return (
     <label className="grid gap-2 text-sm font-bold text-ocean-950">
@@ -202,10 +205,16 @@ function Field({
         value={value}
         onChange={(event) => onChange?.(event.target.value)}
         required={required}
+        min={min}
         className="rounded-2xl border border-ocean-950/10 px-4 py-3 font-medium outline-none transition focus:border-ocean-500"
       />
     </label>
   );
+}
+
+function getTodayInputValue() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 function Segment({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {

@@ -17,7 +17,7 @@ export default async function CustomersPage({
   });
 
   return (
-    <DashboardShell title="Customer management" subtitle="Search, update contact details, review booking counts, nationality, and customer type." nav={["Customers", "Tourists", "Locals", "Bookings"]} showSignOut>
+    <DashboardShell title="Customer Management" subtitle="Update customer details and booking counts." nav={["Customers", "Tourists", "Locals", "Bookings"]} showSignOut>
       <Messages message={params.message} error={params.error} />
       <div className="grid gap-4">
         {customers.length ? customers.map((customer) => (

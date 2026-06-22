@@ -46,7 +46,7 @@ export default async function BookingManagementPage({
   });
 
   return (
-    <DashboardShell title="Booking management" subtitle="Filter, approve, cancel, reschedule, mark paid, complete, add notes, assign media status, and export bookings." nav={["Dashboard", "Bookings"]} showSignOut>
+    <DashboardShell title="Booking Management" subtitle="Manage bookings, filters, status updates, and exports." nav={["Dashboard", "Bookings"]} showSignOut>
       <Messages message={params.message} error={params.error} />
       <AdminBookingsWorkspace bookings={bookings.map(toBookingRow)} />
     </DashboardShell>

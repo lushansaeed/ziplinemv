@@ -15,8 +15,8 @@ export default async function AdminSettingsPage({
 
   return (
     <DashboardShell
-      title="Admin settings"
-      subtitle="Manage booking operating hours, generated time slots, guest capacity, and break time."
+      title="Admin Settings"
+      subtitle="Manage operating hours, generated slots, capacity, and break time."
       nav={["Dashboard", "Settings", "Pricing", "Bookings", "Theme", "Roles"]}
       showSignOut
     >
@@ -27,7 +27,7 @@ export default async function AdminSettingsPage({
           <div>
             <h2 className="text-2xl font-black text-ocean-950">Booking Time Slot Settings</h2>
             <p className="mt-1 text-sm font-bold text-ocean-950/55">
-              Slots are generated automatically from these settings. Break-time overlaps are hidden from all booking forms.
+              Generated slots control all booking forms.
             </p>
           </div>
           <span className="rounded-full bg-ocean-50 px-4 py-2 text-xs font-black text-ocean-700">{previewSlots.length} slots generated</span>
@@ -54,13 +54,13 @@ export default async function AdminSettingsPage({
           <Field name="breakEndTime" label="Break End Time" type="time" defaultValue={settings.breakEndTime} />
 
           <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white md:col-span-2 xl:col-span-4">
-            Save booking time slot settings
+            Save Booking Time Slot Settings
           </button>
         </form>
       </section>
 
       <section className="mt-6 rounded-lg bg-white p-5 shadow-sm">
-        <h3 className="text-lg font-black text-ocean-950">Generated slot preview</h3>
+        <h3 className="text-lg font-black text-ocean-950">Generated Slot Preview</h3>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {previewSlots.length ? previewSlots.map((slot) => (
             <span key={slot.label} className="rounded-2xl bg-ocean-50 px-4 py-3 text-sm font-black text-ocean-950">

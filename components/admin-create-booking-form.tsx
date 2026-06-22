@@ -17,6 +17,7 @@ type TimeSlotOption = {
 const bookingStatuses = ["PENDING", "CONFIRMED", "PAID", "CHECKED_IN", "COMPLETED", "CANCELLED", "NO_SHOW", "REFUNDED"];
 const paymentStatuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "REFUNDED"];
 const paymentMethods = ["Admin/manual", "Card", "Cash on arrival", "Bank transfer", "Agent credit"];
+const todayDateValue = getTodayInputValue();
 
 export function AdminCreateBookingForm() {
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
@@ -102,8 +103,8 @@ export function AdminCreateBookingForm() {
   return (
     <section className="mt-6">
       <div className="mb-4">
-        <h2 className="text-2xl font-black text-ocean-950">Create booking</h2>
-        <p className="mt-1 text-sm font-bold text-ocean-950/55">Use the counter form for direct, admin, agent-credit, and walk-in bookings.</p>
+        <h2 className="text-2xl font-black text-ocean-950">Create Booking</h2>
+        <p className="mt-1 text-xs font-bold text-ocean-950/45">Counter, agent-credit, and walk-in bookings.</p>
       </div>
 
       <form action={createBooking} className="grid gap-6 xl:grid-cols-[1fr_380px]">
@@ -115,13 +116,13 @@ export function AdminCreateBookingForm() {
         ))}
 
         <div className="grid gap-5">
-          <FormSectionCard title="Customer details">
-            <Field name="customerName" label="Customer name" required />
+          <FormSectionCard title="Customer Details">
+            <Field name="customerName" label="Customer Name" required />
             <Field name="phone" label="Phone / WhatsApp" required />
             <Field name="email" label="Email" type="email" />
             <Field name="nationality" label="Nationality" />
             <div className="grid gap-2 text-sm font-bold">
-              Customer type
+              Customer Type
               <div className="grid grid-cols-2 gap-2 rounded-2xl bg-ocean-50 p-1">
                 {(["tourist", "local"] as const).map((type) => (
                   <button
@@ -140,10 +141,10 @@ export function AdminCreateBookingForm() {
             </div>
           </FormSectionCard>
 
-          <FormSectionCard title="Booking details">
-            <Field name="date" label="Booking date" type="date" value={bookingDate} onChange={setBookingDate} required />
+          <FormSectionCard title="Booking Details">
+            <Field name="date" label="Booking Date" type="date" min={todayDateValue} value={bookingDate} onChange={setBookingDate} required />
             <label className="grid gap-2 text-sm font-bold">
-              Time slot
+              Time Slot
               <select name="timeSlot" value={selectedSlot} onChange={(event) => setSelectedSlot(event.target.value)} required className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 outline-none transition focus:border-ocean-500">
                 <option value="">{bookingDate ? slotsLoading ? "Loading slots..." : "Select slot" : "Select booking date first"}</option>
                 {timeSlots.map((slot) => (
@@ -156,13 +157,13 @@ export function AdminCreateBookingForm() {
             <QuantitySelector label="Adults" value={adults} onChange={setAdults} min={0} />
             <QuantitySelector label="Kids" value={children} onChange={setChildren} min={0} />
             <Select name="currency" label="Currency" value={currency} onChange={setCurrency} options={["USD", "MVR"]} />
-            <Select name="bookingStatus" label="Booking status" options={bookingStatuses} defaultValue="PENDING" />
-            <Select name="paymentStatus" label="Payment status" options={paymentStatuses} defaultValue="UNPAID" />
-            <Select name="paymentMethod" label="Payment method" options={paymentMethods} defaultValue="Admin/manual" />
+            <Select name="bookingStatus" label="Booking Status" options={bookingStatuses} defaultValue="PENDING" />
+            <Select name="paymentStatus" label="Payment Status" options={paymentStatuses} defaultValue="UNPAID" />
+            <Select name="paymentMethod" label="Payment Method" options={paymentMethods} defaultValue="Admin/manual" />
             <CouponCodeInput coupon={coupon} setCoupon={setCoupon} codeStatus={codeStatus} applyCode={applyCode} />
           </FormSectionCard>
 
-          <FormSectionCard title="Add-ons" columns="md:grid-cols-3">
+          <FormSectionCard title="Add-Ons" columns="md:grid-cols-3">
             {addOns.map((item) => (
               <AddOnQuantityCard
                 key={item.id}
@@ -177,12 +178,12 @@ export function AdminCreateBookingForm() {
           </FormSectionCard>
 
           <FormSectionCard title="Discount">
-            <Select label="Discount type" name="discountType" value={discountType} onChange={(value) => setDiscountType(value as "percentage" | "fixed")} options={["percentage", "fixed"]} />
-            <Field label="Discount value" name="discountValue" type="number" min="0" step="0.01" value={String(discountValue)} onChange={(value) => setDiscountValue(Math.max(0, Number(value) || 0))} />
+            <Select label="Discount Type" name="discountType" value={discountType} onChange={(value) => setDiscountType(value as "percentage" | "fixed")} options={["percentage", "fixed"]} />
+            <Field label="Discount Value" name="discountValue" type="number" min="0" step="0.01" value={String(discountValue)} onChange={(value) => setDiscountValue(Math.max(0, Number(value) || 0))} />
           </FormSectionCard>
 
           <label className="grid gap-2 rounded-3xl bg-white p-5 text-sm font-bold shadow-sm">
-            Admin notes
+            Admin Notes
             <textarea name="internalNotes" className="min-h-24 rounded-2xl border border-ocean-950/10 px-4 py-3 outline-none transition focus:border-ocean-500" />
           </label>
         </div>
@@ -217,6 +218,11 @@ function FormSectionCard({ title, children, columns = "md:grid-cols-2" }: { titl
       <div className={`mt-4 grid gap-4 ${columns}`}>{children}</div>
     </section>
   );
+}
+
+function getTodayInputValue() {
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 type FieldProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "onChange"> & {
@@ -285,7 +291,7 @@ function AddOnQuantityCard({ label, unitPriceUsd, currency, quantity, riderCount
 function CouponCodeInput({ coupon, setCoupon, codeStatus, applyCode }: { coupon: string; setCoupon: (value: string) => void; codeStatus: "idle" | "valid" | "invalid"; applyCode: () => void }) {
   return (
     <div className="grid gap-2 text-sm font-bold">
-      Coupon / affiliate code
+      Coupon / Affiliate Code
       <div className="flex gap-2">
         <input name="coupon" value={coupon} onChange={(event) => setCoupon(event.target.value)} className="min-w-0 flex-1 rounded-2xl border border-ocean-950/10 px-4 py-3 outline-none transition focus:border-ocean-500" />
         <button type="button" onClick={applyCode} className="rounded-2xl bg-ocean-950 px-4 py-3 font-black text-white">Apply</button>
@@ -333,30 +339,30 @@ function BookingSummaryCard({
 }) {
   return (
     <aside className="h-fit rounded-3xl bg-ocean-950 p-5 text-white shadow-glow xl:sticky xl:top-32">
-      <p className="text-xs font-black uppercase tracking-[0.2em] text-lagoon">Booking summary</p>
-      <h3 className="mt-2 text-2xl font-black">Total payable</h3>
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-lagoon">Booking Summary</p>
+      <h3 className="mt-2 text-2xl font-black">Total Payable</h3>
       <div className="mt-5 grid gap-3 text-sm">
-        <SummaryRow label="Ride total" value={`${currency} ${rideTotal.toFixed(2)}`} />
-        <SummaryRow label="Add-ons total" value={`${currency} ${addOnsTotal.toFixed(2)}`} />
-        <SummaryRow label="Coupon discount" value={`-${currency} ${couponDiscount.toFixed(2)}`} />
-        <SummaryRow label="Manual discount" value={`-${currency} ${manualDiscount.toFixed(2)}`} />
+        <SummaryRow label="Ride Total" value={`${currency} ${rideTotal.toFixed(2)}`} />
+        <SummaryRow label="Add-Ons Total" value={`${currency} ${addOnsTotal.toFixed(2)}`} />
+        <SummaryRow label="Coupon Discount" value={`-${currency} ${couponDiscount.toFixed(2)}`} />
+        <SummaryRow label="Manual Discount" value={`-${currency} ${manualDiscount.toFixed(2)}`} />
         <SummaryRow label="Subtotal" value={`${currency} ${subtotal.toFixed(2)}`} />
       </div>
       <div className="mt-5 rounded-3xl bg-white p-5 text-ocean-950">
-        <p className="text-sm font-bold text-ocean-950/55">Final total</p>
+        <p className="text-sm font-bold text-ocean-950/55">Final Total</p>
         <p className="text-4xl font-black">{currency} {finalTotal.toFixed(2)}</p>
         <div className="mt-4 grid gap-2">
-          <Field name="amountPaid" label="Amount paid" type="number" min="0" step="0.01" value={String(amountPaid)} onChange={(value) => amountPaidSetter(Math.max(0, Number(value) || 0))} />
-          <p className="rounded-2xl bg-ocean-50 p-3 text-sm font-black">Balance due: {currency} {balanceDue.toFixed(2)}</p>
+          <Field name="amountPaid" label="Amount Paid" type="number" min="0" step="0.01" value={String(amountPaid)} onChange={(value) => amountPaidSetter(Math.max(0, Number(value) || 0))} />
+          <p className="rounded-2xl bg-ocean-50 p-3 text-sm font-black">Balance Due: {currency} {balanceDue.toFixed(2)}</p>
         </div>
       </div>
       {showConfirm ? (
         <div className="mt-5 rounded-3xl bg-white/10 p-4">
-          <p className="font-black">Confirm booking summary</p>
+          <p className="font-black">Confirm Booking Summary</p>
           <p className="mt-2 text-sm text-white/70">Riders: {riderText}</p>
-          <p className="text-sm text-white/70">Add-ons: {selectedAddOns.length ? selectedAddOns.join(", ") : "None"}</p>
+          <p className="text-sm text-white/70">Add-Ons: {selectedAddOns.length ? selectedAddOns.join(", ") : "None"}</p>
           <p className="text-sm text-white/70">Discount: {discountText}</p>
-          <p className="text-sm text-white/70">Final total: {currency} {finalTotal.toFixed(2)}</p>
+          <p className="text-sm text-white/70">Final Total: {currency} {finalTotal.toFixed(2)}</p>
           <div className="mt-4 grid gap-2">
             <button type="submit" className="rounded-full bg-lagoon px-5 py-3 font-black text-ocean-950">Confirm and Create Booking</button>
             <button type="button" onClick={() => setShowConfirm(false)} className="rounded-full bg-white/10 px-5 py-3 font-black text-white">Cancel / Go Back</button>
@@ -364,7 +370,7 @@ function BookingSummaryCard({
         </div>
       ) : (
         <button type="button" onClick={() => setShowConfirm(true)} disabled={!canOpenConfirm} className="mt-5 w-full rounded-full bg-lagoon px-5 py-4 font-black text-ocean-950 disabled:cursor-not-allowed disabled:opacity-50">
-          Review booking
+          Review Booking
         </button>
       )}
     </aside>

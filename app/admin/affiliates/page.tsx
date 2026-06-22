@@ -35,9 +35,9 @@ export default async function AffiliatesPage({
     .sort((a, b) => b.bookings - a.bookings);
 
   return (
-    <DashboardShell title="Affiliate management" subtitle="Manage affiliate profiles, approval flags, codes, clicks, bookings, and payable commissions." nav={["Affiliates", "Codes", "Approved", "Clicks"]} showSignOut>
+    <DashboardShell title="Affiliate Management" subtitle="Manage profiles, codes, clicks, and commission." nav={["Affiliates", "Codes", "Approved", "Clicks"]} showSignOut>
       <Messages message={params.message} error={params.error} />
-      <DataCard title="Affiliate performance" eyebrow="Referral engine">
+      <DataCard title="Affiliate Performance" eyebrow="Referral Engine">
         <DashboardTable
           columns={["Affiliate", "Codes", "Clicks", "Bookings", "Conversion", "Commission"]}
           rows={affiliatePerformance.slice(0, 8).map((affiliate) => [
@@ -61,7 +61,7 @@ export default async function AffiliatesPage({
         {affiliates.length ? affiliates.map((affiliate) => (
           <form key={affiliate.id} action={updateAffiliate} className="grid gap-3 rounded-lg bg-white p-5 shadow-sm md:grid-cols-5">
             <input type="hidden" name="userId" value={affiliate.userId} />
-            <Field name="displayName" label="Display name" defaultValue={affiliate.displayName} required />
+            <Field name="displayName" label="Display Name" defaultValue={affiliate.displayName} required />
             <Field name="name" label="Contact" defaultValue={affiliate.user.name ?? ""} />
             <Readonly label="Email" value={affiliate.user.email} />
             <Readonly label="Codes" value={affiliate.codes.map((code) => `${code.code} (${code.clicks})`).join(", ") || "No codes"} />

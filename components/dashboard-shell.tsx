@@ -63,7 +63,7 @@ const portalLinks: Record<string, string> = {
   Login: "/login",
   Registration: "/agents/register",
   Reports: "/agents/dashboard",
-  "Rate card": "/agents/dashboard",
+  "Rate Card": "/agents/dashboard",
   "Portal access": "/login",
   "Email verification": "/auth/resend-confirmation",
   "New password": "/auth/reset-password",
@@ -100,7 +100,7 @@ export function DashboardShell({
   showSignOut?: boolean;
   children: React.ReactNode;
 }) {
-  const isAdmin = title.toLowerCase().includes("admin") || title.toLowerCase().includes("management") || title.toLowerCase().includes("reports") || title.toLowerCase().includes("role") || title.toLowerCase().includes("pricing");
+  const isAdmin = title.toLowerCase().includes("admin") || title.toLowerCase().includes("management") || title.toLowerCase().includes("reports") || title.toLowerCase().includes("role") || title.toLowerCase().includes("pricing") || title.toLowerCase().includes("settings");
   const isAffiliate = title.toLowerCase().includes("affiliate");
   const kicker = isAdmin ? "Operations" : isAffiliate ? "Partner portal" : "Zipline portal";
   const initials = isAdmin ? "AD" : isAffiliate ? "AF" : "AG";

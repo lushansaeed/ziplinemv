@@ -10,7 +10,7 @@ export default function BookPage() {
       <main className="min-h-screen bg-ocean-50 pt-28">
         <section className="section">
           <div className="mx-auto max-w-7xl">
-            <SectionHeading eyebrow="Book now" title="Choose your flight, riders, add-ons, and payment method" text="Availability prevents overbooking, pricing updates automatically, and every confirmed request generates a unique booking reference." />
+            <SectionHeading eyebrow="Book Now" title="Choose Your Flight, Riders, Add-Ons, And Payment Method" text="Availability prevents overbooking and pricing updates automatically." />
             <BookingFlow />
           </div>
         </section>

@@ -106,12 +106,12 @@ export default async function AdminPage() {
     .reduce((sum, commission) => sum + Number(commission.amount), 0);
 
   const summaryCards = [
-    { label: "Today's sales", value: moneyLabel(todaySales), detail: `${compareText(todaySales.mvrEquivalent, yesterdaySales.mvrEquivalent, "vs yesterday")} / ${usdDetail(todaySales)}`, icon: DollarSign, tone: "lagoon" as const },
-    { label: "Today's bookings", value: String(todayBookings), detail: `${pendingBookings} pending confirmation`, icon: CalendarCheck, tone: "ocean" as const },
-    { label: "Monthly revenue", value: moneyLabel(monthlyRevenue), detail: `${allPaidBookings.filter((booking) => booking.createdAt >= monthStart).length} paid bookings / ${usdDetail(monthlyRevenue)}`, icon: CreditCard, tone: "mint" as const },
-    { label: "Pending bookings", value: String(pendingBookings), detail: "Awaiting admin action", icon: Clock3, tone: "sunset" as const },
-    { label: "Completed rides", value: String(completedRides), detail: `${percent(completedRides, totalBookings)} of all bookings`, icon: TicketCheck, tone: "ocean" as const },
-    { label: "Commission payable", value: mvrFromUsdLabel(commissionPayable), detail: `USD ${commissionPayable.toFixed(2)} pending, eligible, or approved`, icon: WalletCards, tone: "rose" as const }
+    { label: "Today's Sales", value: moneyLabel(todaySales), detail: `${compareText(todaySales.mvrEquivalent, yesterdaySales.mvrEquivalent, "vs yesterday")} / ${usdDetail(todaySales)}`, icon: DollarSign, tone: "lagoon" as const },
+    { label: "Today's Bookings", value: String(todayBookings), detail: `${pendingBookings} pending confirmation`, icon: CalendarCheck, tone: "ocean" as const },
+    { label: "Monthly Revenue", value: moneyLabel(monthlyRevenue), detail: `${allPaidBookings.filter((booking) => booking.createdAt >= monthStart).length} paid bookings / ${usdDetail(monthlyRevenue)}`, icon: CreditCard, tone: "mint" as const },
+    { label: "Pending Bookings", value: String(pendingBookings), detail: "Awaiting admin action", icon: Clock3, tone: "sunset" as const },
+    { label: "Completed Rides", value: String(completedRides), detail: `${percent(completedRides, totalBookings)} of all bookings`, icon: TicketCheck, tone: "ocean" as const },
+    { label: "Commission Payable", value: mvrFromUsdLabel(commissionPayable), detail: `USD ${commissionPayable.toFixed(2)} pending, eligible, or approved`, icon: WalletCards, tone: "rose" as const }
   ];
 
   const addOnSales = buildAddonSales(addonRows, totalBookings);
@@ -129,8 +129,8 @@ export default async function AdminPage() {
   });
   return (
     <DashboardShell
-      title="Admin dashboard"
-      subtitle="Modern operational control for sales, bookings, agents, affiliates, commissions, media, payments, and reporting."
+      title="Admin Dashboard"
+      subtitle="Operational control for bookings, sales, payments, and partners."
       nav={["Dashboard", "Bookings", "Customers", "Agents", "Affiliates", "Pricing", "Media", "Commission", "Reports", "Settings", "Theme", "Roles"]}
       showSignOut
     >
@@ -141,9 +141,9 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6">
-        <DataCard title="Recent bookings" eyebrow="Live operations" action={<ActionButton href="/admin/bookings">Open booking manager</ActionButton>}>
+        <DataCard title="Recent Bookings" eyebrow="Live Operations" action={<ActionButton href="/admin/bookings">Open Booking Manager</ActionButton>}>
           <DashboardTable
-            columns={["Reference", "Customer", "Date", "Slot", "Riders", "Add-ons", "Source", "Amount", "Payment", "Status", "Actions"]}
+            columns={["Reference", "Customer", "Date", "Slot", "Riders", "Add-Ons", "Source", "Amount", "Payment", "Status", "Actions"]}
             rows={dashboardBookings.slice(0, 8).map((booking) => [
               <span key="ref" className="font-black text-ocean-950">{booking.reference}</span>,
               booking.customer.name,
@@ -163,7 +163,7 @@ export default async function AdminPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-2">
-        <DataCard title="Add-on sales" eyebrow="Media packages">
+        <DataCard title="Add-On Sales" eyebrow="Media Packages">
           <div className="grid gap-3">
             {addOnSales.map((addon) => (
               <div key={addon.name} className="rounded-2xl bg-white/65 p-4">
@@ -185,15 +185,15 @@ export default async function AdminPage() {
           </div>
         </DataCard>
 
-        <DataCard title="Payment overview" eyebrow="Collections">
+        <DataCard title="Payment Overview" eyebrow="Collections">
           <div className="grid gap-3">
             {[
-              ["Paid amount", moneyLabel(paymentOverview.paid), usdDetail(paymentOverview.paid)],
-              ["Unpaid amount", moneyLabel(paymentOverview.unpaid), usdDetail(paymentOverview.unpaid)],
-              ["Partial payments", String(paymentCounts.PARTIALLY_PAID ?? 0), ""],
-              ["Refunded amount", moneyLabel(paymentOverview.refunded), usdDetail(paymentOverview.refunded)],
-              ["USD collected", mvrFromUsdLabel(paymentOverview.usdCollected), `USD ${paymentOverview.usdCollected.toFixed(2)}`],
-              ["MVR collected", `MVR ${paymentOverview.mvrCollected.toFixed(2)}`, "MVR direct collection"]
+              ["Paid Amount", moneyLabel(paymentOverview.paid), usdDetail(paymentOverview.paid)],
+              ["Unpaid Amount", moneyLabel(paymentOverview.unpaid), usdDetail(paymentOverview.unpaid)],
+              ["Partial Payments", String(paymentCounts.PARTIALLY_PAID ?? 0), ""],
+              ["Refunded Amount", moneyLabel(paymentOverview.refunded), usdDetail(paymentOverview.refunded)],
+              ["USD Collected", mvrFromUsdLabel(paymentOverview.usdCollected), `USD ${paymentOverview.usdCollected.toFixed(2)}`],
+              ["MVR Collected", `MVR ${paymentOverview.mvrCollected.toFixed(2)}`, "MVR direct collection"]
             ].map(([label, value, detail]) => <MiniMetric key={label} label={label} value={value} detail={detail} />)}
             <div className="rounded-2xl bg-white/65 p-4">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-ocean-950/40">Payment methods</p>
@@ -218,7 +218,7 @@ export default async function AdminPage() {
               ))}
             </div>
           ) : (
-            <EmptyState title="No urgent alerts." text="Operations look calm right now." />
+            <EmptyState title="No Urgent Alerts." text="Operations look calm right now." />
           )}
         </DataCard>
       </div>

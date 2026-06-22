@@ -40,10 +40,8 @@ export function ThemeCustomizer() {
   return (
     <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[2rem] bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-black">Theme presets</h2>
-        <p className="mt-2 text-sm leading-6 text-ocean-950/60">
-          Admins can start from a preset, fine-tune colors, preview instantly, then save the palette to website settings.
-        </p>
+        <h2 className="text-2xl font-black">Theme Presets</h2>
+        <p className="mt-2 text-xs leading-5 text-ocean-950/45">Preview and save a public site palette.</p>
         <div className="mt-5 grid gap-3">
           {themePresets.map((preset) => (
             <button
@@ -70,15 +68,15 @@ export function ThemeCustomizer() {
       <section className="rounded-[2rem] bg-white p-6 shadow-sm">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
-            <h2 className="text-2xl font-black">Custom palette</h2>
-            <p className="mt-2 text-sm text-ocean-950/60">These controls map to the global site color tokens.</p>
+            <h2 className="text-2xl font-black">Custom Palette</h2>
+            <p className="mt-2 text-xs text-ocean-950/45">Global site color tokens.</p>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={resetTheme} className="inline-flex items-center gap-2 rounded-full bg-ocean-50 px-4 py-2 text-sm font-black">
               <RotateCcw size={16} /> Reset
             </button>
             <button type="button" onClick={saveTheme} className="inline-flex items-center gap-2 rounded-full bg-ocean-950 px-4 py-2 text-sm font-black text-white">
-              <Save size={16} /> Save theme
+              <Save size={16} /> Save Theme
             </button>
           </div>
         </div>

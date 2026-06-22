@@ -13,8 +13,8 @@ export const highlights = [
 ];
 
 export const stats = [
-  { label: "Cable length", value: "428m" },
-  { label: "Ride duration", value: "45-60s" },
+  { label: "Cable Length", value: "428m" },
+  { label: "Ride Duration", value: "45-60s" },
   { label: "Route", value: "2 islands" },
   { label: "First in Maldives", value: "1st" }
 ];
@@ -24,7 +24,7 @@ export const mediaItems = [
     id: "hero",
     type: "image",
     featured: true,
-    title: "Featured hero media",
+    title: "Featured Hero Media",
     src: "https://images.unsplash.com/photo-1573843981267-be1999ff37cd?auto=format&fit=crop&w=2200&q=85",
     caption: "Turquoise water approach into Vahmaafushi"
   },
@@ -32,7 +32,7 @@ export const mediaItems = [
     id: "drone",
     type: "video",
     featured: false,
-    title: "Drone flight reel",
+    title: "Drone Flight Reel",
     src: "https://images.unsplash.com/photo-1512100356356-de1b84283e18?auto=format&fit=crop&w=1200&q=80",
     caption: "Admin-uploaded drone reels appear here"
   },
@@ -40,7 +40,7 @@ export const mediaItems = [
     id: "guest",
     type: "image",
     featured: false,
-    title: "Guest photo wall",
+    title: "Guest Photo Wall",
     src: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
     caption: "Customer photos, 360 clips, and promos"
   }
@@ -48,15 +48,15 @@ export const mediaItems = [
 
 export const addOns = [
   { id: "photography", label: "Photography", usd: 10, icon: Camera },
-  { id: "video360", label: "360 video", usd: 10, icon: Film },
-  { id: "drone", label: "Drone video", usd: 30, icon: Waves }
+  { id: "video360", label: "360 Video", usd: 10, icon: Film },
+  { id: "drone", label: "Drone Video", usd: 30, icon: Waves }
 ];
 
 export const journey = [
-  { title: "Book your slot", text: "Choose your date, time, rider count, add-ons, and payment method.", icon: CalendarCheck },
-  { title: "Meet at Maafushi", text: "Arrive 10 minutes early for check-in, ID validation, and weigh-in.", icon: ShipWheel },
-  { title: "Gear up safely", text: "Guides fit your harness and brief you on the passive braking system.", icon: ShieldCheck },
-  { title: "Fly to Vahmaafushi", text: "Launch over 428 metres of open ocean for an unforgettable 45 to 60 seconds.", icon: Ticket }
+  { title: "Book Your Slot", text: "Choose your date, time, rider count, add-ons, and payment method.", icon: CalendarCheck },
+  { title: "Meet At Maafushi", text: "Arrive 10 minutes early for check-in, ID validation, and weigh-in.", icon: ShipWheel },
+  { title: "Gear Up Safely", text: "Guides fit your harness and brief you on the passive braking system.", icon: ShieldCheck },
+  { title: "Fly To Vahmaafushi", text: "Launch over 428 metres of open ocean for an unforgettable 45 to 60 seconds.", icon: Ticket }
 ];
 
 export const testimonials = [
@@ -82,10 +82,10 @@ export const faqs = [
 ];
 
 export const adminMetrics = [
-  { label: "Today bookings", value: "28", trend: "+14%" },
+  { label: "Today Bookings", value: "28", trend: "+14%" },
   { label: "Revenue", value: "$4,820", trend: "+9%" },
-  { label: "Pending commission", value: "$612", trend: "18 items" },
-  { label: "Available slots", value: "64", trend: "today" }
+  { label: "Pending Commission", value: "$612", trend: "18 items" },
+  { label: "Available Slots", value: "64", trend: "Today" }
 ];
 
 export const bookings = [

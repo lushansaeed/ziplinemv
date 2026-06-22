@@ -75,7 +75,7 @@ export function AdminBookingsWorkspace({ bookings }: { bookings: BookingRow[] })
     <div className="grid gap-5">
       <div className="flex flex-col gap-3 rounded-3xl bg-white/70 p-4 shadow-sm md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.18em] text-lagoon">Booking section</p>
+          <p className="text-xs font-black uppercase tracking-[0.18em] text-lagoon">Booking Section</p>
           <h2 className="text-2xl font-black text-ocean-950">Bookings</h2>
         </div>
         <button type="button" onClick={() => setShowCreate((value) => !value)} className="inline-flex items-center justify-center gap-2 rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white shadow-glow">
@@ -164,7 +164,7 @@ function OverviewTab({
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
-        <DataCard title="Booking status summary" eyebrow="Status mix">
+        <DataCard title="Booking Status Summary" eyebrow="Status Mix">
           <div className="grid gap-4">
             {bookingStatuses.map((status) => {
               const count = counts[status] ?? 0;
@@ -183,10 +183,10 @@ function OverviewTab({
         </DataCard>
 
         <div className="grid gap-5">
-          <DataCard title="Recent bookings" eyebrow="Latest activity">
+          <DataCard title="Recent Bookings" eyebrow="Latest Activity">
             <CompactBookingList bookings={bookings.slice(0, 6)} empty="No recent bookings yet." />
           </DataCard>
-          <DataCard title="Today's schedule" eyebrow={new Date().toISOString().slice(0, 10)}>
+          <DataCard title="Today's Schedule" eyebrow={new Date().toISOString().slice(0, 10)}>
             <CompactBookingList bookings={todaysBookings.slice(0, 6)} empty="No bookings scheduled today." />
           </DataCard>
         </div>
@@ -260,7 +260,7 @@ function BookingsTab({
               <span>{booking.currency} {Number(booking.totalAmount).toFixed(2)}</span>
             </div>
             {booking.addOns ? (
-              <p className="mt-2 text-xs font-bold text-ocean-950/55">Add-ons: {booking.addOns}</p>
+              <p className="mt-2 text-xs font-bold text-ocean-950/55">Add-Ons: {booking.addOns}</p>
             ) : null}
             <form action={updateBooking} className="mt-3 grid gap-3 md:grid-cols-4">
               <input type="hidden" name="id" value={booking.id} />
@@ -342,14 +342,14 @@ function exportCsv(bookings: BookingRow[]) {
     "Adults",
     "Kids",
     "Total guests",
-    "Add-ons",
+    "Add-Ons",
     "Booking source",
     "Agent name",
     "Affiliate code",
     "Total amount",
     "Currency",
     "Payment status",
-    "Booking status",
+    "Booking Status",
     "Created date"
   ];
   const rows = bookings.map((booking) => [

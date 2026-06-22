@@ -27,18 +27,18 @@ export default async function ReportsPage() {
   }, {});
 
   const reports = [
-    { label: "Daily bookings", value: String(dailyBookings), detail: "Created today" },
-    { label: "Monthly bookings", value: String(monthlyBookings), detail: "Created this month" },
+    { label: "Daily Bookings", value: String(dailyBookings), detail: "Created today" },
+    { label: "Monthly Bookings", value: String(monthlyBookings), detail: "Created this month" },
     { label: "Revenue", value: moneyLabel(paidBookings.reduce(addMoneyFromBooking, emptyMoney())), detail: usdDetail(paidBookings.reduce(addMoneyFromBooking, emptyMoney())) },
-    { label: "Add-on sales", value: mvrFromUsdLabel(Number(addonSales._sum.price ?? 0)), detail: `USD ${Number(addonSales._sum.price ?? 0).toFixed(2)}` },
-    { label: "Agent sales", value: String(agentBookings), detail: "Bookings with agent" },
-    { label: "Affiliate sales", value: String(affiliateBookings), detail: "Bookings with affiliate" },
-    { label: "Commission payable", value: mvrFromUsdLabel(Number(payableCommissions._sum.amount ?? 0)), detail: `USD ${Number(payableCommissions._sum.amount ?? 0).toFixed(2)}` },
-    { label: "Cancelled bookings", value: String(cancelledBookings), detail: "Cancelled status" }
+    { label: "Add-On Sales", value: mvrFromUsdLabel(Number(addonSales._sum.price ?? 0)), detail: `USD ${Number(addonSales._sum.price ?? 0).toFixed(2)}` },
+    { label: "Agent Sales", value: String(agentBookings), detail: "Bookings with agent" },
+    { label: "Affiliate Sales", value: String(affiliateBookings), detail: "Bookings with affiliate" },
+    { label: "Commission Payable", value: mvrFromUsdLabel(Number(payableCommissions._sum.amount ?? 0)), detail: `USD ${Number(payableCommissions._sum.amount ?? 0).toFixed(2)}` },
+    { label: "Cancelled Bookings", value: String(cancelledBookings), detail: "Cancelled status" }
   ];
 
   return (
-    <DashboardShell title="Reports" subtitle="Export operational reports to CSV or Excel for finance, sales, and booking staff." nav={["Daily", "Monthly", "Revenue", "CSV", "Excel"]} showSignOut>
+    <DashboardShell title="Reports" subtitle="Export operational reports." nav={["Daily", "Monthly", "Revenue", "CSV", "Excel"]} showSignOut>
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {reports.map((report) => (
           <div key={report.label} className="rounded-lg bg-white p-6 shadow-sm">
@@ -49,7 +49,7 @@ export default async function ReportsPage() {
         ))}
       </div>
       <div className="mt-6 rounded-lg bg-white p-6 shadow-sm">
-        <h2 className="text-2xl font-black">Customer nationality</h2>
+        <h2 className="text-2xl font-black">Customer Nationality</h2>
         <div className="mt-4 grid gap-2 md:grid-cols-3">
           {Object.entries(nationalityCounts).length ? Object.entries(nationalityCounts).map(([nationality, count]) => (
             <div key={nationality} className="rounded-lg bg-ocean-50 p-4">

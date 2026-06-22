@@ -24,6 +24,7 @@ export type BookingSlotOption = {
 };
 
 type DbLike = PrismaClient | Omit<PrismaClient, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
+const bookingTimeZone = "Indian/Maldives";
 
 const settingKeys = {
   startTime: "booking_start_time",
@@ -132,10 +133,12 @@ export async function getBookingSlotOptions(date: string, requestedGuests = 1, d
   const settings = await getBookingTimeSlotSettings(db);
   const slots = generateBookingTimeSlots(settings);
   const usage = await getBookedRiderCounts(date, db, slots);
+  const pastDate = isPastBookingDate(date);
 
   return slots.map((slot) => {
     const booked = usage.get(slot.label) ?? 0;
     const available = Math.max(slot.capacity - booked, 0);
+    const passed = pastDate || isPassedBookingSlot(date, slot.startMinutes);
     return {
       label: slot.label,
       value: slot.value,
@@ -145,18 +148,26 @@ export async function getBookingSlotOptions(date: string, requestedGuests = 1, d
       booked,
       available,
       isFull: available <= 0,
-      disabled: available <= 0 || requestedGuests > available
+      disabled: passed || available <= 0 || requestedGuests > available
     };
   });
 }
 
 export async function ensureBookableTimeSlot(db: DbLike, date: string, label: string, riderCount: number) {
+  if (isPastBookingDate(date)) {
+    throw new Error("Past dates cannot be selected.");
+  }
+
   const settings = await getBookingTimeSlotSettings(db);
   const slots = generateBookingTimeSlots(settings);
   const slot = slots.find((item) => item.label === label || item.startTime === label);
 
   if (!slot) {
-    throw new Error("Selected slot is not available.");
+    throw new Error("This time slot is not available.");
+  }
+
+  if (isPassedBookingSlot(date, slot.startMinutes)) {
+    throw new Error("This time slot has already passed.");
   }
 
   const usage = await getBookedRiderCounts(date, db, slots);
@@ -190,6 +201,40 @@ export async function ensureBookableTimeSlot(db: DbLike, date: string, label: st
 
 export function dateTimeForSlot(date: string, time: string) {
   return new Date(`${date}T${time}:00.000`);
+}
+
+export function todayBookingDate() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: bookingTimeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return `${year}-${month}-${day}`;
+}
+
+export function isPastBookingDate(date: string) {
+  return Boolean(date) && date < todayBookingDate();
+}
+
+function isPassedBookingSlot(date: string, slotStartMinutes: number) {
+  if (date !== todayBookingDate()) return false;
+  return slotStartMinutes <= currentBookingMinutes();
+}
+
+function currentBookingMinutes() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: bookingTimeZone,
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value ?? 0);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value ?? 0);
+  return hour * 60 + minute;
 }
 
 function timeToMinutes(value: string) {

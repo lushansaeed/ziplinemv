@@ -4,18 +4,18 @@ import { ActionButton, DashboardTable, DataCard, ProgressBar, StatCard, StatusBa
 import { bookings } from "@/lib/data";
 
 const agentStats = [
-  { label: "Today's bookings", value: "6", detail: "2 pending confirmation", icon: CalendarCheck, tone: "lagoon" as const },
-  { label: "Upcoming bookings", value: "18", detail: "Across the next 7 days", icon: Ticket, tone: "ocean" as const },
-  { label: "Monthly sales", value: "$4.2k", detail: "42 bookings this month", icon: TrendingUp, tone: "mint" as const },
-  { label: "Pending commission", value: "$380", detail: "$740 earned total", icon: DollarSign, tone: "sunset" as const }
+  { label: "Today's Bookings", value: "6", detail: "2 pending confirmation", icon: CalendarCheck, tone: "lagoon" as const },
+  { label: "Upcoming Bookings", value: "18", detail: "Across the next 7 days", icon: Ticket, tone: "ocean" as const },
+  { label: "Monthly Sales", value: "$4.2k", detail: "42 bookings this month", icon: TrendingUp, tone: "mint" as const },
+  { label: "Pending Commission", value: "$380", detail: "$740 earned total", icon: DollarSign, tone: "sunset" as const }
 ];
 
 export default function AgentDashboardPage() {
   return (
     <DashboardShell
-      title="Agent dashboard"
-      subtitle="Create bookings, update customer details before confirmation, and monitor bookings and commissions."
-      nav={["Dashboard", "Create booking", "Bookings", "Rate card", "Commission", "Reports"]}
+      title="Agent Dashboard"
+      subtitle="Create bookings and monitor commission."
+      nav={["Dashboard", "Create Booking", "Bookings", "Rate Card", "Commission", "Reports"]}
       showSignOut
     >
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -24,9 +24,9 @@ export default function AgentDashboardPage() {
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.35fr_0.85fr]">
         <DataCard
-          title="Recent bookings"
+          title="Recent Bookings"
           eyebrow="Operations"
-          action={<ActionButton href="/book">Create booking</ActionButton>}
+          action={<ActionButton href="/book">Create Booking</ActionButton>}
         >
           <DashboardTable
             columns={["Reference", "Customer", "Date", "Slot", "Status", "Payment"]}
@@ -42,7 +42,7 @@ export default function AgentDashboardPage() {
         </DataCard>
 
         <div className="grid gap-6">
-          <DataCard title="Commission summary" eyebrow="This month">
+          <DataCard title="Commission Summary" eyebrow="This Month">
             <div className="grid gap-4">
               {[
                 ["Earned", "$740", "bg-emerald-50 text-emerald-700"],
@@ -54,11 +54,11 @@ export default function AgentDashboardPage() {
                   <span className={`rounded-full px-3 py-1 text-sm font-black ${className}`}>{value}</span>
                 </div>
               ))}
-              <ProgressBar label="Monthly target" value={72} />
+              <ProgressBar label="Monthly Target" value={72} />
             </div>
           </DataCard>
 
-          <DataCard title="Agent rate card" eyebrow="Active pricing">
+          <DataCard title="Agent Rate Card" eyebrow="Active Pricing">
             <div className="grid gap-3">
               {[
                 ["Adult rider", "$45", "Standard agent rate"],
@@ -79,17 +79,17 @@ export default function AgentDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">
-        <DataCard title="Booking status overview" eyebrow="Pipeline">
+        <DataCard title="Booking Status Overview" eyebrow="Pipeline">
           <div className="grid gap-4">
             <ProgressBar label="Confirmed" value={64} />
             <ProgressBar label="Pending" value={22} />
             <ProgressBar label="Completed" value={48} />
           </div>
         </DataCard>
-        <DataCard title="Quick actions" eyebrow="Next step">
+        <DataCard title="Quick Actions" eyebrow="Next Step">
           <div className="grid gap-3 sm:grid-cols-2">
-            <ActionButton href="/book">New customer booking</ActionButton>
-            <ActionButton href="/agents/dashboard" variant="soft">View commission</ActionButton>
+            <ActionButton href="/book">New Customer Booking</ActionButton>
+            <ActionButton href="/agents/dashboard" variant="soft">View Commission</ActionButton>
             <div className="rounded-2xl bg-white/65 p-4">
               <Users className="h-5 w-5 text-lagoon" />
               <p className="mt-3 font-black">Keep customer details ready before confirmation.</p>

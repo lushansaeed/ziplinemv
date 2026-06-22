@@ -10,7 +10,7 @@ export default async function AgentLoginPage({
   const params = await searchParams;
 
   return (
-    <DashboardShell title="Agent portal" subtitle="Register, log in, create customer bookings, view agent-specific rates, and track payable commission." nav={["Login", "Registration", "Dashboard", "Rate card"]}>
+    <DashboardShell title="Agent Portal" subtitle="Register, log in, create bookings, view rates, and track commission." nav={["Login", "Registration", "Dashboard", "Rate Card"]}>
       <div className="grid gap-5 md:grid-cols-2">
         <AuthForm
           mode="sign-in"

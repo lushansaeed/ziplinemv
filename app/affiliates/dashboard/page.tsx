@@ -4,10 +4,10 @@ import { ActionButton, DashboardTable, DataCard, ProgressBar, StatCard, StatusBa
 import { bookings } from "@/lib/data";
 
 const affiliateStats = [
-  { label: "Referral code", value: "FLYMALDIVES", detail: "Active and ready to share", icon: Ticket, tone: "lagoon" as const },
-  { label: "Total clicks", value: "1,248", detail: "19% higher than last month", icon: MousePointerClick, tone: "ocean" as const },
-  { label: "Total bookings", value: "37", detail: "12 completed bookings", icon: BarChart3, tone: "mint" as const },
-  { label: "Commission earned", value: "$740", detail: "$260 pending payout", icon: DollarSign, tone: "sunset" as const }
+  { label: "Referral Code", value: "FLYMALDIVES", detail: "Active and ready to share", icon: Ticket, tone: "lagoon" as const },
+  { label: "Total Clicks", value: "1,248", detail: "19% higher than last month", icon: MousePointerClick, tone: "ocean" as const },
+  { label: "Total Bookings", value: "37", detail: "12 completed bookings", icon: BarChart3, tone: "mint" as const },
+  { label: "Commission Earned", value: "$740", detail: "$260 pending payout", icon: DollarSign, tone: "sunset" as const }
 ];
 
 export default function AffiliateDashboardPage() {
@@ -15,8 +15,8 @@ export default function AffiliateDashboardPage() {
 
   return (
     <DashboardShell
-      title="Affiliate dashboard"
-      subtitle="Track referral link performance and commission eligibility after paid or completed bookings."
+      title="Affiliate Dashboard"
+      subtitle="Track referrals, bookings, and commission."
       nav={["Dashboard", "Code", "Clicks", "Bookings", "Commission", "Reports"]}
       showSignOut
     >
@@ -25,11 +25,11 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <DataCard title="Shareable referral link" eyebrow="My code">
+        <DataCard title="Shareable Referral Link" eyebrow="My Code">
           <div className="rounded-2xl bg-gradient-to-br from-ocean-950 to-ocean-700 p-5 text-white shadow-glow">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.18em] text-lagoon">Primary code</p>
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-lagoon">Primary Code</p>
                 <p className="mt-2 text-3xl font-black">FLYMALDIVES</p>
               </div>
               <span className="rounded-2xl bg-white/15 p-3">
@@ -39,21 +39,21 @@ export default function AffiliateDashboardPage() {
             <p className="mt-5 break-all rounded-2xl bg-white/12 p-4 font-mono text-sm text-white/85">{referralUrl}</p>
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <ActionButton href="/book">Test booking link</ActionButton>
+            <ActionButton href="/book">Test Booking Link</ActionButton>
             <p className="inline-flex items-center justify-center rounded-full bg-white/75 px-4 py-2 text-sm font-black text-ocean-950/65 shadow-sm">Copy the link from the field above</p>
           </div>
         </DataCard>
 
-        <DataCard title="Monthly performance" eyebrow="Conversion">
+        <DataCard title="Monthly Performance" eyebrow="Conversion">
           <div className="grid gap-5">
-            <ProgressBar label="Click to booking conversion" value={38} />
-            <ProgressBar label="Paid booking completion" value={72} />
-            <ProgressBar label="Commission eligibility" value={64} />
+            <ProgressBar label="Click To Booking Conversion" value={38} />
+            <ProgressBar label="Paid Booking Completion" value={72} />
+            <ProgressBar label="Commission Eligibility" value={64} />
             <div className="grid gap-3 sm:grid-cols-3">
               {[
                 ["Conversion", "2.96%"],
-                ["Avg. value", "$52"],
-                ["Payout queue", "$260"]
+                ["Avg. Value", "$52"],
+                ["Payout Queue", "$260"]
               ].map(([label, value]) => (
                 <div key={label} className="rounded-2xl bg-white/65 p-4">
                   <p className="text-xs font-black uppercase tracking-[0.14em] text-ocean-950/40">{label}</p>
@@ -66,7 +66,7 @@ export default function AffiliateDashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <DataCard title="Recent bookings using my code" eyebrow="Bookings">
+        <DataCard title="Recent Bookings Using My Code" eyebrow="Bookings">
           <DashboardTable
             columns={["Reference", "Customer", "Date", "Channel", "Status", "Payment"]}
             rows={bookings.map((booking) => [
@@ -80,7 +80,7 @@ export default function AffiliateDashboardPage() {
           />
         </DataCard>
 
-        <DataCard title="Commission history" eyebrow="Payouts">
+        <DataCard title="Commission History" eyebrow="Payouts">
           <div className="grid gap-3">
             {[
               ["Earned", "$740", "Eligible after paid or completed bookings"],
