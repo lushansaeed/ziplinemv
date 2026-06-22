@@ -46,6 +46,13 @@ enum CommissionStatus {
   REJECTED
 }
 
+enum BookingSource {
+  DIRECT_BOOKING
+  WALK_IN
+  AGENT
+  AFFILIATE
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -75,6 +82,13 @@ model Customer {
   phone       String
   email       String?
   isTourist   Boolean   @default(true)
+  source      BookingSource @default(DIRECT_BOOKING)
+  agentId     String?
+  agent       Agent?    @relation("AgentCustomers", fields: [agentId], references: [id])
+  affiliateId String?
+  affiliate   Affiliate? @relation("AffiliateCustomers", fields: [affiliateId], references: [id])
+  affiliateCodeId String?
+  affiliateCode AffiliateCode? @relation("AffiliateCodeCustomers", fields: [affiliateCodeId], references: [id])
   bookings    Booking[]
   createdAt   DateTime  @default(now())
 }
@@ -92,6 +106,7 @@ model Booking {
   currency          String
   paymentStatus     PaymentStatus @default(UNPAID)
   bookingStatus     BookingStatus @default(PENDING)
+  source            BookingSource @default(DIRECT_BOOKING)
   agentId           String?
   agent             Agent?        @relation(fields: [agentId], references: [id])
   affiliateId       String?
@@ -137,6 +152,7 @@ model Agent {
   isApproved        Boolean      @default(false)
   isSuspended       Boolean      @default(false)
   bookings          Booking[]
+  customers         Customer[]    @relation("AgentCustomers")
   rates             AgentRate[]
   commissions       Commission[]
 }
@@ -159,6 +175,7 @@ model Affiliate {
   displayName String
   isApproved  Boolean         @default(false)
   codes       AffiliateCode[]
+  customers   Customer[]       @relation("AffiliateCustomers")
   bookings    Booking[]
   commissions Commission[]
 }
@@ -170,6 +187,7 @@ model AffiliateCode {
   code        String     @unique
   clicks      Int        @default(0)
   isActive    Boolean    @default(true)
+  customers   Customer[] @relation("AffiliateCodeCustomers")
   bookings    Booking[]
 }
 

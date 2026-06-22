@@ -8,6 +8,7 @@ import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
 import { defaultPricingAddOns, getPricingEngineConfig, saveAddOnSettings, saveDefaultPricingSettings, saveExchangeRateSetting, type PricingAddOn } from "@/lib/pricing-engine";
 import { createClient } from "@/lib/supabase/server";
 import { ensureBookableTimeSlot, saveBookingTimeSlotSettings, type BookingTimeSlotSettings } from "@/lib/booking-time-slots";
+import { upsertAttributedCustomer } from "@/lib/booking-attribution";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -139,15 +140,17 @@ export async function createBooking(formData: FormData) {
   try {
     await db.$transaction(async (tx) => {
       const timeSlot = await ensureBookableTimeSlot(tx, bookingDate, timeSlotLabel, riderCount);
-      const customer = await tx.customer.create({
-        data: {
-          name: customerName,
-          phone,
-          email: optionalText(formData, "email"),
-          nationality: optionalText(formData, "nationality"),
-          isTourist: customerType === "tourist"
-        }
-      });
+      const source = affiliateCode ? "AFFILIATE" as const : "WALK_IN" as const;
+      const attribution = affiliateCode
+        ? { source, affiliateId: affiliateCode.affiliateId, affiliateCodeId: affiliateCode.id }
+        : { source };
+      const customer = await upsertAttributedCustomer(tx, {
+        name: customerName,
+        phone,
+        email: optionalText(formData, "email"),
+        nationality: optionalText(formData, "nationality"),
+        isTourist: customerType === "tourist"
+      }, attribution);
 
       const booking = await tx.booking.create({
         data: {
@@ -158,6 +161,7 @@ export async function createBooking(formData: FormData) {
           riderCount,
           totalAmount,
           currency,
+          source,
           affiliateId: affiliateCode?.affiliateId,
           affiliateCodeId: affiliateCode?.id,
           createdById,

@@ -1,13 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { PrismaClient } from "@prisma/client";
+import { Prisma, type PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { whatsappNumber } from "@/lib/data";
 import { getDb } from "@/lib/db";
-import { bookingReference, calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { bookingReference, type CustomerType } from "@/lib/pricing";
 import { ensureBookableTimeSlot } from "@/lib/booking-time-slots";
 import { getPricingEngineConfig } from "@/lib/pricing-engine";
+import { calculateBookingPrice, createAgentCommission, findActiveAgentForUser, upsertAttributedCustomer } from "@/lib/booking-attribution";
+import { getUserRole } from "@/lib/auth/roles";
+import { createClient } from "@/lib/supabase/server";
 
 export type BookingActionState = {
   ok: boolean;
@@ -73,27 +76,51 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
     return { ok: false, message: "Add at least one rider." };
   }
 
+  const db = getDb();
+  const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  const userRole = getUserRole(user);
+  const agent = userRole === "agent" ? await findActiveAgentForUser(db, user?.id) : null;
   const pricingEngine = await getPricingEngineConfig();
   const selectedAddOns = pricingEngine.addOns.filter((item) => item.enabled && values.addons.includes(item.id));
   const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + (item.currency === "USD" ? item.price : item.price / pricingEngine.pricing.exchangeRateMvrPerUsd), 0);
-  const price = calculateRideTotal(values.customerType as CustomerType, { adults: values.adults, children: values.children }, addOnUsdTotal, Boolean(values.coupon), pricingEngine.pricing);
-  const db = getDb();
+  const affiliateCode = !agent && values.coupon
+    ? await db.affiliateCode.findFirst({
+        where: { code: values.coupon, isActive: true, affiliate: { isApproved: true, user: { isActive: true } } },
+        include: { affiliate: true }
+      })
+    : null;
+  const attribution = agent
+    ? { source: "AGENT" as const, agentId: agent.id }
+    : affiliateCode
+      ? { source: "AFFILIATE" as const, affiliateId: affiliateCode.affiliateId, affiliateCodeId: affiliateCode.id }
+      : { source: "DIRECT_BOOKING" as const };
+  const price = calculateBookingPrice({
+    customerType: values.customerType as CustomerType,
+    riders: { adults: values.adults, children: values.children },
+    addOnUsdTotal,
+    hasCoupon: Boolean(values.coupon) && !agent,
+    pricing: pricingEngine.pricing,
+    agent
+  });
 
   try {
     const booking = await db.$transaction(async (tx: TransactionClient) => {
       const timeSlot = await ensureBookableTimeSlot(tx, values.preferredDate, values.timeSlot, riderCount);
 
-      const customer = await tx.customer.create({
-        data: {
-          name: values.customerName,
-          nationality: values.nationality,
-          phone: values.phone,
-          email: values.email,
-          isTourist: values.customerType === "tourist"
-        }
-      });
+      const customer = await upsertAttributedCustomer(tx, {
+        name: values.customerName,
+        nationality: values.nationality,
+        phone: values.phone,
+        email: values.email,
+        isTourist: values.customerType === "tourist"
+      }, attribution);
 
-      return tx.booking.create({
+      const commissionAmount = agent ? new Prisma.Decimal((Number(price.total) * Number(agent.commissionPercent)) / 100) : values.coupon ? new Prisma.Decimal(price.discount) : null;
+
+      const booking = await tx.booking.create({
         data: {
           reference: bookingReference(),
           customerId: customer.id,
@@ -102,10 +129,14 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
           riderCount,
           totalAmount: price.total,
           currency: price.currency,
+          source: attribution.source,
+          agentId: attribution.agentId,
+          affiliateId: attribution.affiliateId,
+          affiliateCodeId: attribution.affiliateCodeId,
           paymentStatus: "UNPAID",
           bookingStatus: "PENDING",
           internalNotes: values.specialNotes || null,
-          commissionAmount: values.coupon ? price.discount : null,
+          commissionAmount,
           riders: {
             create: [
               ...Array.from({ length: values.adults }, () => ({ type: "ADULT" })),
@@ -130,6 +161,10 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
           }
         }
       });
+
+      await createAgentCommission(tx, booking, agent);
+
+      return booking;
     });
 
     revalidatePath("/admin/bookings");

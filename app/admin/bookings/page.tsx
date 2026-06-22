@@ -4,6 +4,7 @@ import { AdminBookingManagementWorkspace } from "@/components/admin-booking-mana
 import { AdminBookingsWorkspace } from "@/components/admin-bookings-workspace";
 import { DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { updateAffiliate, updateCustomer } from "@/lib/admin/actions";
+import { sourceLabel } from "@/lib/booking-attribution";
 import { getUserRole, type AuthRole } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db";
 import { defaultPricing } from "@/lib/pricing";
@@ -27,6 +28,7 @@ type BookingForRow = {
   currency: string;
   paymentStatus: string;
   bookingStatus: string;
+  source: "DIRECT_BOOKING" | "WALK_IN" | "AGENT" | "AFFILIATE";
   createdAt: Date;
   internalNotes: string | null;
 };
@@ -65,7 +67,12 @@ export default async function BookingManagementPage({
       take: 100
     }),
     db.customer.findMany({
-      include: { bookings: true },
+      include: {
+        bookings: { orderBy: { date: "desc" } },
+        agent: true,
+        affiliate: true,
+        affiliateCode: true
+      },
       orderBy: { createdAt: "desc" },
       take: 100
     }),
@@ -130,7 +137,7 @@ function toBookingRow(booking: BookingForRow) {
     kids,
     totalGuests: booking.riderCount ?? adults + kids,
     addOns: booking.addons.map((addon) => addon.label).join(", "),
-    bookingSource: booking.agent ? "Agent" : booking.affiliate ? "Affiliate" : "Direct",
+    bookingSource: bookingSourceDisplay(booking),
     agentName: booking.agent?.agencyName || booking.agent?.user?.name || booking.agent?.user?.email || "",
     affiliateCode: booking.affiliateCode?.code ?? "",
     totalAmount: String(booking.totalAmount),
@@ -151,6 +158,16 @@ function Messages({ message, error }: { message?: string; error?: string }) {
   );
 }
 
+function bookingSourceDisplay(booking: BookingForRow) {
+  if (booking.source === "AGENT") {
+    return `Agent: ${booking.agent?.agencyName || booking.agent?.user?.name || booking.agent?.user?.email || "Unknown Agent"}`;
+  }
+  if (booking.source === "AFFILIATE") {
+    return `Affiliate: ${booking.affiliate?.displayName || booking.affiliateCode?.code || "Unknown Affiliate"}`;
+  }
+  return sourceLabel(booking.source);
+}
+
 function CustomersPanel({
   customers
 }: {
@@ -161,33 +178,96 @@ function CustomersPanel({
     email: string | null;
     nationality: string | null;
     isTourist: boolean;
-    bookings: unknown[];
+    source: "DIRECT_BOOKING" | "WALK_IN" | "AGENT" | "AFFILIATE";
+    agent: { agencyName: string } | null;
+    affiliate: { displayName: string } | null;
+    affiliateCode: { code: string } | null;
+    bookings: Array<{ totalAmount: unknown; date: Date; currency: string }>;
   }>;
 }) {
   return (
     <section className="grid gap-4">
       <div className="rounded-3xl bg-white p-5 shadow-sm">
         <h2 className="text-2xl font-black text-ocean-950">Customers</h2>
-        <p className="mt-1 text-xs font-bold text-ocean-950/45">Update customer details and booking counts.</p>
+        <p className="mt-1 text-xs font-bold text-ocean-950/45">Track customer source, linked partner, bookings, and spend.</p>
       </div>
-      {customers.length ? customers.map((customer) => (
-        <form key={customer.id} action={updateCustomer} className="grid gap-3 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-6">
-          <input type="hidden" name="id" value={customer.id} />
-          <Field name="name" label="Name" defaultValue={customer.name} required />
-          <Field name="phone" label="Phone" defaultValue={customer.phone} required />
-          <Field name="email" label="Email" type="email" defaultValue={customer.email ?? ""} />
-          <Field name="nationality" label="Nationality" defaultValue={customer.nationality ?? ""} />
-          <label className="flex items-center gap-2 pt-7 text-sm font-bold">
-            <input name="isTourist" type="checkbox" defaultChecked={customer.isTourist} /> Tourist
-          </label>
-          <div className="flex items-end">
-            <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Save</button>
-          </div>
-          <p className="text-xs font-bold text-ocean-950/55 md:col-span-6">{customer.bookings.length} Bookings</p>
-        </form>
-      )) : <p className="rounded-2xl bg-white p-5 text-sm font-bold text-ocean-950/60 shadow-sm">No customers yet.</p>}
+      <div className="overflow-x-auto rounded-2xl bg-white shadow-sm">
+        <table className="w-full min-w-[1180px] border-collapse text-left text-sm">
+          <thead className="bg-ocean-50/80 text-ocean-950/60">
+            <tr>
+              {["Customer Name", "Phone", "Email", "Nationality", "Customer Type", "Source", "Agent / Affiliate", "Total Bookings", "Total Spent", "Last Booking Date", "Actions"].map((column) => (
+                <th key={column} className="px-4 py-3 font-black">{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-ocean-950/10">
+            {customers.length ? customers.map((customer) => (
+              <tr key={customer.id} className="align-top">
+                <td className="px-4 py-4 font-black text-ocean-950">{customer.name}</td>
+                <td className="px-4 py-4 font-bold text-ocean-950/70">{customer.phone}</td>
+                <td className="max-w-[220px] px-4 py-4 font-bold text-ocean-950/70"><span className="block truncate">{customer.email || "-"}</span></td>
+                <td className="px-4 py-4 font-bold text-ocean-950/70">{customer.nationality || "-"}</td>
+                <td className="px-4 py-4 font-bold text-ocean-950/70">{customer.isTourist ? "Tourist" : "Local"}</td>
+                <td className="px-4 py-4 font-black text-ocean-950">{sourceLabel(customer.source)}</td>
+                <td className="px-4 py-4 font-bold text-ocean-950/70">{customerSourceOwner(customer)}</td>
+                <td className="px-4 py-4 font-black text-ocean-950">{customer.bookings.length}</td>
+                <td className="px-4 py-4 font-black text-ocean-950">{customerTotalSpent(customer.bookings)}</td>
+                <td className="px-4 py-4 font-bold text-ocean-950/70">{customer.bookings[0]?.date.toISOString().slice(0, 10) ?? "-"}</td>
+                <td className="px-4 py-4">
+                  <details>
+                    <summary className="cursor-pointer rounded-full bg-ocean-50 px-3 py-2 text-xs font-black text-ocean-950">Edit</summary>
+                    <form action={updateCustomer} className="mt-3 grid min-w-72 gap-2 rounded-2xl bg-ocean-50 p-3">
+                      <input type="hidden" name="id" value={customer.id} />
+                      <Field name="name" label="Name" defaultValue={customer.name} required />
+                      <Field name="phone" label="Phone" defaultValue={customer.phone} required />
+                      <Field name="email" label="Email" type="email" defaultValue={customer.email ?? ""} />
+                      <Field name="nationality" label="Nationality" defaultValue={customer.nationality ?? ""} />
+                      <label className="flex items-center gap-2 text-sm font-bold">
+                        <input name="isTourist" type="checkbox" defaultChecked={customer.isTourist} /> Tourist
+                      </label>
+                      <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Save</button>
+                    </form>
+                  </details>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={11} className="px-4 py-8 text-center text-sm font-bold text-ocean-950/60">No customers yet.</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
+}
+
+function customerSourceOwner(customer: {
+  source: "DIRECT_BOOKING" | "WALK_IN" | "AGENT" | "AFFILIATE";
+  agent: { agencyName: string } | null;
+  affiliate: { displayName: string } | null;
+  affiliateCode: { code: string } | null;
+}) {
+  if (customer.source === "AGENT") return customer.agent?.agencyName ?? "Unknown Agent";
+  if (customer.source === "AFFILIATE") return customer.affiliate?.displayName ?? customer.affiliateCode?.code ?? "Unknown Affiliate";
+  if (customer.source === "WALK_IN") return "Walk-In";
+  return "Direct";
+}
+
+function customerTotalSpent(bookings: Array<{ totalAmount: unknown; currency: string }>) {
+  const totals = bookings.reduce((sum, booking) => {
+    const amount = Number(booking.totalAmount);
+    if (booking.currency === "MVR") {
+      sum.mvr += amount;
+    } else {
+      sum.usd += amount;
+    }
+    return sum;
+  }, { usd: 0, mvr: 0 });
+
+  if (totals.usd && totals.mvr) return `USD ${totals.usd.toFixed(2)} / MVR ${totals.mvr.toFixed(2)}`;
+  if (totals.mvr) return `MVR ${totals.mvr.toFixed(2)}`;
+  return `USD ${totals.usd.toFixed(2)}`;
 }
 
 function AffiliatesPanel({

@@ -8,6 +8,7 @@ import {
   WalletCards
 } from "lucide-react";
 import { updateBooking } from "@/lib/admin/actions";
+import { sourceLabel } from "@/lib/booking-attribution";
 import { defaultPricing } from "@/lib/pricing";
 import { DashboardShell } from "@/components/dashboard-shell";
 import { SalesReportChart, type SalesDataset, type SalesPeriod } from "@/components/admin-sales-report-chart";
@@ -151,7 +152,7 @@ export default async function AdminPage() {
               booking.timeSlot.label,
               String(booking.riderCount),
               booking.addons.length ? booking.addons.map((addon) => addon.label).join(", ") : "None",
-              booking.agent ? "Agent" : booking.affiliate ? "Affiliate" : booking.createdById ? "Admin/manual" : "Direct website",
+              dashboardBookingSource(booking),
               <MoneyStack key="amount" money={toMoney(Number(booking.totalAmount), booking.currency)} />,
               <StatusBadge key="payment" status={booking.paymentStatus} />,
               <StatusBadge key="status" status={booking.bookingStatus} />,
@@ -224,6 +225,16 @@ export default async function AdminPage() {
       </div>
     </DashboardShell>
   );
+}
+
+function dashboardBookingSource(booking: {
+  source: "DIRECT_BOOKING" | "WALK_IN" | "AGENT" | "AFFILIATE";
+  agent: { agencyName: string } | null;
+  affiliate: { displayName: string } | null;
+}) {
+  if (booking.source === "AGENT") return `Agent: ${booking.agent?.agencyName ?? "Unknown Agent"}`;
+  if (booking.source === "AFFILIATE") return `Affiliate: ${booking.affiliate?.displayName ?? "Unknown Affiliate"}`;
+  return sourceLabel(booking.source);
 }
 
 function BookingActions({ id, bookingStatus, paymentStatus }: { id: string; bookingStatus: string; paymentStatus: string }) {
