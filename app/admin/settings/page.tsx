@@ -1,7 +1,1 @@
-import { redirect } from "next/navigation";
-
-export const dynamic = "force-dynamic";
-
-export default function AdminSettingsPage() {
-  redirect("/admin/pricing");
-}
+export { default, dynamic } from "../pricing/page";
