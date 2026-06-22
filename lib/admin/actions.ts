@@ -444,6 +444,38 @@ export async function updateAgent(formData: FormData) {
   redirectWith("/admin/agents", "Agent updated.");
 }
 
+export async function updateAgentStatus(userId: string, status: "active" | "inactive" | "suspended") {
+  const db = getDb();
+
+  if (!userId || !["active", "inactive", "suspended"].includes(status)) {
+    throw new Error("Agent status could not be saved.");
+  }
+
+  if (status === "active") {
+    await db.$transaction([
+      db.user.update({ where: { id: userId }, data: { isActive: true } }),
+      db.agent.update({ where: { userId }, data: { isApproved: true, isSuspended: false } })
+    ]);
+  }
+
+  if (status === "inactive") {
+    await db.$transaction([
+      db.user.update({ where: { id: userId }, data: { isActive: false } }),
+      db.agent.update({ where: { userId }, data: { isSuspended: false } })
+    ]);
+  }
+
+  if (status === "suspended") {
+    await db.$transaction([
+      db.user.update({ where: { id: userId }, data: { isActive: false } }),
+      db.agent.update({ where: { userId }, data: { isApproved: false, isSuspended: true } })
+    ]);
+  }
+
+  revalidatePath("/admin/agents");
+  revalidatePath("/admin/roles");
+}
+
 export async function updateAffiliate(formData: FormData) {
   const db = getDb();
   const userId = text(formData, "userId");
