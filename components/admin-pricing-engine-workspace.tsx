@@ -1,16 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   deleteAgentRate,
   deletePricingRule,
   saveAgentRate,
+  saveAgentRateInline,
   saveAgentRateMatrix,
+  saveAgentRateMatrixInline,
   saveBookingTimeSlotSettingsAction,
+  saveBookingTimeSlotSettingsInline,
   savePricingEngineAddOns,
+  savePricingEngineAddOnsInline,
   savePricingEngineDefaults,
+  savePricingEngineDefaultsInline,
   savePricingEngineExchangeRate,
-  savePricingRule
+  savePricingEngineExchangeRateInline,
+  savePricingRule,
+  savePricingRuleInline
 } from "@/lib/admin/actions";
 import type { BookingTimeSlotSettings } from "@/lib/booking-time-slots";
 import type { RidePricingConfig } from "@/lib/pricing";
@@ -91,7 +98,7 @@ export function AdminPricingEngineWorkspace({
 function DefaultPricesTab({ pricing }: { pricing: RidePricingConfig }) {
   return (
     <Card title="Default Prices">
-      <form action={savePricingEngineDefaults} className="grid gap-4 md:grid-cols-3">
+      <AsyncForm action={savePricingEngineDefaultsInline} className="grid gap-4 md:grid-cols-3" successLabel="Save Default Prices">
         <Field name="touristAdultUsd" label="Tourist Adult Price" type="number" step="0.01" defaultValue={pricing.touristAdultUsd} />
         <Field name="touristChildUsd" label="Tourist Kid Price" type="number" step="0.01" defaultValue={pricing.touristChildUsd} />
         <Field name="localAdultMvr" label="Local Adult Price" type="number" step="0.01" defaultValue={pricing.localAdultMvr} />
@@ -101,8 +108,7 @@ function DefaultPricesTab({ pricing }: { pricing: RidePricingConfig }) {
         <Select name="defaultCurrency" label="Default Currency" defaultValue={pricing.defaultCurrency} options={["USD", "MVR"]} />
         <Field name="exchangeRateMvrPerUsd" label="USD To MVR Rate" type="number" step="0.01" defaultValue={pricing.exchangeRateMvrPerUsd} />
         <Field name="affiliateDiscountPercent" label="Coupon Discount %" type="number" step="0.01" defaultValue={pricing.affiliateDiscountPercent} />
-        <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white md:col-span-3">Save Default Prices</button>
-      </form>
+      </AsyncForm>
     </Card>
   );
 }
@@ -128,7 +134,7 @@ function OffersTab({ rules }: { rules: PricingRuleRow[] }) {
 function PricingRuleForm({ kind, rule }: { kind: "seasonal" | "offer" | "group"; rule?: PricingRuleRow }) {
   const audienceDefault = kind === "seasonal" ? "seasonal:both" : kind === "offer" ? "offer:both" : "group:both";
   return (
-    <form action={savePricingRule} className="grid gap-4 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-4">
+    <AsyncForm action={savePricingRuleInline} className="grid gap-4 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-4" successLabel={rule ? "Save" : "Add New"}>
       {rule ? <input type="hidden" name="id" value={rule.id} /> : null}
       <Field name="name" label={kind === "offer" ? "Offer Name" : kind === "group" ? "Group Rate Name" : "Season Name"} defaultValue={rule?.name ?? ""} required />
       <input type="hidden" name="audience" value={rule?.audience ?? audienceDefault} />
@@ -141,8 +147,7 @@ function PricingRuleForm({ kind, rule }: { kind: "seasonal" | "offer" | "group";
       <label className="flex items-center gap-2 text-sm font-black text-ocean-950">
         <input name="isActive" type="checkbox" defaultChecked={rule?.isActive ?? true} /> Active
       </label>
-      <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white md:col-span-4">{rule ? "Save" : "Add New"}</button>
-    </form>
+    </AsyncForm>
   );
 }
 
@@ -198,7 +203,7 @@ function AgentRatesTab({ agents }: { agents: AgentRow[] }) {
 function AgentRateMatrixForm({ agent }: { agent: AgentRow }) {
   const values = Object.fromEntries(agent.rates.map((rate) => [rate.name, rate.price]));
   return (
-    <form action={saveAgentRateMatrix} className="grid gap-3 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-3">
+    <AsyncForm action={saveAgentRateMatrixInline} className="grid gap-3 rounded-2xl bg-ocean-50/55 p-4 md:grid-cols-3" successLabel="Save Agent Rates">
       <input type="hidden" name="agentId" value={agent.id} />
       <Field name="touristAdultAgentRate" label="Tourist Adult Agent Rate, USD" type="number" step="0.01" defaultValue={values["Tourist Adult Agent Rate"] ?? ""} />
       <Field name="touristKidAgentRate" label="Tourist Kid Agent Rate, USD" type="number" step="0.01" defaultValue={values["Tourist Kid Agent Rate"] ?? ""} />
@@ -210,14 +215,13 @@ function AgentRateMatrixForm({ agent }: { agent: AgentRow }) {
       <label className="flex items-center gap-2 self-end text-sm font-black text-ocean-950">
         <input name="isActive" type="checkbox" defaultChecked /> Active
       </label>
-      <button className="rounded-full bg-ocean-950 px-4 py-3 text-sm font-black text-white md:col-span-3">Save Agent Rates</button>
-    </form>
+    </AsyncForm>
   );
 }
 
 function AgentRateForm({ agent, rate }: { agent: AgentRow; rate?: AgentRow["rates"][number] }) {
   return (
-    <form action={saveAgentRate} className="grid gap-3 md:grid-cols-6">
+    <AsyncForm action={saveAgentRateInline} className="grid gap-3 md:grid-cols-6" successLabel={rate ? "Save Rate" : "Add New Rate"}>
       <input type="hidden" name="agentId" value={agent.id} />
       {rate ? <input type="hidden" name="id" value={rate.id} /> : null}
       <Field name="name" label="Rate Name" defaultValue={rate?.name ?? "Agent Rate"} />
@@ -226,22 +230,20 @@ function AgentRateForm({ agent, rate }: { agent: AgentRow; rate?: AgentRow["rate
       <Field name="commissionPercent" label="Commission %" type="number" step="0.01" defaultValue={agent.commissionPercent} />
       <Field name="validFrom" label="Valid From" type="date" defaultValue={rate?.validFrom ?? ""} />
       <Field name="validTo" label="Valid To" type="date" defaultValue={rate?.validTo ?? ""} />
-      <button className="rounded-full bg-ocean-950 px-4 py-3 text-sm font-black text-white md:col-span-6">{rate ? "Save Rate" : "Add New Rate"}</button>
-    </form>
+    </AsyncForm>
   );
 }
 
 function ExchangeRateTab({ pricing }: { pricing: RidePricingConfig }) {
   return (
     <Card title="Exchange Rate">
-      <form action={savePricingEngineExchangeRate} className="grid gap-4 md:grid-cols-3">
+      <AsyncForm action={savePricingEngineExchangeRateInline} className="grid gap-4 md:grid-cols-3" successLabel="Save Exchange Rate">
         <Field name="exchangeRateMvrPerUsd" label="USD To MVR Rate" type="number" step="0.01" defaultValue={pricing.exchangeRateMvrPerUsd} />
         <Field name="effectiveFrom" label="Effective From Date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
         <label className="flex items-center gap-2 self-end text-sm font-black text-ocean-950">
           <input name="isActive" type="checkbox" defaultChecked /> Active
         </label>
-        <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white md:col-span-3">Save Exchange Rate</button>
-      </form>
+      </AsyncForm>
     </Card>
   );
 }
@@ -251,7 +253,7 @@ function AddOnsTab({ addOns }: { addOns: PricingAddOn[] }) {
   const addNew = () => setItems((current) => [...current, { id: `addon_${Date.now()}`, label: "", price: 0, currency: "USD", enabled: true, description: "" }]);
   return (
     <Card title="Add-Ons">
-      <form action={savePricingEngineAddOns} className="grid gap-4">
+      <AsyncForm action={savePricingEngineAddOnsInline} className="grid gap-4" successLabel="Save Add-Ons">
         <div className="flex justify-end">
           <button type="button" onClick={addNew} className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-black text-ocean-950">Add New Add-On</button>
         </div>
@@ -267,16 +269,30 @@ function AddOnsTab({ addOns }: { addOns: PricingAddOn[] }) {
             </label>
           </section>
         ))}
-        <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white">Save Add-Ons</button>
-      </form>
+      </AsyncForm>
     </Card>
   );
 }
 
 function SlotCapacityTab({ settings }: { settings: BookingTimeSlotSettings }) {
+  const [draft, setDraft] = useState<BookingTimeSlotSettings>(settings);
+  const previewSlots = useMemo(() => generatePreviewSlots(draft), [draft]);
+  const updateDraft = (form: HTMLFormElement) => {
+    const formData = new FormData(form);
+    setDraft({
+      startTime: String(formData.get("startTime") ?? ""),
+      endTime: String(formData.get("endTime") ?? ""),
+      slotDuration: Number(formData.get("slotDuration") ?? 30) as BookingTimeSlotSettings["slotDuration"],
+      guestsPerSlot: Number(formData.get("guestsPerSlot") ?? 10),
+      breakEnabled: formData.get("breakEnabled") === "on",
+      breakStartTime: String(formData.get("breakStartTime") ?? ""),
+      breakEndTime: String(formData.get("breakEndTime") ?? "")
+    });
+  };
+
   return (
     <Card title="Slot Capacity">
-      <form action={saveBookingTimeSlotSettingsAction} className="grid gap-4 md:grid-cols-3">
+      <AsyncForm action={saveBookingTimeSlotSettingsInline} className="grid gap-4 md:grid-cols-3" successLabel="Save Slot Capacity" onChange={(event) => updateDraft(event.currentTarget)}>
         <input type="hidden" name="redirectPath" value="/admin/pricing" />
         <Field name="startTime" label="Start Time" type="time" defaultValue={settings.startTime} required />
         <Field name="endTime" label="End Time" type="time" defaultValue={settings.endTime} required />
@@ -288,10 +304,98 @@ function SlotCapacityTab({ settings }: { settings: BookingTimeSlotSettings }) {
         <div />
         <Field name="breakStartTime" label="Break Start Time" type="time" defaultValue={settings.breakStartTime} />
         <Field name="breakEndTime" label="Break End Time" type="time" defaultValue={settings.breakEndTime} />
-        <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white md:col-span-3">Save Slot Capacity</button>
-      </form>
+      </AsyncForm>
+      <section className="mt-6 rounded-2xl border border-ocean-950/10 bg-ocean-50/45 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-lg font-black text-ocean-950">Generated Time Slots</h3>
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-black text-ocean-700">{previewSlots.length} Slots</span>
+        </div>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {previewSlots.length ? previewSlots.map((slot) => (
+            <span key={slot} className="rounded-2xl bg-white px-4 py-3 text-sm font-black text-ocean-950 shadow-sm">{slot} | {draft.guestsPerSlot || 0} Guests</span>
+          )) : (
+            <p className="rounded-2xl bg-white p-4 text-sm font-bold text-ocean-950/55">No slots can be generated with the current settings.</p>
+          )}
+        </div>
+      </section>
     </Card>
   );
+}
+
+function AsyncForm({
+  action,
+  successLabel,
+  className,
+  children,
+  onChange
+}: {
+  action: (formData: FormData) => Promise<{ ok: boolean; message: string }>;
+  successLabel: string;
+  className?: string;
+  children: React.ReactNode;
+  onChange?: React.FormEventHandler<HTMLFormElement>;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [message, setMessage] = useState("");
+
+  return (
+    <form
+      className={className}
+      onChange={onChange}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        setMessage("");
+        startTransition(async () => {
+          try {
+            const result = await action(new FormData(form));
+            setMessage(result.message);
+          } catch {
+            setMessage("Could not save. Please try again.");
+          }
+        });
+      }}
+    >
+      {children}
+      <div className="grid gap-2 md:col-span-full">
+        <button disabled={isPending} className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-60">{isPending ? "Saving..." : successLabel}</button>
+        {message ? <p className={`text-sm font-black ${message.toLowerCase().includes("could not") ? "text-red-600" : "text-ocean-700"}`}>{message}</p> : null}
+      </div>
+    </form>
+  );
+}
+
+function generatePreviewSlots(settings: BookingTimeSlotSettings) {
+  const start = timeToMinutes(settings.startTime);
+  const end = timeToMinutes(settings.endTime);
+  const breakStart = timeToMinutes(settings.breakStartTime);
+  const breakEnd = timeToMinutes(settings.breakEndTime);
+  const duration = Number(settings.slotDuration);
+
+  if (start === null || end === null || start >= end || ![15, 30, 45, 60].includes(duration) || !Number.isFinite(settings.guestsPerSlot) || settings.guestsPerSlot <= 0) {
+    return [];
+  }
+
+  const slots: string[] = [];
+  for (let cursor = start; cursor + duration <= end; cursor += duration) {
+    const slotEnd = cursor + duration;
+    const overlapsBreak = settings.breakEnabled && breakStart !== null && breakEnd !== null && cursor < breakEnd && slotEnd > breakStart;
+    if (!overlapsBreak) {
+      slots.push(`${minutesToTime(cursor)} - ${minutesToTime(slotEnd)}`);
+    }
+  }
+
+  return slots;
+}
+
+function timeToMinutes(value: string) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
+  if (!match) return null;
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function minutesToTime(value: number) {
+  return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {

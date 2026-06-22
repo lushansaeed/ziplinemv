@@ -272,6 +272,17 @@ export async function deleteBooking(formData: FormData) {
 }
 
 export async function savePricingRule(formData: FormData) {
+  await savePricingRuleData(formData);
+  redirectWith("/admin/pricing", text(formData, "id") ? "Pricing rule updated." : "Pricing rule created.");
+}
+
+export async function savePricingRuleInline(formData: FormData) {
+  const id = text(formData, "id");
+  await savePricingRuleData(formData);
+  return { ok: true, message: id ? "Pricing rule saved." : "Pricing rule created." };
+}
+
+async function savePricingRuleData(formData: FormData) {
   const db = getDb();
   const id = text(formData, "id");
   const data = {
@@ -293,7 +304,6 @@ export async function savePricingRule(formData: FormData) {
   }
 
   revalidatePath("/admin/pricing");
-  redirectWith("/admin/pricing", id ? "Pricing rule updated." : "Pricing rule created.");
 }
 
 export async function deletePricingRule(formData: FormData) {
@@ -304,6 +314,16 @@ export async function deletePricingRule(formData: FormData) {
 }
 
 export async function savePricingEngineDefaults(formData: FormData) {
+  await savePricingEngineDefaultsData(formData);
+  redirectWith("/admin/pricing", "Default prices saved.");
+}
+
+export async function savePricingEngineDefaultsInline(formData: FormData) {
+  await savePricingEngineDefaultsData(formData);
+  return { ok: true, message: "Default pricing saved." };
+}
+
+async function savePricingEngineDefaultsData(formData: FormData) {
   await saveDefaultPricingSettings({
     touristAdultUsd: Number(text(formData, "touristAdultUsd") || 50),
     touristChildUsd: Number(text(formData, "touristChildUsd") || 30),
@@ -319,19 +339,37 @@ export async function savePricingEngineDefaults(formData: FormData) {
   revalidatePath("/admin/pricing");
   revalidatePath("/book");
   revalidatePath("/admin/bookings");
-  redirectWith("/admin/pricing", "Default prices saved.");
 }
 
 export async function savePricingEngineExchangeRate(formData: FormData) {
+  await savePricingEngineExchangeRateData(formData);
+  redirectWith("/admin/pricing", "Exchange rate saved.");
+}
+
+export async function savePricingEngineExchangeRateInline(formData: FormData) {
+  await savePricingEngineExchangeRateData(formData);
+  return { ok: true, message: "Exchange rate saved." };
+}
+
+async function savePricingEngineExchangeRateData(formData: FormData) {
   await saveExchangeRateSetting(Number(text(formData, "exchangeRateMvrPerUsd") || 20), text(formData, "effectiveFrom"), boolValue(formData, "isActive"));
 
   revalidatePath("/admin/pricing");
   revalidatePath("/book");
   revalidatePath("/admin/bookings");
-  redirectWith("/admin/pricing", "Exchange rate saved.");
 }
 
 export async function savePricingEngineAddOns(formData: FormData) {
+  await savePricingEngineAddOnsData(formData);
+  redirectWith("/admin/pricing", "Add-ons saved.");
+}
+
+export async function savePricingEngineAddOnsInline(formData: FormData) {
+  await savePricingEngineAddOnsData(formData);
+  return { ok: true, message: "Add-ons saved." };
+}
+
+async function savePricingEngineAddOnsData(formData: FormData) {
   const ids = formData.getAll("addonId").map((value) => String(value).trim()).filter(Boolean);
   const addOnsToSave: PricingAddOn[] = ids.map((id) => {
     const fallback = defaultPricingAddOns.find((item) => item.id === id);
@@ -349,10 +387,20 @@ export async function savePricingEngineAddOns(formData: FormData) {
   revalidatePath("/admin/pricing");
   revalidatePath("/book");
   revalidatePath("/admin/bookings");
-  redirectWith("/admin/pricing", "Add-ons saved.");
 }
 
 export async function saveAgentRate(formData: FormData) {
+  await saveAgentRateData(formData);
+  redirectWith("/admin/pricing", text(formData, "id") ? "Agent rate saved." : "Agent rate created.");
+}
+
+export async function saveAgentRateInline(formData: FormData) {
+  const id = text(formData, "id");
+  await saveAgentRateData(formData);
+  return { ok: true, message: id ? "Agent rate saved." : "Agent rate created." };
+}
+
+async function saveAgentRateData(formData: FormData) {
   const db = getDb();
   const id = text(formData, "id");
   const data = {
@@ -377,10 +425,19 @@ export async function saveAgentRate(formData: FormData) {
 
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/agents");
-  redirectWith("/admin/pricing", id ? "Agent rate saved." : "Agent rate created.");
 }
 
 export async function saveAgentRateMatrix(formData: FormData) {
+  await saveAgentRateMatrixData(formData);
+  redirectWith("/admin/pricing", "Agent rates saved.");
+}
+
+export async function saveAgentRateMatrixInline(formData: FormData) {
+  await saveAgentRateMatrixData(formData);
+  return { ok: true, message: "Agent rates saved." };
+}
+
+async function saveAgentRateMatrixData(formData: FormData) {
   const db = getDb();
   const agentId = text(formData, "agentId");
   const rates = [
@@ -411,7 +468,6 @@ export async function saveAgentRateMatrix(formData: FormData) {
 
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/agents");
-  redirectWith("/admin/pricing", "Agent rates saved.");
 }
 
 export async function deleteAgentRate(formData: FormData) {
@@ -423,6 +479,25 @@ export async function deleteAgentRate(formData: FormData) {
 
 export async function saveBookingTimeSlotSettingsAction(formData: FormData) {
   const redirectPath = text(formData, "redirectPath") || "/admin/settings";
+  try {
+    await saveBookingTimeSlotSettingsData(formData);
+  } catch (error) {
+    redirectWith(redirectPath, error instanceof Error ? error.message : "Booking time slot settings could not be saved.");
+  }
+
+  redirectWith(redirectPath, "Booking time slot settings saved.");
+}
+
+export async function saveBookingTimeSlotSettingsInline(formData: FormData) {
+  try {
+    await saveBookingTimeSlotSettingsData(formData);
+    return { ok: true, message: "Slot capacity saved." };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Booking time slot settings could not be saved." };
+  }
+}
+
+async function saveBookingTimeSlotSettingsData(formData: FormData) {
   const settings: BookingTimeSlotSettings = {
     startTime: text(formData, "startTime"),
     endTime: text(formData, "endTime"),
@@ -433,17 +508,12 @@ export async function saveBookingTimeSlotSettingsAction(formData: FormData) {
     breakEndTime: text(formData, "breakEndTime")
   };
 
-  try {
-    await saveBookingTimeSlotSettings(settings);
-  } catch (error) {
-    redirectWith(redirectPath, error instanceof Error ? error.message : "Booking time slot settings could not be saved.");
-  }
+  await saveBookingTimeSlotSettings(settings);
 
   revalidatePath("/admin/settings");
   revalidatePath("/admin/pricing");
   revalidatePath("/admin/bookings");
   revalidatePath("/book");
-  redirectWith(redirectPath, "Booking time slot settings saved.");
 }
 
 export async function saveTimeSlot(formData: FormData) {
