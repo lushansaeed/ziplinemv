@@ -53,8 +53,3 @@ export function AdminBookingManagementWorkspace({
     </div>
   );
 }
-
-export function bookingManagementTabFromParam(value: string | undefined): BookingManagementTab {
-  if (value === "customers" || value === "agents" || value === "affiliates") return value;
-  return "bookings";
-}

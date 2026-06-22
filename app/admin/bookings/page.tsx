@@ -1,6 +1,6 @@
 import { DashboardShell } from "@/components/dashboard-shell";
 import { AdminAgentManagementWorkspace, type AgentManagementAgent } from "@/components/admin-agent-management-workspace";
-import { AdminBookingManagementWorkspace, bookingManagementTabFromParam } from "@/components/admin-booking-management-workspace";
+import { AdminBookingManagementWorkspace } from "@/components/admin-booking-management-workspace";
 import { AdminBookingsWorkspace } from "@/components/admin-bookings-workspace";
 import { DashboardTable, DataCard } from "@/components/dashboard-ui";
 import { updateAffiliate, updateCustomer } from "@/lib/admin/actions";
@@ -107,6 +107,11 @@ function bookingTabsForRole(role: AuthRole | null): Array<"bookings" | "customer
   if (role === "admin") return ["bookings", "customers", "agents", "affiliates"];
   if (role === "counter_staff") return ["bookings", "customers"];
   return ["bookings"];
+}
+
+function bookingManagementTabFromParam(value: string | undefined): "bookings" | "customers" | "agents" | "affiliates" {
+  if (value === "customers" || value === "agents" || value === "affiliates") return value;
+  return "bookings";
 }
 
 function toBookingRow(booking: BookingForRow) {
