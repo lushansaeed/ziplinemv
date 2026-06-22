@@ -43,7 +43,7 @@ export function AdminRoleRequestsWorkspace({
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("agent");
 
   return (
-    <section className="mt-6 rounded-[2rem] bg-white/85 p-3 shadow-sm">
+    <section className="mt-6 min-w-0 rounded-[2rem] bg-white/85 p-3 shadow-sm">
       <div className="flex flex-wrap gap-2 rounded-[1.5rem] bg-ocean-50/80 p-2">
         {[
           ["agent", "Agent Requests"],
@@ -280,13 +280,13 @@ function TeamMembersPanel({ rows }: { rows: TeamMemberRow[] }) {
   }, [rows, search, roleFilter, statusFilter]);
 
   return (
-    <div className="grid gap-5">
+    <div className="grid min-w-0 gap-5">
       <form action={createTeamMember} className="rounded-[1.75rem] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-2">
           <h2 className="text-2xl font-black text-ocean-950">Add Team Member</h2>
           <p className="text-xs font-semibold text-ocean-950/45">Create operational accounts with limited admin access.</p>
         </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_220px_1fr_auto]">
+        <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Field label="Name">
             <input name="name" className={inputClass} required />
           </Field>
@@ -299,13 +299,13 @@ function TeamMembersPanel({ rows }: { rows: TeamMemberRow[] }) {
           <Field label="Temporary Password">
             <input name="password" type="password" minLength={8} className={inputClass} required />
           </Field>
-          <div className="flex items-end">
-            <button className="h-12 w-full rounded-2xl bg-ocean-950 px-5 text-sm font-black text-white transition hover:bg-ocean-800 lg:w-auto">Add Member</button>
+          <div className="flex items-end md:col-span-2 xl:col-span-4 xl:justify-end">
+            <button className="h-12 w-full rounded-2xl bg-ocean-950 px-5 text-sm font-black text-white transition hover:bg-ocean-800 sm:w-auto">Add Member</button>
           </div>
         </div>
       </form>
 
-      <div className="rounded-[1.75rem] bg-white p-5 shadow-sm">
+      <div className="min-w-0 rounded-[1.75rem] bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div>
             <h2 className="text-2xl font-black text-ocean-950">Team Members</h2>
@@ -333,8 +333,8 @@ function TeamMembersPanel({ rows }: { rows: TeamMemberRow[] }) {
           </div>
         </div>
 
-        <div className="mt-5 overflow-x-auto rounded-[1.5rem] border border-ocean-950/10">
-          <table className="min-w-[1100px] w-full border-collapse bg-white text-left">
+        <div className="mt-5 max-w-full overflow-x-auto rounded-[1.5rem] border border-ocean-950/10">
+          <table className="w-full min-w-[900px] border-collapse bg-white text-left">
             <thead className="bg-ocean-50/80">
               <tr>
                 {["Name", "Email", "Permission Level", "Access", "Created Date", "New Password", "Actions"].map((column) => (
@@ -362,7 +362,7 @@ function TeamMemberTableRow({ row }: { row: TeamMemberRow }) {
   return (
     <tr className="align-middle transition hover:bg-ocean-50/40">
       <td className="px-4 py-4">
-        <input form={`team-${row.id}`} name="name" defaultValue={row.name} className={`${inputClass} min-w-48`} required />
+        <input form={`team-${row.id}`} name="name" defaultValue={row.name} className={`${inputClass} w-44`} required />
       </td>
       <td className="max-w-[260px] px-4 py-4 text-sm font-bold text-ocean-950/70">
         <span className="block truncate">{row.email}</span>
@@ -378,7 +378,7 @@ function TeamMemberTableRow({ row }: { row: TeamMemberRow }) {
       </td>
       <td className="px-4 py-4 text-sm font-bold text-ocean-950/70">{formatDate(row.createdAt)}</td>
       <td className="px-4 py-4">
-        <input form={`team-${row.id}`} name="password" type="password" minLength={8} placeholder="Optional" className={`${inputClass} min-w-44`} />
+        <input form={`team-${row.id}`} name="password" type="password" minLength={8} placeholder="Optional" className={`${inputClass} w-40`} />
       </td>
       <td className="px-4 py-4">
         <div className="flex flex-wrap gap-2">

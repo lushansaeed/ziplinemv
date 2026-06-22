@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -10,6 +13,8 @@ import {
   Home,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Search,
   Settings,
   ShieldCheck,
@@ -100,17 +105,30 @@ export function DashboardShell({
   showSignOut?: boolean;
   children: React.ReactNode;
 }) {
+  const [leftPanelHidden, setLeftPanelHidden] = useState(false);
   const isAdmin = title.toLowerCase().includes("admin") || title.toLowerCase().includes("management") || title.toLowerCase().includes("reports") || title.toLowerCase().includes("role") || title.toLowerCase().includes("pricing") || title.toLowerCase().includes("settings");
   const isAffiliate = title.toLowerCase().includes("affiliate");
   const kicker = isAdmin ? "Operations" : isAffiliate ? "Partner portal" : "Zipline portal";
   const initials = isAdmin ? "AD" : isAffiliate ? "AF" : "AG";
   const navigation = isAdmin && !nav.includes("Dashboard") ? ["Dashboard", ...nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item))] : nav.filter((item) => !["Pricing", "Theme", "Roles"].includes(item));
 
+  useEffect(() => {
+    setLeftPanelHidden(window.localStorage.getItem("zipline-left-panel-hidden") === "true");
+  }, []);
+
+  function toggleLeftPanel() {
+    setLeftPanelHidden((current) => {
+      const next = !current;
+      window.localStorage.setItem("zipline-left-panel-hidden", String(next));
+      return next;
+    });
+  }
+
   return (
     <main className="min-h-screen overflow-hidden bg-ocean-50 text-ocean-950">
       <div className="fixed inset-0 -z-10 bg-[radial-gradient(circle_at_top_left,rgba(19,214,198,0.28),transparent_34%),radial-gradient(circle_at_85%_15%,rgba(255,138,76,0.20),transparent_28%),linear-gradient(135deg,#ecfeff_0%,#f8fdff_48%,#dff7f8_100%)]" />
       <div className="mx-auto flex w-full max-w-[1500px] gap-6 px-4 py-4 md:px-6 lg:p-8">
-        <aside className="glass sticky top-8 hidden h-[calc(100vh-4rem)] w-72 shrink-0 rounded-3xl p-5 shadow-[0_28px_90px_rgba(8,51,68,0.12)] lg:block">
+        <aside className={clsx("glass sticky top-8 hidden h-[calc(100vh-4rem)] w-72 shrink-0 rounded-3xl p-5 shadow-[0_28px_90px_rgba(8,51,68,0.12)] transition-all duration-300 lg:block", leftPanelHidden && "lg:hidden")}>
           <Link href={isAdmin ? "/admin" : "/"} className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-ocean-950 to-ocean-700 text-white shadow-glow">
               <Waves className="h-5 w-5" />
@@ -156,10 +174,21 @@ export function DashboardShell({
         <div className="min-w-0 flex-1">
           <header className="glass sticky top-4 z-20 rounded-3xl p-4 shadow-[0_20px_60px_rgba(8,51,68,0.08)] lg:top-8">
             <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-lagoon">{kicker}</p>
-                <h1 className="mt-1 text-3xl font-black tracking-tight text-ocean-950 md:text-5xl">{title}</h1>
-                <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-ocean-950/60">{subtitle}</p>
+              <div className="flex min-w-0 items-start gap-3">
+                <button
+                  type="button"
+                  onClick={toggleLeftPanel}
+                  className="mt-1 hidden h-11 w-11 shrink-0 place-items-center rounded-full bg-white/75 text-ocean-700 shadow-sm transition hover:bg-white lg:grid"
+                  aria-label={leftPanelHidden ? "Show left panel" : "Hide left panel"}
+                  title={leftPanelHidden ? "Show left panel" : "Hide left panel"}
+                >
+                  {leftPanelHidden ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+                </button>
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-lagoon">{kicker}</p>
+                  <h1 className="mt-1 text-3xl font-black tracking-tight text-ocean-950 md:text-5xl">{title}</h1>
+                  <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-ocean-950/60">{subtitle}</p>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <div className="hidden items-center gap-2 rounded-full bg-white/70 px-4 py-2 text-sm font-bold text-ocean-950/45 shadow-inner md:flex">
