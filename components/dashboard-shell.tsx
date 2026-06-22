@@ -45,6 +45,7 @@ const adminLinks: Record<string, string> = {
   Pricing: "/admin/pricing",
   Reports: "/admin/reports",
   Roles: "/admin/roles",
+  Settings: "/admin/settings",
   Theme: "/admin/theme",
   Upload: "/admin/media"
 };

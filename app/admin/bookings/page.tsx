@@ -28,7 +28,6 @@ export default async function BookingManagementPage({
       orderBy: { createdAt: "desc" },
       take: 100
   });
-  const timeSlots = await db.timeSlot.findMany({ where: { isActive: true }, orderBy: { startsAt: "asc" } });
   const counts = bookings.reduce<Record<string, number>>((totals, booking) => {
     totals[booking.bookingStatus] = (totals[booking.bookingStatus] ?? 0) + 1;
     return totals;
@@ -58,7 +57,7 @@ export default async function BookingManagementPage({
         </div>
       </DataCard>
 
-      <AdminCreateBookingForm timeSlots={timeSlots.map((slot) => ({ id: slot.id, label: slot.label }))} />
+      <AdminCreateBookingForm />
 
       <div className="mt-6 overflow-hidden rounded-lg bg-white shadow-sm">
         {bookings.length ? bookings.map((booking) => (

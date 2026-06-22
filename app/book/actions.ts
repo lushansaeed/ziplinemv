@@ -6,6 +6,7 @@ import { z } from "zod";
 import { addOns, whatsappNumber } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { bookingReference, calculateRideTotal, type CustomerType } from "@/lib/pricing";
+import { ensureBookableTimeSlot } from "@/lib/booking-time-slots";
 
 export type BookingActionState = {
   ok: boolean;
@@ -54,13 +55,6 @@ function formValues(formData: FormData) {
   };
 }
 
-function slotStart(preferredDate: string, timeSlot: string) {
-  const [hours = "0", minutes = "0"] = timeSlot.split(":");
-  const date = new Date(`${preferredDate}T00:00:00.000`);
-  date.setHours(Number(hours), Number(minutes), 0, 0);
-  return date;
-}
-
 export async function createBookingAction(_: BookingActionState, formData: FormData): Promise<BookingActionState> {
   const parsed = bookingSchema.safeParse(formValues(formData));
 
@@ -81,48 +75,11 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
   const selectedAddOns = addOns.filter((item) => values.addons.includes(item.id));
   const addOnUsdTotal = selectedAddOns.reduce((sum, item) => sum + item.usd, 0);
   const price = calculateRideTotal(values.customerType as CustomerType, { adults: values.adults, children: values.children }, addOnUsdTotal, Boolean(values.coupon));
-  const startsAt = slotStart(values.preferredDate, values.timeSlot);
   const db = getDb();
 
   try {
     const booking = await db.$transaction(async (tx: TransactionClient) => {
-      let timeSlot = await tx.timeSlot.findFirst({
-        where: {
-          label: values.timeSlot,
-          startsAt
-        }
-      });
-
-      if (!timeSlot) {
-        timeSlot = await tx.timeSlot.create({
-          data: {
-            label: values.timeSlot,
-            startsAt,
-            maxRiders: 8,
-            isActive: true
-          }
-        });
-      }
-
-      if (!timeSlot.isActive) {
-        throw new Error("This time slot is not available.");
-      }
-
-      const booked = await tx.booking.aggregate({
-        _sum: { riderCount: true },
-        where: {
-          timeSlotId: timeSlot.id,
-          bookingStatus: {
-            notIn: ["CANCELLED", "NO_SHOW", "REFUNDED"]
-          }
-        }
-      });
-
-      const bookedRiders = booked._sum.riderCount ?? 0;
-
-      if (bookedRiders + riderCount > timeSlot.maxRiders) {
-        throw new Error(`Only ${Math.max(timeSlot.maxRiders - bookedRiders, 0)} seats are left for ${values.timeSlot}.`);
-      }
+      const timeSlot = await ensureBookableTimeSlot(tx, values.preferredDate, values.timeSlot, riderCount);
 
       const customer = await tx.customer.create({
         data: {
@@ -138,7 +95,7 @@ export async function createBookingAction(_: BookingActionState, formData: FormD
         data: {
           reference: bookingReference(),
           customerId: customer.id,
-          date: startsAt,
+          date: timeSlot.startsAt,
           timeSlotId: timeSlot.id,
           riderCount,
           totalAmount: price.total,

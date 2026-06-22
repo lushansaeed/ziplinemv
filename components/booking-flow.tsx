@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { createBookingAction, type BookingActionState } from "@/app/book/actions";
-import { addOns, timeSlots } from "@/lib/data";
+import { addOns } from "@/lib/data";
 import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
 
 const initialState: BookingActionState = {
@@ -13,6 +13,10 @@ const initialState: BookingActionState = {
 export function BookingFlow() {
   const [state, formAction, pending] = useActionState(createBookingAction, initialState);
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
+  const [preferredDate, setPreferredDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [timeSlots, setTimeSlots] = useState<Array<{ value: string; label: string; available: number; disabled: boolean }>>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
@@ -26,6 +30,37 @@ export function BookingFlow() {
   const toggleAddOn = (id: string) => {
     setSelectedAddOns((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
   };
+
+  useEffect(() => {
+    if (!preferredDate) {
+      setTimeSlots([]);
+      setSelectedSlot("");
+      return;
+    }
+
+    let active = true;
+    setSlotsLoading(true);
+    fetch(`/api/booking-slots?date=${encodeURIComponent(preferredDate)}&guests=${adults + children}`)
+      .then((response) => response.json())
+      .then((payload: { slots?: Array<{ value: string; label: string; available: number; disabled: boolean }> }) => {
+        if (!active) return;
+        const nextSlots = payload.slots ?? [];
+        setTimeSlots(nextSlots);
+        if (!nextSlots.some((slot) => slot.value === selectedSlot && !slot.disabled)) {
+          setSelectedSlot("");
+        }
+      })
+      .catch(() => {
+        if (active) setTimeSlots([]);
+      })
+      .finally(() => {
+        if (active) setSlotsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [preferredDate, adults, children, selectedSlot]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
@@ -41,13 +76,14 @@ export function BookingFlow() {
           <Field name="nationality" label="Nationality" placeholder="Country" required />
           <Field name="phone" label="Phone / WhatsApp" placeholder="+960..." required />
           <Field name="email" label="Email address" placeholder="you@example.com" type="email" required />
-          <Field name="preferredDate" label="Preferred date" type="date" required />
+          <Field name="preferredDate" label="Preferred date" type="date" value={preferredDate} onChange={setPreferredDate} required />
           <label className="grid gap-2 text-sm font-bold text-ocean-950">
             Preferred time slot
-            <select name="timeSlot" className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
-              {timeSlots.map((slot, index) => (
-                <option key={slot} value={slot} disabled={index === 2}>
-                  {slot} {index === 2 ? "Sold out" : `${8 - index} seats left`}
+            <select name="timeSlot" value={selectedSlot} onChange={(event) => setSelectedSlot(event.target.value)} required className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 font-medium">
+              <option value="">{preferredDate ? slotsLoading ? "Loading slots..." : "Select slot" : "Select date first"}</option>
+              {timeSlots.map((slot) => (
+                <option key={slot.value} value={slot.value} disabled={slot.disabled}>
+                  {slot.label} | {slot.available <= 0 ? "Full" : `${slot.available} spots available`}
                 </option>
               ))}
             </select>

@@ -1,5 +1,5 @@
 import { DashboardShell } from "@/components/dashboard-shell";
-import { deletePricingRule, savePricingRule, saveTimeSlot } from "@/lib/admin/actions";
+import { deletePricingRule, savePricingRule } from "@/lib/admin/actions";
 import { getDb } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +12,10 @@ export default async function PricingManagementPage({
   const params = await searchParams;
   const db = getDb();
   const rules = await db.pricingRule.findMany({ orderBy: [{ isActive: "desc" }, { name: "asc" }] });
-  const slots = await db.timeSlot.findMany({ orderBy: { startsAt: "asc" }, include: { bookings: true } });
   const agents = await db.agent.findMany({ include: { user: true, rates: true }, orderBy: { agencyName: "asc" } });
 
   return (
-    <DashboardShell title="Pricing management" subtitle="Edit default prices, seasonal offers, group rates, agent rates, affiliate rules, exchange rate, add-ons, and slot capacity." nav={["Default", "Seasonal", "Offers", "Group rates", "Agent rates"]} showSignOut>
+    <DashboardShell title="Pricing management" subtitle="Edit default prices, seasonal offers, group rates, agent rates, affiliate rules, exchange rate, and add-ons." nav={["Default", "Seasonal", "Offers", "Group rates", "Agent rates", "Settings"]} showSignOut>
       <Messages message={params.message} error={params.error} />
 
       <section className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
@@ -65,34 +64,6 @@ export default async function PricingManagementPage({
         </div>
 
         <div className="grid gap-6">
-          <div className="rounded-lg bg-white p-5 shadow-sm">
-            <h2 className="text-2xl font-black">Time slots</h2>
-            <form action={saveTimeSlot} className="mt-4 grid gap-3">
-              <Field name="label" label="Label" required />
-              <Field name="startsAt" label="Starts at" type="datetime-local" required />
-              <Field name="maxRiders" label="Max riders" type="number" defaultValue="8" required />
-              <label className="flex items-center gap-2 text-sm font-bold">
-                <input name="isActive" type="checkbox" defaultChecked /> Active
-              </label>
-              <button className="rounded-full bg-ocean-950 px-5 py-3 text-sm font-bold text-white">Add slot</button>
-            </form>
-            <div className="mt-5 grid gap-3">
-              {slots.map((slot) => (
-                <form key={slot.id} action={saveTimeSlot} className="grid gap-3 rounded-lg border border-ocean-950/10 p-4">
-                  <input type="hidden" name="id" value={slot.id} />
-                  <Field name="label" label="Label" defaultValue={slot.label} required />
-                  <Field name="startsAt" label="Starts at" type="datetime-local" defaultValue={slot.startsAt.toISOString().slice(0, 16)} required />
-                  <Field name="maxRiders" label="Max riders" type="number" defaultValue={slot.maxRiders} required />
-                  <p className="text-xs font-bold text-ocean-950/60">{slot.bookings.length} bookings attached</p>
-                  <label className="flex items-center gap-2 text-sm font-bold">
-                    <input name="isActive" type="checkbox" defaultChecked={slot.isActive} /> Active
-                  </label>
-                  <button className="rounded-full bg-ocean-950 px-4 py-2 text-sm font-bold text-white">Save slot</button>
-                </form>
-              ))}
-            </div>
-          </div>
-
           <div className="rounded-lg bg-white p-5 shadow-sm">
             <h2 className="text-2xl font-black">Agent rates</h2>
             <div className="mt-4 grid gap-3">

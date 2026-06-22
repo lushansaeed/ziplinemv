@@ -1,22 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus } from "lucide-react";
 import { createBooking } from "@/lib/admin/actions";
 import { addOns } from "@/lib/data";
 import { calculateRideTotal, defaultPricing, type CustomerType } from "@/lib/pricing";
 
 type TimeSlotOption = {
-  id: string;
+  value: string;
   label: string;
+  available: number;
+  capacity: number;
+  disabled: boolean;
 };
 
 const bookingStatuses = ["PENDING", "CONFIRMED", "PAID", "CHECKED_IN", "COMPLETED", "CANCELLED", "NO_SHOW", "REFUNDED"];
 const paymentStatuses = ["UNPAID", "PARTIALLY_PAID", "PAID", "REFUNDED"];
 const paymentMethods = ["Admin/manual", "Card", "Cash on arrival", "Bank transfer", "Agent credit"];
 
-export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOption[] }) {
+export function AdminCreateBookingForm() {
   const [customerType, setCustomerType] = useState<CustomerType>("tourist");
+  const [bookingDate, setBookingDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [timeSlots, setTimeSlots] = useState<TimeSlotOption[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [currency, setCurrency] = useState("USD");
@@ -48,6 +55,37 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
   const balanceDue = Math.max(finalTotal - amountPaid, 0);
   const invalidAddonQuantity = Object.values(addonQuantities).some((quantity) => quantity < 0 || quantity > riderCount);
   const canOpenConfirm = riderCount > 0 && finalTotal >= 0 && !invalidAddonQuantity;
+
+  useEffect(() => {
+    if (!bookingDate) {
+      setTimeSlots([]);
+      setSelectedSlot("");
+      return;
+    }
+
+    let active = true;
+    setSlotsLoading(true);
+    fetch(`/api/booking-slots?date=${encodeURIComponent(bookingDate)}&guests=${riderCount}`)
+      .then((response) => response.json())
+      .then((payload: { slots?: TimeSlotOption[] }) => {
+        if (!active) return;
+        const nextSlots = payload.slots ?? [];
+        setTimeSlots(nextSlots);
+        if (!nextSlots.some((slot) => slot.value === selectedSlot && !slot.disabled)) {
+          setSelectedSlot("");
+        }
+      })
+      .catch(() => {
+        if (active) setTimeSlots([]);
+      })
+      .finally(() => {
+        if (active) setSlotsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [bookingDate, riderCount, selectedSlot]);
 
   const setAddonQuantity = (id: string, next: number) => {
     setAddonQuantities((current) => ({ ...current, [id]: Math.max(0, next) }));
@@ -103,12 +141,16 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
           </FormSectionCard>
 
           <FormSectionCard title="Booking details">
-            <Field name="date" label="Booking date" type="date" required />
+            <Field name="date" label="Booking date" type="date" value={bookingDate} onChange={setBookingDate} required />
             <label className="grid gap-2 text-sm font-bold">
               Time slot
-              <select name="timeSlotId" required className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 outline-none transition focus:border-ocean-500">
-                <option value="">Select slot</option>
-                {timeSlots.map((slot) => <option key={slot.id} value={slot.id}>{slot.label}</option>)}
+              <select name="timeSlot" value={selectedSlot} onChange={(event) => setSelectedSlot(event.target.value)} required className="rounded-2xl border border-ocean-950/10 bg-white px-4 py-3 outline-none transition focus:border-ocean-500">
+                <option value="">{bookingDate ? slotsLoading ? "Loading slots..." : "Select slot" : "Select booking date first"}</option>
+                {timeSlots.map((slot) => (
+                  <option key={slot.value} value={slot.value} disabled={slot.disabled}>
+                    {slot.label} | {slot.available <= 0 ? "Full" : `${slot.available} spots available`}
+                  </option>
+                ))}
               </select>
             </label>
             <QuantitySelector label="Adults" value={adults} onChange={setAdults} min={0} />

@@ -46,8 +46,6 @@ export const mediaItems = [
   }
 ];
 
-export const timeSlots = ["09:00", "10:30", "12:00", "14:00", "15:30", "17:00"];
-
 export const addOns = [
   { id: "photography", label: "Photography", usd: 10, icon: Camera },
   { id: "video360", label: "360 video", usd: 10, icon: Film },

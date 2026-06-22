@@ -7,6 +7,7 @@ import { addOns } from "@/lib/data";
 import { getDb } from "@/lib/db";
 import { calculateRideTotal, type CustomerType } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
+import { ensureBookableTimeSlot, saveBookingTimeSlotSettings, type BookingTimeSlotSettings } from "@/lib/booking-time-slots";
 
 function text(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -44,14 +45,15 @@ export async function createBooking(formData: FormData) {
   const db = getDb();
   const customerName = text(formData, "customerName");
   const phone = text(formData, "phone");
-  const timeSlotId = text(formData, "timeSlotId");
+  const bookingDate = text(formData, "date");
+  const timeSlotLabel = text(formData, "timeSlot");
   const customerType = (text(formData, "customerType") || "tourist") as CustomerType;
   const adults = intValue(formData, "adults", 1);
   const children = intValue(formData, "children", 0);
   const riderCount = adults + children;
 
-  if (!customerName || !phone || !timeSlotId) {
-    redirect("/admin/bookings?error=Customer name, phone, and time slot are required.");
+  if (!customerName || !phone || !bookingDate || !timeSlotLabel) {
+    redirect("/admin/bookings?error=Customer name, phone, booking date, and time slot are required.");
   }
 
   if (riderCount < 1) {
@@ -133,6 +135,7 @@ export async function createBooking(formData: FormData) {
 
   const reference = `ZMV-${Date.now().toString().slice(-8)}`;
   await db.$transaction(async (tx) => {
+    const timeSlot = await ensureBookableTimeSlot(tx, bookingDate, timeSlotLabel, riderCount);
     const customer = await tx.customer.create({
       data: {
         name: customerName,
@@ -147,8 +150,8 @@ export async function createBooking(formData: FormData) {
       data: {
         reference,
         customerId: customer.id,
-        date: new Date(text(formData, "date")),
-        timeSlotId,
+        date: new Date(bookingDate),
+        timeSlotId: timeSlot.id,
         riderCount,
         totalAmount,
         currency,
@@ -292,6 +295,29 @@ export async function deletePricingRule(formData: FormData) {
   await db.pricingRule.delete({ where: { id: text(formData, "id") } });
   revalidatePath("/admin/pricing");
   redirectWith("/admin/pricing", "Pricing rule deleted.");
+}
+
+export async function saveBookingTimeSlotSettingsAction(formData: FormData) {
+  const settings: BookingTimeSlotSettings = {
+    startTime: text(formData, "startTime"),
+    endTime: text(formData, "endTime"),
+    slotDuration: intValue(formData, "slotDuration", 30) as BookingTimeSlotSettings["slotDuration"],
+    guestsPerSlot: intValue(formData, "guestsPerSlot", 10),
+    breakEnabled: boolValue(formData, "breakEnabled"),
+    breakStartTime: text(formData, "breakStartTime"),
+    breakEndTime: text(formData, "breakEndTime")
+  };
+
+  try {
+    await saveBookingTimeSlotSettings(settings);
+  } catch (error) {
+    redirectWith("/admin/settings", error instanceof Error ? error.message : "Booking time slot settings could not be saved.");
+  }
+
+  revalidatePath("/admin/settings");
+  revalidatePath("/admin/bookings");
+  revalidatePath("/book");
+  redirectWith("/admin/settings", "Booking time slot settings saved.");
 }
 
 export async function saveTimeSlot(formData: FormData) {

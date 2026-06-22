@@ -13,6 +13,7 @@ import { DashboardShell } from "@/components/dashboard-shell";
 import { SalesReportChart, type SalesDataset, type SalesPeriod } from "@/components/admin-sales-report-chart";
 import { ActionButton, DashboardTable, DataCard, EmptyState, ProgressBar, StatCard, StatusBadge } from "@/components/dashboard-ui";
 import { getDb } from "@/lib/db";
+import { getBookingSlotOptions, type BookingSlotOption } from "@/lib/booking-time-slots";
 
 export const dynamic = "force-dynamic";
 
@@ -80,16 +81,7 @@ export default async function AdminPage() {
     select: { label: true, price: true, bookingId: true },
     take: 500
   });
-  const timeSlots = await db.timeSlot.findMany({
-    where: { isActive: true },
-    include: {
-      bookings: {
-        where: { date: { gte: today, lt: tomorrow } },
-        select: { date: true, riderCount: true }
-      }
-    },
-    orderBy: { startsAt: "asc" }
-  });
+  const timeSlots = await getBookingSlotOptions(dateInputValue(today));
 
   const salesDatasets = buildSalesDatasets(allPaidBookings, now);
   const todaySales = allPaidBookings
@@ -139,7 +131,7 @@ export default async function AdminPage() {
     <DashboardShell
       title="Admin dashboard"
       subtitle="Modern operational control for sales, bookings, agents, affiliates, commissions, media, payments, and reporting."
-      nav={["Dashboard", "Bookings", "Customers", "Agents", "Affiliates", "Pricing", "Media", "Commission", "Reports", "Theme", "Roles"]}
+      nav={["Dashboard", "Bookings", "Customers", "Agents", "Affiliates", "Pricing", "Media", "Commission", "Reports", "Settings", "Theme", "Roles"]}
       showSignOut
     >
       <SalesReportChart datasets={salesDatasets} />
@@ -366,13 +358,13 @@ function buildAlerts({
   partialPayments: number;
   commissionPayable: number;
   mediaBookings: Array<{ date: Date; bookingStatus: string }>;
-  timeSlots: Array<{ label: string; maxRiders: number; bookings: Array<{ date: Date; riderCount: number }> }>;
+  timeSlots: BookingSlotOption[];
   cancelledBookings: number;
   refundRequests: number;
 }) {
   const today = startOfDay(new Date());
   const delayedMedia = mediaBookings.filter((booking) => booking.date < addDays(today, -2) && booking.bookingStatus !== "COMPLETED").length;
-  const fullSlots = timeSlots.filter((slot) => slot.bookings.filter((booking) => booking.date >= today && booking.date < addDays(today, 1)).reduce((sum, booking) => sum + booking.riderCount, 0) >= slot.maxRiders);
+  const fullSlots = timeSlots.filter((slot) => slot.isFull);
   return [
     pendingBookings ? `${pendingBookings} pending bookings awaiting confirmation.` : "",
     unpaidBookings ? `${unpaidBookings} unpaid bookings need payment follow-up.` : "",
@@ -470,4 +462,8 @@ function addDays(date: Date, days: number) {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
+}
+
+function dateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
 }
