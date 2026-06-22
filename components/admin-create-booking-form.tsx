@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Minus, Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 import { createBooking } from "@/lib/admin/actions";
 import { addOns } from "@/lib/data";
 import { calculateRideTotal, defaultPricing, type CustomerType } from "@/lib/pricing";
@@ -24,10 +24,7 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
   const [codeStatus, setCodeStatus] = useState<"idle" | "valid" | "invalid">("idle");
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [discountValue, setDiscountValue] = useState(0);
-  const [discountReason, setDiscountReason] = useState("");
   const [amountPaid, setAmountPaid] = useState(0);
-  const [totalOverride, setTotalOverride] = useState("");
-  const [totalOverrideReason, setTotalOverrideReason] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [addonQuantities, setAddonQuantities] = useState<Record<string, number>>(
     Object.fromEntries(addOns.map((item) => [item.id, 0]))
@@ -39,7 +36,7 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
     () => calculateRideTotal(customerType, { adults, children }, addOnUsdTotal, coupon.trim().length > 0),
     [customerType, adults, children, addOnUsdTotal, coupon]
   );
-  const displayCurrency = totalOverride ? currency : calculated.currency;
+  const displayCurrency = calculated.currency;
   const currencyRate = displayCurrency === "MVR" ? defaultPricing.exchangeRateMvrPerUsd : 1;
   const rideTotal = calculated.subtotal - addOnUsdTotal * currencyRate;
   const addOnsTotal = addOnUsdTotal * currencyRate;
@@ -47,15 +44,10 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
   const manualDiscount = discountType === "percentage" ? (calculated.subtotal - couponDiscount) * (discountValue / 100) : discountValue;
   const subtotal = Math.max(calculated.subtotal - couponDiscount, 0);
   const calculatedFinal = Math.max(subtotal - manualDiscount, 0);
-  const finalTotal = totalOverride ? Number(totalOverride) || 0 : calculatedFinal;
+  const finalTotal = calculatedFinal;
   const balanceDue = Math.max(finalTotal - amountPaid, 0);
-  const discountLimitExceeded =
-    (discountType === "percentage" && discountValue > 10) ||
-    (discountType === "fixed" && discountValue > (displayCurrency === "MVR" ? 500 : 25));
-  const requiresDiscountReason = discountValue > 0 && !discountReason.trim();
-  const requiresOverrideReason = Boolean(totalOverride) && !totalOverrideReason.trim();
   const invalidAddonQuantity = Object.values(addonQuantities).some((quantity) => quantity < 0 || quantity > riderCount);
-  const canOpenConfirm = riderCount > 0 && finalTotal >= 0 && !discountLimitExceeded && !requiresDiscountReason && !requiresOverrideReason && !invalidAddonQuantity;
+  const canOpenConfirm = riderCount > 0 && finalTotal >= 0 && !invalidAddonQuantity;
 
   const setAddonQuantity = (id: string, next: number) => {
     setAddonQuantities((current) => ({ ...current, [id]: Math.max(0, next) }));
@@ -142,18 +134,9 @@ export function AdminCreateBookingForm({ timeSlots }: { timeSlots: TimeSlotOptio
             ))}
           </FormSectionCard>
 
-          <FormSectionCard title="Discount and override">
+          <FormSectionCard title="Discount">
             <Select label="Discount type" name="discountType" value={discountType} onChange={(value) => setDiscountType(value as "percentage" | "fixed")} options={["percentage", "fixed"]} />
             <Field label="Discount value" name="discountValue" type="number" min="0" step="0.01" value={String(discountValue)} onChange={(value) => setDiscountValue(Math.max(0, Number(value) || 0))} />
-            <Field label="Discount reason" name="discountReason" placeholder="Required when discount is applied" value={discountReason} onChange={setDiscountReason} />
-            <Field label="Applied by" name="discountAppliedBy" placeholder="Counter staff name" />
-            <Select label="Approval status" name="discountApprovalStatus" options={["Not required", "Pending approval", "Approved"]} defaultValue="Not required" />
-            <Field label="Total override" name="totalAmount" type="number" step="0.01" placeholder="Use only when manually overriding the calculated total" value={totalOverride} onChange={setTotalOverride} />
-            <Field label="Override reason" name="totalOverrideReason" placeholder="Required when override is used" value={totalOverrideReason} onChange={setTotalOverrideReason} />
-            {discountLimitExceeded ? <SoftError text="Discount exceeds the maximum allowed limit. Admin approval is required." /> : null}
-            {requiresDiscountReason ? <SoftError text="Discount reason is required when a discount is applied." /> : null}
-            {requiresOverrideReason ? <SoftError text="Override reason is required when total override is used." /> : null}
-            {totalOverride ? <SoftWarning text="This booking total has been manually overridden." /> : null}
           </FormSectionCard>
 
           <label className="grid gap-2 rounded-3xl bg-white p-5 text-sm font-bold shadow-sm">
@@ -353,12 +336,4 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
       <span className="font-black">{value}</span>
     </div>
   );
-}
-
-function SoftError({ text }: { text: string }) {
-  return <p className="flex items-center gap-2 rounded-2xl bg-red-50 p-3 text-sm font-black text-red-700 md:col-span-2"><AlertTriangle className="h-4 w-4" />{text}</p>;
-}
-
-function SoftWarning({ text }: { text: string }) {
-  return <p className="flex items-center gap-2 rounded-2xl bg-sunset/15 p-3 text-sm font-black text-orange-700 md:col-span-2"><CheckCircle2 className="h-4 w-4" />{text}</p>;
 }
