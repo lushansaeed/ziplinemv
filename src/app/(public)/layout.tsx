@@ -8,15 +8,19 @@ import { AffiliateTracker } from "@/components/public/affiliate-tracker";
 import { prisma } from "@/lib/prisma/client";
 
 async function getAnnouncement() {
-  const now = new Date();
-  return prisma.announcement.findFirst({
-    where: {
-      active: true,
-      OR: [{ startsAt: null }, { startsAt: { lte: now } }],
-      AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  try {
+    const now = new Date();
+    return await prisma.announcement.findFirst({
+      where: {
+        active: true,
+        OR: [{ startsAt: null }, { startsAt: { lte: now } }],
+        AND: [{ OR: [{ endsAt: null }, { endsAt: { gte: now } }] }],
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export default async function PublicLayout({

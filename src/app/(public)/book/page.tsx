@@ -8,16 +8,18 @@ export const metadata: Metadata = {
 };
 
 async function getBookingData(packageSlug?: string) {
-  const [packages, addOns] = await Promise.all([
-    prisma.package.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
-    prisma.addOn.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
-  ]);
-
-  const preselectedPackage = packageSlug
-    ? packages.find((p) => p.slug === packageSlug) ?? null
-    : null;
-
-  return { packages, addOns, preselectedPackage };
+  try {
+    const [packages, addOns] = await Promise.all([
+      prisma.package.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
+      prisma.addOn.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
+    ]);
+    const preselectedPackage = packageSlug
+      ? packages.find((p) => p.slug === packageSlug) ?? null
+      : null;
+    return { packages, addOns, preselectedPackage };
+  } catch {
+    return { packages: [], addOns: [], preselectedPackage: null };
+  }
 }
 
 export default async function BookPage({
@@ -30,8 +32,8 @@ export default async function BookPage({
   return (
     <div className="min-h-screen pt-24 pb-20">
       <BookingWizard
-        packages={packages}
-        addOns={addOns}
+        packages={packages as any}
+        addOns={addOns as any}
         preselectedPackageId={preselectedPackage?.id}
         initialDate={searchParams.date}
         affiliateCoupon={searchParams.coupon}
