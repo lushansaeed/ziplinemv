@@ -40,6 +40,7 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
     setLoading(false);
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, [bookingId]);
 
   async function doAction(fn: () => Promise<any>, msg: string) {

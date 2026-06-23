@@ -47,6 +47,7 @@ export function BookingWizard({
     }
     if (initialDate) setField("date", initialDate);
     if (affiliateCoupon) setField("affiliateCoupon", affiliateCoupon);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preselectedPackageId, initialDate, affiliateCoupon]);
 
   const stepComponent = [

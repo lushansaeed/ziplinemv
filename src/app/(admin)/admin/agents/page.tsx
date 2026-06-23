@@ -54,7 +54,7 @@ export default async function AgentsPage() {
         title="Agents"
         description={`${data.agents.length} agents · ${data.applications.length} pending`}
       />
-      <AgentsWorkspace {...data} />
+      <AgentsWorkspace {...data} agents={data.agents as any} />
     </div>
   );
 }

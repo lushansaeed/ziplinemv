@@ -47,7 +47,7 @@ export default async function AffiliatesPage() {
         title="Affiliates"
         description={`${data.affiliates.length} affiliates · ${data.applications.length} pending · ${data.pendingCoupons.length} coupons awaiting approval`}
       />
-      <AffiliatesWorkspace {...data} />
+      <AffiliatesWorkspace {...data} affiliates={data.affiliates as any} />
     </div>
   );
 }
