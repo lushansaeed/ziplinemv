@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useBookingStore } from "@/lib/booking/store";
 import { BookingProgressBar } from "./booking-progress-bar";
 import { Step1Date }       from "./steps/step-1-date";
@@ -33,7 +33,16 @@ const STEPS = [
 export function BookingWizard({
   packages, addOns, preselectedPackageId, initialDate, affiliateCoupon,
 }: BookingWizardProps) {
+  const [mounted, setMounted] = useState(false);
   const { currentStep, setField, reset } = useBookingStore();
+
+  useEffect(() => {
+    setMounted(true);
+    // Reset if store has a completed booking reference (start fresh)
+    const state = useBookingStore.getState();
+    if (state.bookingReference) reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Set initial values from URL params
   useEffect(() => {
@@ -63,10 +72,27 @@ export function BookingWizard({
     <Step10Confirm key={10} />,
   ];
 
+  // Clamp step to valid range
+  const safeStep = Math.max(1, Math.min(10, currentStep || 1));
+
+  // Don't render until client-side store is hydrated from localStorage
+  if (!mounted) {
+    return (
+      <div className="container-brand max-w-3xl">
+        <div className="animate-pulse space-y-6">
+          <div className="h-10 bg-white/5 rounded-xl w-2/3 mx-auto" />
+          <div className="h-4 bg-white/5 rounded w-1/2 mx-auto" />
+          <div className="h-2 bg-white/5 rounded-full" />
+          <div className="h-64 bg-white/5 rounded-2xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-brand max-w-3xl">
       {/* Header */}
-      {currentStep < 10 && (
+      {safeStep < 10 && (
         <div className="text-center mb-10 space-y-2">
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-white">
             Book your flight
@@ -78,22 +104,22 @@ export function BookingWizard({
       )}
 
       {/* Progress bar */}
-      {currentStep < 10 && (
+      {safeStep < 10 && (
         <BookingProgressBar
-          currentStep={currentStep}
+          currentStep={safeStep}
           steps={STEPS.slice(0, 9)}
         />
       )}
 
       {/* Step content */}
       <div
-        key={currentStep}
+        key={safeStep}
         className={cn(
           "animate-fade-in",
-          currentStep === 10 ? "mt-0" : "mt-8"
+          safeStep === 10 ? "mt-0" : "mt-8"
         )}
       >
-        {stepComponent[currentStep - 1]}
+        {stepComponent[safeStep - 1]}
       </div>
     </div>
   );
