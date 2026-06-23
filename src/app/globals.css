@@ -2,8 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Google Fonts ─────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Syne:wght@400;500;600;700;800&display=swap');
+/* ─── Fonts loaded via next/font in layout.tsx ──────────────────────── */
+/* Display: Caveat (brand: Kindness Matters — hand-scripted, expressive)  */
+/* Body:    Plus Jakarta Sans (brand: Agrandir — modern geometric sans)   */
 
 /* ─── CSS Custom Properties ─────────────────────────────────────────── */
 @layer base {
@@ -35,9 +36,11 @@
     --chart-4:            130 70% 45%;
     --chart-5:            350 70% 60%;
 
-    /* Brand font vars */
-    --font-display: 'Syne', system-ui, sans-serif;
-    --font-body:    'Inter', system-ui, sans-serif;
+    /* Brand font vars — matched to Vahmāfushi guidelines */
+    /* Caveat ≈ Kindness Matters (display/handscript) */
+    /* Plus Jakarta Sans ≈ Agrandir (body/interface)  */
+    --font-display: 'Caveat', cursive;
+    --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono:    'Menlo', 'Monaco', 'Cascadia Code', monospace;
   }
 

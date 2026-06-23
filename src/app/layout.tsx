@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
-import { Syne, Inter } from "next/font/google";
+import { Caveat, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const syne = Syne({
+// Brand font: Kindness Matters (commercial) → Caveat as open-source equivalent
+// Expressive, hand-scripted — used for display headings and brand moments
+const caveat = Caveat({
   subsets: ["latin"],
   variable: "--font-display",
   display: "swap",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const inter = Inter({
+// Brand font: Agrandir (commercial) → Plus Jakarta Sans as open-source equivalent
+// Modern geometric sans — used for all UI, body copy, navigation
+const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
   display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
@@ -66,15 +72,15 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${syne.variable} ${inter.variable} font-body antialiased`}>
-        {children}
+      <body className={`${caveat.variable} ${jakarta.variable} font-body antialiased`}>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
         <Toaster
           richColors
           position="top-right"
           toastOptions={{
-            style: {
-              fontFamily: "var(--font-body)",
-            },
+            style: { fontFamily: "var(--font-body)" },
           }}
         />
       </body>

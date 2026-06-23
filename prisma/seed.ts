@@ -271,14 +271,24 @@ By booking with Zipline Maldives, you agree to the following terms. Please read 
     { key: "full_journey_min",        value: "15–30 minutes",          type: "string",  group: "activity", label: "Full Journey Duration" },
   ];
 
-  for (const setting of settings) {
+  // Theme colour settings (Vahmāfushi brand palette)
+  const themeSettings = [
+    { key: "theme_primary",   value: "#F5A623", label: "Primary colour (Citrus)" },
+    { key: "theme_secondary", value: "#FF7B2E", label: "Secondary colour (Mango)" },
+    { key: "theme_accent",    value: "#06B6D4", label: "Accent colour (Turquoise)" },
+    { key: "theme_success",   value: "#84CC16", label: "Success colour (Lime)" },
+    { key: "theme_danger",    value: "#FF6B6B", label: "Danger colour (Coral)" },
+  ];
+  const allSettings = [...settings, ...themeSettings.map((s) => ({ ...s, type: "string", group: "theme" }))];
+
+  for (const setting of allSettings) {
     await prisma.setting.upsert({
       where: { key: setting.key },
       update: {},
       create: { key: setting.key, value: setting.value, type: setting.type, group: setting.group, label: setting.label },
     });
   }
-  console.log("✓ Settings: 14 created");
+  console.log("✓ Settings: 19 created (14 platform + 5 theme)");
 
   // ── Contact Settings ───────────────────────────────────────────────────────
   const existingContact = await prisma.contactSetting.findFirst();
