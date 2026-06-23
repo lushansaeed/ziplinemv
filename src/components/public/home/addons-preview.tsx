@@ -20,7 +20,7 @@ export function AddOnsPreview({ addOns }: AddOnsPreviewProps) {
     { id: "1", name: "Photography",  description: "High-res photos delivered within 24h. Every expression, captured perfectly.", price: 45, bestFor: "Couples & families", currency: "USD" },
     { id: "2", name: "360° Video",   description: "Immersive 360° footage puts you right back on the zipline. Perfect for social.", price: 65, bestFor: "Content creators", currency: "USD" },
     { id: "3", name: "Drone Footage",description: "Cinematic aerial views of your entire journey. The full picture from above.", price: 85, bestFor: "Everyone", currency: "USD" },
-  ] as Partial<AddOn>[];
+  ] as unknown as Partial<AddOn>[];
 
   return (
     <section className="section-y bg-brand-deep">
