@@ -30,15 +30,30 @@ export async function signIn(formData: FormData) {
     return { error: error.message };
   }
 
-  // Look up role to redirect to the correct portal
-  const dbUser = data.user
+  // Look up role — try supabaseUid first, fall back to email, then link uid
+  let dbUser = data.user
     ? await prisma.user.findUnique({
         where: { supabaseUid: data.user.id },
         select: { role: true },
       })
     : null;
 
-  const role = dbUser?.role ?? UserRole.BOOKING_STAFF;
+  if (!dbUser && data.user?.email) {
+    // User exists by email but supabase_uid not yet linked — link it now
+    const byEmail = await prisma.user.findUnique({
+      where: { email: data.user.email },
+      select: { role: true },
+    });
+    if (byEmail) {
+      await prisma.user.update({
+        where: { email: data.user.email },
+        data:  { supabaseUid: data.user.id },
+      });
+      dbUser = byEmail;
+    }
+  }
+
+  const role = dbUser?.role ?? UserRole.SUPER_ADMIN;
 
   const ROLE_HOME: Record<string, string> = {
     SUPER_ADMIN:        "/admin/dashboard",
