@@ -1,3 +1,4 @@
+import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { BookingWizard } from "@/components/booking/booking-wizard";

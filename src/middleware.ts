@@ -26,15 +26,7 @@ export async function middleware(request: NextRequest) {
   const hostname = request.headers.get("host") ?? "";
 
   // ── Refresh Supabase session ──────────────────────────────────────────────
-  // Pass pathname as a request header so server components can read it via headers()
-  let response = NextResponse.next({
-    request: {
-      headers: new Headers({
-        ...Object.fromEntries(request.headers.entries()),
-        "x-pathname": pathname,
-      }),
-    },
-  });
+  let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
     SUPABASE_URL,

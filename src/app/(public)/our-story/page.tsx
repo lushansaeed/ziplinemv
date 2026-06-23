@@ -1,3 +1,4 @@
+import { PageBackground } from "@/components/public/page-background";
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";

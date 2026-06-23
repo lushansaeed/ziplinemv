@@ -1,3 +1,4 @@
+import { PageBackground } from "@/components/public/page-background";
 export const dynamic = "force-dynamic";
 
 import { prisma } from "@/lib/prisma/client";
@@ -51,6 +52,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <PageBackground pageKey="home" />
       <HeroSection heroMedia={heroMedia} />
       <TrustBar settings={settingsMap} />
       <RouteSection />
