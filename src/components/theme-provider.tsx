@@ -45,6 +45,10 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       /* Override shadcn primary with brand primary */
       --primary: ${hexToHsl(colors.theme_primary)};
       --ring:    ${hexToHsl(colors.theme_primary)};
+
+      /* Booking calendar — uses these vars for selected/today states */
+      --booking-selected:  ${colors.theme_primary};
+      --booking-success:   ${colors.theme_success};
     }
   `;
 

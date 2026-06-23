@@ -31,19 +31,19 @@ const BRAND_COLORS = [
 ];
 
 const THEME_KEYS = [
-  { key: "theme_primary",   label: "Primary colour",   desc: "CTA buttons, links, active states" },
-  { key: "theme_secondary", label: "Secondary colour",  desc: "Hover states, secondary buttons" },
-  { key: "theme_accent",    label: "Accent colour",     desc: "Highlights, badges, tags" },
-  { key: "theme_success",   label: "Success colour",    desc: "Confirmed status, green badges" },
-  { key: "theme_danger",    label: "Danger colour",     desc: "Errors, warnings, destructive actions" },
+  { key: "theme_primary",        label: "Primary colour",          desc: "CTA buttons, booking calendar selected date, active states" },
+  { key: "theme_secondary",      label: "Secondary colour",        desc: "Hover states, secondary buttons" },
+  { key: "theme_accent",         label: "Accent colour",           desc: "Highlights, badges, tags" },
+  { key: "theme_success",        label: "Success / confirmed",     desc: "Confirmed status, selected date dot, green badges" },
+  { key: "theme_danger",         label: "Danger colour",           desc: "Errors, warnings, destructive actions" },
 ];
 
 const THEME_DEFAULTS: Record<string, string> = {
-  theme_primary:   "#F5A623",
-  theme_secondary: "#FF7B2E",
-  theme_accent:    "#06B6D4",
-  theme_success:   "#84CC16",
-  theme_danger:    "#FF6B6B",
+  theme_primary:        "#F5A623",
+  theme_secondary:      "#FF7B2E",
+  theme_accent:         "#06B6D4",
+  theme_success:        "#84CC16",
+  theme_danger:         "#FF6B6B",
 };
 
 export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
