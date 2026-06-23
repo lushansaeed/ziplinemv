@@ -25,12 +25,16 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") ?? "";
 
-  // ── Forward pathname to layouts via header ───────────────────────────────
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-pathname", pathname);
-
   // ── Refresh Supabase session ──────────────────────────────────────────────
-  let response = NextResponse.next({ request: { headers: requestHeaders } });
+  // Pass pathname as a request header so server components can read it via headers()
+  let response = NextResponse.next({
+    request: {
+      headers: new Headers({
+        ...Object.fromEntries(request.headers.entries()),
+        "x-pathname": pathname,
+      }),
+    },
+  });
 
   const supabase = createServerClient(
     SUPABASE_URL,
