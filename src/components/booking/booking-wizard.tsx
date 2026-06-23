@@ -37,10 +37,10 @@ export function BookingWizard({
   const { currentStep, setField, reset } = useBookingStore();
 
   useEffect(() => {
+    // Always start fresh when landing on /book
+    // Clears any stale step (e.g. currentStep=10 with no reference) from localStorage
+    reset();
     setMounted(true);
-    // Reset if store has a completed booking reference (start fresh)
-    const state = useBookingStore.getState();
-    if (state.bookingReference) reset();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
