@@ -1,54 +1,118 @@
 import { prisma } from "@/lib/prisma/client";
 
-// Default Vahmāfushi brand colors (from brand guidelines)
-const DEFAULTS: Record<string, string> = {
-  theme_primary:    "#F5A623", // Citrus
-  theme_secondary:  "#FF7B2E", // Mango
-  theme_accent:     "#06B6D4", // Turquoise
-  theme_success:    "#84CC16", // Lime
-  theme_danger:     "#FF6B6B", // Coral
-  theme_dark:       "#0A0F1A", // Deep
-  theme_font_display: "var(--font-display)",
-  theme_font_body:    "var(--font-body)",
-  theme_radius:     "0.625rem",
+// ─── Defaults (Vahmāfushi brand) ─────────────────────────────────────────────
+const DEFAULTS = {
+  primaryColor:     "#F5A623",
+  secondaryColor:   "#FF7B2E",
+  accentColor:      "#06B6D4",
+  backgroundColor:  "#0A0F1A",
+  textColor:        "#FFFFFF",
+  buttonColor:      "#F5A623",
+  buttonTextColor:  "#0A0F1A",
+  headerBgColor:    "#0A0F1A",
+  footerBgColor:    "#050A10",
+  buttonRadius:     "rounded-full",
+  // Legacy theme settings keys
+  theme_primary:    "#F5A623",
+  theme_secondary:  "#FF7B2E",
+  theme_accent:     "#06B6D4",
+  theme_success:    "#84CC16",
+  theme_danger:     "#FF6B6B",
 };
 
-async function getThemeColors(): Promise<Record<string, string>> {
+async function getActiveTheme() {
   try {
-    const settings = await prisma.setting.findMany({
-      where: { key: { startsWith: "theme_" } },
-    });
+    const [theme, settings] = await Promise.all([
+      prisma.websiteTheme.findFirst({ where: { isActive: true } }),
+      prisma.setting.findMany({ where: { key: { startsWith: "theme_" } } }),
+    ]);
     const overrides: Record<string, string> = {};
     for (const s of settings) {
       if (typeof s.value === "string") overrides[s.key] = s.value;
     }
-    return { ...DEFAULTS, ...overrides };
+    return { theme, settingOverrides: overrides };
   } catch {
-    return DEFAULTS;
+    return { theme: null, settingOverrides: {} };
   }
 }
 
-export async function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const colors = await getThemeColors();
+// Convert hex to HSL for shadcn
+function hexToHsl(hex: string): string {
+  try {
+    const r = parseInt(hex.slice(1, 3), 16) / 255;
+    const g = parseInt(hex.slice(3, 5), 16) / 255;
+    const b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+        case g: h = ((b - r) / d + 2) / 6; break;
+        case b: h = ((r - g) / d + 4) / 6; break;
+      }
+    }
+    return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
+  } catch { return "38 91% 55%"; }
+}
 
-  // Build CSS custom property overrides from admin-controlled settings
+export async function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { theme, settingOverrides } = await getActiveTheme();
+
+  // Merge: DB theme > settings overrides > defaults
+  const colors = {
+    ...DEFAULTS,
+    ...settingOverrides,
+    ...(theme ? {
+      primaryColor:    theme.primaryColor,
+      secondaryColor:  theme.secondaryColor,
+      accentColor:     theme.accentColor,
+      backgroundColor: theme.backgroundColor,
+      textColor:       theme.textColor,
+      buttonColor:     theme.buttonColor,
+      buttonTextColor: theme.buttonTextColor,
+      headerBgColor:   theme.headerBgColor,
+      footerBgColor:   theme.footerBgColor,
+      buttonRadius:    theme.buttonRadius,
+    } : {}),
+  };
+
   const cssVars = `
     :root {
-      --theme-primary:   ${colors.theme_primary};
-      --theme-secondary: ${colors.theme_secondary};
-      --theme-accent:    ${colors.theme_accent};
-      --theme-success:   ${colors.theme_success};
-      --theme-danger:    ${colors.theme_danger};
-      --theme-dark:      ${colors.theme_dark};
-      --radius:          ${colors.theme_radius};
+      /* ── Website theme (public site only) ── */
+      --site-primary:         ${colors.primaryColor};
+      --site-secondary:       ${colors.secondaryColor};
+      --site-accent:          ${colors.accentColor};
+      --site-bg:              ${colors.backgroundColor};
+      --site-text:            ${colors.textColor};
+      --site-button:          ${colors.buttonColor};
+      --site-button-text:     ${colors.buttonTextColor};
+      --site-header-bg:       ${colors.headerBgColor};
+      --site-footer-bg:       ${colors.footerBgColor};
 
-      /* Override shadcn primary with brand primary */
-      --primary: ${hexToHsl(colors.theme_primary)};
-      --ring:    ${hexToHsl(colors.theme_primary)};
+      /* ── Legacy theme vars (settings-based) ── */
+      --theme-primary:        ${colors.theme_primary ?? colors.primaryColor};
+      --theme-secondary:      ${colors.theme_secondary ?? colors.secondaryColor};
+      --theme-accent:         ${colors.theme_accent ?? colors.accentColor};
+      --theme-success:        ${colors.theme_success ?? "#84CC16"};
+      --theme-danger:         ${colors.theme_danger ?? "#FF6B6B"};
 
-      /* Booking calendar — uses these vars for selected/today states */
-      --booking-selected:  ${colors.theme_primary};
-      --booking-success:   ${colors.theme_success};
+      /* ── Booking calendar ── */
+      --booking-selected:     ${colors.theme_primary ?? colors.primaryColor};
+      --booking-success:      ${colors.theme_success ?? "#84CC16"};
+
+      /* ── shadcn/ui primary override ── */
+      --primary: ${hexToHsl(colors.primaryColor)};
+      --ring:    ${hexToHsl(colors.primaryColor)};
+    }
+
+    /* Apply site theme to public pages */
+    .theme-public {
+      --background: none;
+      background-color: ${colors.backgroundColor} !important;
+      color: ${colors.textColor};
     }
   `;
 
@@ -58,27 +122,4 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       {children}
     </>
   );
-}
-
-// Convert hex to HSL string for shadcn CSS variables
-function hexToHsl(hex: string): string {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
-
-  if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
-      case g: h = ((b - r) / d + 2) / 6; break;
-      case b: h = ((r - g) / d + 4) / 6; break;
-    }
-  }
-
-  return `${Math.round(h * 360)} ${Math.round(s * 100)}% ${Math.round(l * 100)}%`;
 }

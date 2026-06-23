@@ -951,3 +951,82 @@ model PayoutRequest {
   @@index([userId])
   @@map("payout_requests")
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WEBSITE THEME SYSTEM
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WebsiteTheme {
+  id                    String   @id @default(cuid())
+  name                  String   @default("Default Brand Theme")
+  isActive              Boolean  @default(false) @map("is_active")
+
+  // Brand colors
+  primaryColor          String   @default("#F5A623") @map("primary_color")
+  secondaryColor        String   @default("#FF7B2E") @map("secondary_color")
+  accentColor           String   @default("#06B6D4") @map("accent_color")
+  backgroundColor       String   @default("#0A0F1A") @map("background_color")
+  textColor             String   @default("#FFFFFF") @map("text_color")
+  buttonColor           String   @default("#F5A623") @map("button_color")
+  buttonTextColor       String   @default("#0A0F1A") @map("button_text_color")
+  headerBgColor         String   @default("#0A0F1A") @map("header_bg_color")
+  footerBgColor         String   @default("#050A10") @map("footer_bg_color")
+
+  // Button style
+  buttonRadius          String   @default("rounded-full") @map("button_radius")
+
+  // Additional config as JSON (section styles etc.)
+  config                Json?
+
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("website_themes")
+}
+
+model WebsiteBackground {
+  id                String   @id @default(cuid())
+  pageKey           String   @map("page_key")        // home | packages | gallery | etc.
+  sectionKey        String?  @map("section_key")     // hero | booking | faq | etc.
+  backgroundType    String   @default("solid") @map("background_type") // solid | gradient | image | video
+
+  // Solid
+  solidColor        String?  @map("solid_color")
+
+  // Gradient
+  gradientType      String?  @map("gradient_type")      // linear | radial
+  gradientDirection String?  @map("gradient_direction") // to bottom | 135deg | etc.
+  gradientColors    Json?    @map("gradient_colors")    // [{color, position}]
+
+  // Image / Video
+  imageUrl          String?  @map("image_url")
+  videoUrl          String?  @map("video_url")
+  bgPosition        String?  @default("center") @map("bg_position")
+  bgSize            String?  @default("cover")  @map("bg_size")
+  bgRepeat          String?  @default("no-repeat") @map("bg_repeat")
+
+  // Overlay
+  overlayColor      String?  @map("overlay_color")
+  overlayOpacity    Float?   @default(0.5) @map("overlay_opacity")
+
+  // Text
+  textColor         String?  @map("text_color")
+
+  isActive          Boolean  @default(true) @map("is_active")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([pageKey, sectionKey])
+  @@map("website_backgrounds")
+}
+
+model ThemePreset {
+  id        String   @id @default(cuid())
+  name      String
+  config    Json                    // Full theme config snapshot
+  isDefault Boolean  @default(false) @map("is_default")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("theme_presets")
+}

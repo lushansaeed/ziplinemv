@@ -7,7 +7,7 @@ import {
   LayoutDashboard, CalendarCheck, Users, Package, Plus,
   BarChart3, Settings, Tag, Clock, UserCheck, Handshake,
   Image, FileText, ChevronLeft, ChevronRight, Menu, X,
-  QrCode, AlertTriangle, ShieldCheck, ClipboardList,
+  QrCode, AlertTriangle, ShieldCheck, ClipboardList, Palette,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -96,8 +96,9 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "System",
     items: [
-      { label: "Users & Roles", href: "/admin/users",      icon: Users },
-      { label: "Settings",      href: "/admin/settings",   icon: Settings },
+      { label: "Users & Roles", href: "/admin/users",           icon: Users },
+      { label: "Settings",      href: "/admin/settings",        icon: Settings },
+      { label: "Theme & Style", href: "/admin/settings/theme",  icon: Palette },
     ],
   },
 ];
