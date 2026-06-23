@@ -10,6 +10,10 @@ export async function POST(req: NextRequest) {
   const dbUser = await prisma.user.findUnique({ where: { supabaseUid: user.id } });
   const body = await req.json();
 
+  if (!body.url) {
+    return NextResponse.json({ error: "url is required — the file upload may have failed" }, { status: 400 });
+  }
+
   const media = await prisma.websiteMedia.create({
     data: {
       categoryId:       body.categoryId,
