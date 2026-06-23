@@ -26,7 +26,7 @@ async function getDeliveries(params: Record<string, string | undefined>) {
     ],
   };
 
-  const [deliveries, total] = await Promise.all([
+  const [rawDeliveries, total] = await Promise.all([
     prisma.customerMediaDelivery.findMany({
       where,
       skip:    (page - 1) * PER_PAGE,
@@ -37,7 +37,7 @@ async function getDeliveries(params: Record<string, string | undefined>) {
           select: {
             reference: true, bookingDate: true,
             customer:  { select: { name: true, phone: true, email: true } },
-            addOns:    { include: { addOn: { select: { name: true } } } },
+            addOns:    { include: { addOn: { select: { id: true, name: true } } } },
           },
         },
         assignedTo: { select: { name: true } },
@@ -46,8 +46,25 @@ async function getDeliveries(params: Record<string, string | undefined>) {
     prisma.customerMediaDelivery.count({ where }),
   ]);
 
+  // Parse per-addon statuses from notes JSON field
+  // Format stored: {"addonStatuses":{"addOnId1":"SENT_TO_CUSTOMER","addOnId2":"PENDING"}}
+  const deliveries = rawDeliveries.map((d) => {
+    let addonStatuses: Record<string, string> = {};
+    try {
+      if (d.notes) {
+        const parsed = JSON.parse(d.notes);
+        if (parsed.addonStatuses) addonStatuses = parsed.addonStatuses;
+      }
+    } catch {}
+    // Default all purchased add-ons to PENDING if not set
+    d.booking.addOns.forEach((a) => {
+      if (!addonStatuses[a.addOn.id]) addonStatuses[a.addOn.id] = "PENDING";
+    });
+    return { ...d, addonStatuses };
+  });
+
   const staff = await prisma.user.findMany({
-    where: { role: { in: ["MEDIA_STAFF", "ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
+    where:  { role: { in: ["MEDIA_STAFF", "ADMIN", "SUPER_ADMIN"] }, status: "ACTIVE" },
     select: { id: true, name: true },
   });
 
@@ -63,7 +80,10 @@ export default async function CustomerMediaDeliveryPage({
   const data = await getDeliveries(searchParams);
   return (
     <div>
-      <PageHeader title="Customer Media Delivery" description="Track and manage photography, 360° video, and drone footage delivery." />
+      <PageHeader
+        title="Customer Media Delivery"
+        description="Track delivery status per booking and per add-on. Automatically reflects new add-ons."
+      />
       <CustomerMediaTable {...(data as any)} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );

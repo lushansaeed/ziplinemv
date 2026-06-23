@@ -2,27 +2,35 @@
 
 import { useState, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Send, Link2, UserCheck } from "lucide-react";
+import { Link2, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
 import { toast } from "sonner";
-import { DataTable, type Column } from "../shared/data-table";
 import { TableFilters } from "../shared/table-filters";
-import { StatusBadge } from "../shared/status-badge";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
+
+interface AddOnDelivery {
+  addOnId:   string;
+  addOnName: string;
+  status:    string;
+}
 
 interface DeliveryRow {
-  id: string; deliveryStatus: string;
-  photographyStatus: string; photo360Status: string; droneStatus: string;
-  mediaUrl: string | null; deliveredAt: Date | null;
-  assignedTo: { name: string } | null;
+  id: string;
+  deliveryStatus:  string;
+  mediaUrl:        string | null;
+  deliveredAt:     Date | null;
+  notes:           string | null;
+  assignedTo:      { name: string } | null;
+  // dynamic per-addon statuses stored as JSON in notes or via metadata
+  addonStatuses:   Record<string, string>; // addOnId → status
   booking: {
-    reference: string; bookingDate: Date;
-    customer: { name: string; phone: string; email: string | null };
-    addOns: Array<{ addOn: { name: string } }>;
+    reference:   string;
+    bookingDate: Date;
+    customer:    { name: string; phone: string; email: string | null };
+    addOns:      Array<{ addOnId: string; addOn: { id: string; name: string } }>;
   };
 }
 
-interface CustomerMediaTableProps {
+interface Props {
   deliveries:   DeliveryRow[];
   total:        number;
   page:         number;
@@ -31,13 +39,32 @@ interface CustomerMediaTableProps {
   staff:        Array<{ id: string; name: string }>;
 }
 
-export function CustomerMediaTable({ deliveries, total, page, perPage, searchParams, staff }: CustomerMediaTableProps) {
+const STATUS_OPTIONS = [
+  { value: "PENDING",          label: "Pending",    color: "text-yellow-500" },
+  { value: "PROCESSING",       label: "Processing", color: "text-blue-500" },
+  { value: "UPLOADED",         label: "Uploaded",   color: "text-purple-500" },
+  { value: "SENT_TO_CUSTOMER", label: "Sent",       color: "text-green-500" },
+  { value: "ISSUE_REPORTED",   label: "Issue",      color: "text-red-500" },
+  { value: "RESOLVED",         label: "Resolved",   color: "text-green-600" },
+  { value: "NOT_APPLICABLE",   label: "N/A",        color: "text-muted-foreground" },
+];
+
+function statusColor(s: string) {
+  return STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "text-muted-foreground";
+}
+function statusLabel(s: string) {
+  return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+}
+
+const selectCls = "text-xs rounded-lg border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer";
+
+export function CustomerMediaTable({ deliveries, total, page, perPage, searchParams, staff }: Props) {
   const router   = useRouter();
   const pathname = usePathname();
   const sp       = useSearchParams();
   const [isPending, startTransition] = useTransition();
-  const [editId, setEditId]   = useState<string | null>(null);
-  const [mediaUrl, setMediaUrl] = useState("");
+  const [expanded, setExpanded]      = useState<string | null>(null);
+  const [mediaUrls, setMediaUrls]    = useState<Record<string, string>>({});
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
@@ -46,170 +73,247 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
     router.push(`${pathname}?${params.toString()}`);
   }
 
-  async function updateStatus(id: string, field: string, value: string) {
+  async function updateOverall(id: string, field: string, value: string) {
     startTransition(async () => {
       const res = await fetch(`/api/admin/media-delivery/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: value }),
       });
-      if (res.ok) { toast.success("Status updated"); router.refresh(); }
+      if (res.ok) { toast.success("Updated"); router.refresh(); }
       else toast.error("Failed to update");
     });
   }
 
-  async function saveMediaUrl(id: string) {
+  async function updateAddOnStatus(deliveryId: string, addOnId: string, status: string, currentStatuses: Record<string, string>) {
+    const newStatuses = { ...currentStatuses, [addOnId]: status };
     startTransition(async () => {
-      const res = await fetch(`/api/admin/media-delivery/${id}`, {
+      const res = await fetch(`/api/admin/media-delivery/${deliveryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mediaUrl, deliveryStatus: "UPLOADED" }),
+        body: JSON.stringify({ addonStatuses: newStatuses }),
       });
-      if (res.ok) { toast.success("Media link saved"); setEditId(null); router.refresh(); }
+      if (res.ok) { toast.success("Status updated"); router.refresh(); }
       else toast.error("Failed");
     });
   }
 
-  const STATUS_OPTIONS = [
-    { value: "PENDING",          label: "Pending" },
-    { value: "PROCESSING",       label: "Processing" },
-    { value: "UPLOADED",         label: "Uploaded" },
-    { value: "SENT_TO_CUSTOMER", label: "Sent" },
-    { value: "ISSUE_REPORTED",   label: "Issue" },
-    { value: "RESOLVED",         label: "Resolved" },
-  ];
-
-  const selectCls = "text-xs rounded border border-border bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring";
-
-  const columns: Column<DeliveryRow>[] = [
-    {
-      key: "booking", header: "Booking",
-      cell: (r) => (
-        <div>
-          <p className="font-mono text-xs font-bold text-primary">{r.booking.reference}</p>
-          <p className="text-xs text-muted-foreground">{formatDate(r.booking.bookingDate)}</p>
-        </div>
-      ),
-    },
-    {
-      key: "customer", header: "Customer",
-      cell: (r) => (
-        <div>
-          <p className="text-sm font-medium">{r.booking.customer.name}</p>
-          <p className="text-xs text-muted-foreground">{r.booking.customer.phone}</p>
-        </div>
-      ),
-    },
-    {
-      key: "addons", header: "Add-ons", hide: "md",
-      cell: (r) => (
-        <div className="text-xs text-muted-foreground">
-          {r.booking.addOns.map((a) => a.addOn.name).join(", ") || "—"}
-        </div>
-      ),
-    },
-    {
-      key: "overall", header: "Overall status",
-      cell: (r) => (
-        <select
-          value={r.deliveryStatus}
-          onChange={(e) => updateStatus(r.id, "deliveryStatus", e.target.value)}
-          className={selectCls}
-        >
-          {STATUS_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      ),
-    },
-    {
-      key: "photo", header: "Photo", hide: "lg",
-      cell: (r) => (
-        <select value={r.photographyStatus} onChange={(e) => updateStatus(r.id, "photographyStatus", e.target.value)} className={selectCls}>
-          {[{ value: "NOT_APPLICABLE", label: "N/A" }, ...STATUS_OPTIONS].map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      ),
-    },
-    {
-      key: "360", header: "360°", hide: "lg",
-      cell: (r) => (
-        <select value={r.photo360Status} onChange={(e) => updateStatus(r.id, "photo360Status", e.target.value)} className={selectCls}>
-          {[{ value: "NOT_APPLICABLE", label: "N/A" }, ...STATUS_OPTIONS].map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      ),
-    },
-    {
-      key: "drone", header: "Drone", hide: "lg",
-      cell: (r) => (
-        <select value={r.droneStatus} onChange={(e) => updateStatus(r.id, "droneStatus", e.target.value)} className={selectCls}>
-          {[{ value: "NOT_APPLICABLE", label: "N/A" }, ...STATUS_OPTIONS].map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-        </select>
-      ),
-    },
-    {
-      key: "link", header: "Media link",
-      cell: (r) => (
-        editId === r.id ? (
-          <div className="flex items-center gap-1.5">
-            <input
-              value={mediaUrl}
-              onChange={(e) => setMediaUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-40 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none"
-            />
-            <button onClick={() => saveMediaUrl(r.id)} className="p-1 rounded bg-primary text-primary-foreground"><Send className="w-3 h-3" /></button>
-            <button onClick={() => setEditId(null)} className="p-1 rounded hover:bg-muted text-muted-foreground text-xs">✕</button>
-          </div>
-        ) : r.mediaUrl ? (
-          <a href={r.mediaUrl} target="_blank" className="flex items-center gap-1 text-xs text-primary hover:underline">
-            <Link2 className="w-3 h-3" /> View
-          </a>
-        ) : (
-          <button onClick={() => { setEditId(r.id); setMediaUrl(""); }} className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2">
-            Add link
-          </button>
-        )
-      ),
-    },
-    {
-      key: "assigned", header: "Assigned to", hide: "lg",
-      cell: (r) => (
-        <select
-          value={r.assignedTo ? "—" : ""}
-          onChange={(e) => updateStatus(r.id, "assignedToId", e.target.value)}
-          className={selectCls}
-        >
-          <option value="">Unassigned</option>
-          {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-        </select>
-      ),
-    },
-  ];
+  async function saveMediaUrl(id: string) {
+    const url = mediaUrls[id];
+    if (!url) return;
+    startTransition(async () => {
+      const res = await fetch(`/api/admin/media-delivery/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaUrl: url, deliveryStatus: "UPLOADED" }),
+      });
+      if (res.ok) { toast.success("Media link saved"); router.refresh(); }
+      else toast.error("Failed");
+    });
+  }
 
   return (
-    <div className="admin-card p-0 overflow-hidden mt-0 rounded-none border-x-0 border-t-0">
-      <TableFilters
-        search={searchParams.search ?? ""}
-        onSearch={(v) => updateParam("search", v)}
-        searchPlaceholder="Search reference or customer name…"
-        onReset={() => router.push(pathname)}
-        totalShowing={total}
-        filters={[
-          {
-            key: "status", label: "Status", value: searchParams.status ?? "",
-            onChange: (v) => updateParam("status", v),
-            options: STATUS_OPTIONS,
-          },
-        ]}
-      />
-      <DataTable
-        columns={columns}
-        data={deliveries}
-        keyField="id"
-        total={total}
-        page={page}
-        perPage={perPage}
-        onPage={(p) => updateParam("page", String(p))}
-        emptyText="No media delivery records. Add media add-ons to bookings to see them here."
-      />
+    <div>
+      {/* Filters */}
+      <div className="border-b border-border">
+        <TableFilters
+          search={searchParams.search ?? ""}
+          onSearch={(v) => updateParam("search", v)}
+          searchPlaceholder="Search reference or customer name…"
+          onReset={() => router.push(pathname)}
+          totalShowing={total}
+          filters={[
+            {
+              key: "status", label: "Overall status", value: searchParams.status ?? "",
+              onChange: (v) => updateParam("status", v),
+              options: STATUS_OPTIONS.filter((o) => o.value !== "NOT_APPLICABLE").map((o) => ({ value: o.value, label: o.label })),
+            },
+          ]}
+        />
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <table className="admin-table w-full">
+          <thead>
+            <tr>
+              <th>Booking</th>
+              <th>Customer</th>
+              <th>Add-ons purchased</th>
+              <th>Overall status</th>
+              <th>Media link</th>
+              <th>Assigned to</th>
+              <th className="w-8"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {deliveries.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="text-center py-14 text-muted-foreground text-sm">
+                  No media delivery records. Add media add-ons to bookings to see them here.
+                </td>
+              </tr>
+            ) : deliveries.map((d) => (
+              <>
+                <tr key={d.id} className="table-row-hover">
+                  {/* Booking */}
+                  <td>
+                    <p className="font-mono text-xs font-bold text-primary">{d.booking.reference}</p>
+                    <p className="text-xs text-muted-foreground">{formatDate(d.booking.bookingDate)}</p>
+                  </td>
+
+                  {/* Customer */}
+                  <td>
+                    <p className="text-sm font-medium">{d.booking.customer.name}</p>
+                    <p className="text-xs text-muted-foreground">{d.booking.customer.phone}</p>
+                  </td>
+
+                  {/* Add-ons — show pills, one per purchased add-on */}
+                  <td>
+                    {d.booking.addOns.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {d.booking.addOns.map((a) => {
+                          const s = d.addonStatuses?.[a.addOnId] ?? "PENDING";
+                          return (
+                            <span
+                              key={a.addOnId}
+                              className={cn("text-[10px] font-semibold px-1.5 py-0.5 rounded border border-border", statusColor(s))}
+                              title={statusLabel(s)}
+                            >
+                              {a.addOn.name}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Overall delivery status */}
+                  <td>
+                    <select
+                      value={d.deliveryStatus}
+                      onChange={(e) => updateOverall(d.id, "deliveryStatus", e.target.value)}
+                      className={cn(selectCls, statusColor(d.deliveryStatus))}
+                      disabled={isPending}
+                    >
+                      {STATUS_OPTIONS.filter((o) => o.value !== "NOT_APPLICABLE").map((o) => (
+                        <option key={o.value} value={o.value}>{o.label}</option>
+                      ))}
+                    </select>
+                  </td>
+
+                  {/* Media URL */}
+                  <td>
+                    {d.mediaUrl ? (
+                      <div className="flex items-center gap-1.5">
+                        <a href={d.mediaUrl} target="_blank" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Link2 className="w-3 h-3" /> View
+                        </a>
+                        <button
+                          onClick={() => setMediaUrls((p) => ({ ...p, [d.id]: d.mediaUrl! }))}
+                          className="text-[10px] text-muted-foreground hover:text-foreground underline"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    ) : mediaUrls[d.id] !== undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          value={mediaUrls[d.id] ?? ""}
+                          onChange={(e) => setMediaUrls((p) => ({ ...p, [d.id]: e.target.value }))}
+                          placeholder="https://..."
+                          className="w-36 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none"
+                        />
+                        <button onClick={() => saveMediaUrl(d.id)} className="text-[10px] text-primary font-semibold hover:underline">Save</button>
+                        <button onClick={() => setMediaUrls((p) => { const n = {...p}; delete n[d.id]; return n; })} className="text-[10px] text-muted-foreground">✕</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setMediaUrls((p) => ({ ...p, [d.id]: "" }))}
+                        className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                      >
+                        Add link
+                      </button>
+                    )}
+                  </td>
+
+                  {/* Assigned to */}
+                  <td>
+                    <select
+                      value={d.assignedTo?.name ?? ""}
+                      onChange={(e) => updateOverall(d.id, "assignedToId", e.target.value)}
+                      className={cn(selectCls, "text-muted-foreground")}
+                      disabled={isPending}
+                    >
+                      <option value="">Unassigned</option>
+                      {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </td>
+
+                  {/* Expand toggle */}
+                  <td>
+                    {d.booking.addOns.length > 0 && (
+                      <button
+                        onClick={() => setExpanded((p) => p === d.id ? null : d.id)}
+                        className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+                        title="Per add-on status"
+                      >
+                        {expanded === d.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+
+                {/* Expanded: per-add-on status controls */}
+                {expanded === d.id && (
+                  <tr key={`${d.id}-expanded`} className="bg-muted/20">
+                    <td colSpan={7} className="px-4 py-3">
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                          Per add-on delivery status
+                        </p>
+                        <div className="flex flex-wrap gap-3">
+                          {d.booking.addOns.map((a) => {
+                            const s = d.addonStatuses?.[a.addOnId] ?? "PENDING";
+                            return (
+                              <div key={a.addOnId} className="flex items-center gap-2 bg-background border border-border rounded-xl px-3 py-2">
+                                <span className="text-xs font-medium text-foreground min-w-[100px]">{a.addOn.name}</span>
+                                <select
+                                  value={s}
+                                  onChange={(e) => updateAddOnStatus(d.id, a.addOnId, e.target.value, d.addonStatuses ?? {})}
+                                  disabled={isPending}
+                                  className={cn("text-xs rounded-lg border border-border bg-background px-2 py-1 focus:outline-none focus:ring-1 focus:ring-ring", statusColor(s))}
+                                >
+                                  {STATUS_OPTIONS.map((o) => (
+                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {total > perPage && (
+        <div className="flex items-center justify-between px-4 py-3 border-t border-border text-sm text-muted-foreground">
+          <span>Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, total)} of {total}</span>
+          <div className="flex gap-2">
+            <button disabled={page <= 1} onClick={() => updateParam("page", String(page - 1))} className="px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-30">Prev</button>
+            <button disabled={page * perPage >= total} onClick={() => updateParam("page", String(page + 1))} className="px-3 py-1 rounded border border-border hover:bg-muted disabled:opacity-30">Next</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
