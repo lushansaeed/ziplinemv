@@ -329,6 +329,7 @@ model Affiliate {
   links       AffiliateLink[]
   coupons     AffiliateCoupon[]
   bookings    Booking[]
+  customers   Customer[]
   commissions AffiliateCommission[]
 
   @@map("affiliates")
