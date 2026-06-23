@@ -24,14 +24,35 @@ export async function signIn(formData: FormData) {
     return { error: "Invalid email or password format." };
   }
 
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
     return { error: error.message };
   }
 
+  // Look up role to redirect to the correct portal
+  const dbUser = data.user
+    ? await prisma.user.findUnique({
+        where: { supabaseUid: data.user.id },
+        select: { role: true },
+      })
+    : null;
+
+  const role = dbUser?.role ?? UserRole.BOOKING_STAFF;
+
+  const ROLE_HOME: Record<string, string> = {
+    SUPER_ADMIN:        "/admin/dashboard",
+    ADMIN:              "/admin/dashboard",
+    OPERATIONS_MANAGER: "/admin/dashboard",
+    BOOKING_STAFF:      "/admin/bookings",
+    MEDIA_STAFF:        "/admin/media/customer-delivery",
+    FINANCE:            "/admin/reports",
+    AGENT:              "/agents/dashboard",
+    AFFILIATE:          "/affiliate/dashboard",
+  };
+
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect(ROLE_HOME[role] ?? "/admin/dashboard");
 }
 
 export async function signOut() {
