@@ -21,7 +21,7 @@ export function Step8Waiver() {
 
   function Checkbox({
     checked, onChange, label, sublabel,
-  }: { checked: boolean; onChange: (v: boolean) => void; label: string; sublabel?: string }) {
+  }: { checked: boolean; onChange: (v: boolean) => void; label: React.ReactNode; sublabel?: string }) {
     return (
       <label className="flex items-start gap-3 cursor-pointer group">
         <div
