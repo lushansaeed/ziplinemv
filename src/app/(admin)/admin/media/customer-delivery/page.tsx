@@ -64,7 +64,7 @@ export default async function CustomerMediaDeliveryPage({
   return (
     <div>
       <PageHeader title="Customer Media Delivery" description="Track and manage photography, 360° video, and drone footage delivery." />
-      <CustomerMediaTable {...data} searchParams={searchParams} />
+      <CustomerMediaTable {...data} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );
 }

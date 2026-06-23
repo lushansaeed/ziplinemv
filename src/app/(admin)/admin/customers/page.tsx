@@ -57,7 +57,7 @@ export default async function CustomersPage({
   return (
     <div>
       <PageHeader title="Customers" description={`${data.total} total customers`} />
-      <CustomersTable {...data} searchParams={searchParams} />
+      <CustomersTable {...data} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );
 }

@@ -54,7 +54,7 @@ export default async function AuditLogPage({
   return (
     <div>
       <PageHeader title="Audit Log" description="Every important change in the system is recorded here." />
-      <AuditLogTable {...data} searchParams={searchParams} />
+      <AuditLogTable {...data} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );
 }

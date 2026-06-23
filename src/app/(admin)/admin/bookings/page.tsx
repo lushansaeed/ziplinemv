@@ -104,7 +104,7 @@ export default async function BookingsPage({
         total={total}
         page={page}
         perPage={perPage}
-        searchParams={searchParams}
+        searchParams={searchParams as Record<string, string | undefined>}
       />
     </div>
   );

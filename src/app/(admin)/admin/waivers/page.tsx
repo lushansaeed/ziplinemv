@@ -60,7 +60,7 @@ export default async function WaiversPage({
   return (
     <div>
       <PageHeader title="Waivers" description={`${data.total} waiver records`} />
-      <WaiversTable {...data} searchParams={searchParams} />
+      <WaiversTable {...data} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );
 }

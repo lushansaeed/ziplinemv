@@ -75,7 +75,7 @@ export default async function AgentBookingsPage({
         total={data.total}
         page={data.page}
         perPage={data.perPage}
-        searchParams={searchParams}
+        searchParams={searchParams as Record<string, string | undefined>}
       />
     </div>
   );
