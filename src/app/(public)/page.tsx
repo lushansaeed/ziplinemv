@@ -32,7 +32,7 @@ async function getHomeData() {
       include: { category: true },
     }),
     prisma.websiteMedia.findMany({
-      where: { active: true },
+      where: { active: true, category: { slug: "gallery" } },
       orderBy: { displayOrder: "asc" },
       take: 9,
       include: { category: true },

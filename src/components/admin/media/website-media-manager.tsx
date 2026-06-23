@@ -23,10 +23,12 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
   const [showUpload, setShowUpload]    = useState(false);
   const fileInputRef                   = useRef<HTMLInputElement>(null);
 
-  // Upload form
+  // Default to "Gallery" category so uploads appear on gallery page
+  const galleryCategory = categories.find((c) => c.slug === "gallery");
   const [uploadForm, setUploadForm] = useState({
-    title: "", caption: "", altText: "", categoryId: categories[0]?.id ?? "",
-    frontendLocation: "", displayOrder: 0,
+    title: "", caption: "", altText: "",
+    categoryId: galleryCategory?.id ?? categories[0]?.id ?? "",
+    frontendLocation: "gallery", displayOrder: 0,
   });
 
   const filtered = activeCategory === "all"
@@ -144,14 +146,37 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
           <p className="font-semibold text-sm">Upload new media</p>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Category</label>
+              <label className="text-xs text-muted-foreground font-medium">Category *</label>
               <select
                 value={uploadForm.categoryId}
-                onChange={(e) => setUploadForm((p) => ({ ...p, categoryId: e.target.value }))}
+                onChange={(e) => {
+                  const cat = categories.find((c) => c.id === e.target.value);
+                  // Auto-set frontend location based on category
+                  const locationMap: Record<string, string> = {
+                    "gallery":      "gallery",
+                    "hero":         "hero",
+                    "feature-hero": "hero",
+                    "packages":     "packages",
+                    "addons":       "addons",
+                    "story":        "story",
+                    "drone-reels":  "gallery",
+                    "guest-photos": "gallery",
+                  };
+                  setUploadForm((p) => ({
+                    ...p,
+                    categoryId: e.target.value,
+                    frontendLocation: cat ? (locationMap[cat.slug] ?? p.frontendLocation) : p.frontendLocation,
+                  }));
+                }}
                 className="w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              <p className="text-[10px] text-muted-foreground">
+                {uploadForm.categoryId === galleryCategory?.id
+                  ? "✓ Will appear on the Gallery page and homepage gallery section"
+                  : "Select 'Gallery' to show on the public gallery page"}
+              </p>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Title</label>
