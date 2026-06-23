@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function OurStoryPage() {
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-our-story pt-28 pb-20">
       <div className="container-brand max-w-4xl">
 
         {/* Header */}

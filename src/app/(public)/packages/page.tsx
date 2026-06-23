@@ -57,7 +57,7 @@ export default async function PackagesPage() {
   ];
 
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-packages pt-28 pb-20">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">

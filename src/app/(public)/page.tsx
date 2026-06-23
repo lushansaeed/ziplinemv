@@ -50,7 +50,7 @@ export default async function HomePage() {
   const { packages, addOns, heroMedia, galleryMedia, settingsMap } = await getHomeData();
 
   return (
-    <>
+    <div className="page-bg-home">
       <HeroSection heroMedia={heroMedia} />
       <TrustBar settings={settingsMap} />
       <RouteSection />
@@ -59,6 +59,6 @@ export default async function HomePage() {
       <GalleryWall items={galleryMedia} />
       <StoryTeaser />
       <PartnersCTA />
-    </>
+    </div>
   );
 }

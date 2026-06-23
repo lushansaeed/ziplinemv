@@ -36,7 +36,7 @@ export default async function AddOnsPage() {
   ];
 
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-add-ons pt-28 pb-20">
       <div className="container-brand">
         {/* Hero header */}
         <div className="text-center mb-16 space-y-4">

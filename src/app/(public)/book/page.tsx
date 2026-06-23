@@ -30,7 +30,7 @@ export default async function BookPage({
   const { packages, addOns, preselectedPackage } = await getBookingData(searchParams.package);
 
   return (
-    <div className="min-h-screen pt-24 pb-20">
+    <div className="page-bg-book min-h-screen pt-24 pb-20">
       <BookingWizard
         packages={packages as any}
         addOns={addOns as any}

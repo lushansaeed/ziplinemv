@@ -23,7 +23,7 @@ export default async function GalleryPage() {
   const media = await getMedia();
 
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-gallery pt-28 pb-20">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">

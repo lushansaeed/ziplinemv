@@ -22,18 +22,50 @@ const DEFAULTS = {
 
 async function getActiveTheme() {
   try {
-    const [theme, settings] = await Promise.all([
+    const [theme, settings, backgrounds] = await Promise.all([
       prisma.websiteTheme.findFirst({ where: { isActive: true } }),
       prisma.setting.findMany({ where: { key: { startsWith: "theme_" } } }),
+      prisma.websiteBackground.findMany({ where: { isActive: true } }),
     ]);
     const overrides: Record<string, string> = {};
     for (const s of settings) {
       if (typeof s.value === "string") overrides[s.key] = s.value;
     }
-    return { theme, settingOverrides: overrides };
+    return { theme, settingOverrides: overrides, backgrounds };
   } catch {
-    return { theme: null, settingOverrides: {} };
+    return { theme: null, settingOverrides: {}, backgrounds: [] };
   }
+}
+
+function buildBackgroundCSS(bg: any): string {
+  if (!bg) return "";
+  const type = bg.backgroundType ?? "solid";
+
+  if (type === "solid" && bg.solidColor) {
+    return `background-color: ${bg.solidColor} !important;`;
+  }
+
+  if (type === "gradient" && bg.gradientColors) {
+    const colors = bg.gradientColors as Array<{ color: string; position?: string }>;
+    const stops  = colors.map((s) => `${s.color}${s.position ? ` ${s.position}` : ""}`).join(", ");
+    const dir    = bg.gradientDirection ?? "to bottom";
+    const fn     = bg.gradientType === "radial" ? `radial-gradient(circle, ${stops})` : `linear-gradient(${dir}, ${stops})`;
+    return `background: ${fn} !important;`;
+  }
+
+  if (type === "image" && bg.imageUrl) {
+    const pos    = bg.bgPosition ?? "center";
+    const size   = bg.bgSize     ?? "cover";
+    const repeat = bg.bgRepeat   ?? "no-repeat";
+    return `
+      background-image: url('${bg.imageUrl}') !important;
+      background-position: ${pos};
+      background-size: ${size};
+      background-repeat: ${repeat};
+    `.trim();
+  }
+
+  return "";
 }
 
 // Convert hex to HSL for shadcn
@@ -59,7 +91,7 @@ function hexToHsl(hex: string): string {
 }
 
 export async function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { theme, settingOverrides } = await getActiveTheme();
+  const { theme, settingOverrides, backgrounds } = await getActiveTheme();
 
   // Merge: DB theme > settings overrides > defaults
   const colors = {
@@ -111,9 +143,41 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
     /* Apply site theme to public pages */
     .theme-public {
       --background: none;
-      background-color: ${colors.backgroundColor} !important;
+      background-color: ${colors.backgroundColor};
       color: ${colors.textColor};
     }
+
+    ${backgrounds.map((bg: any) => {
+      const css = buildBackgroundCSS(bg);
+      if (!css) return "";
+      const selector = bg.sectionKey
+        ? `.page-bg-${bg.pageKey} .section-bg-${bg.sectionKey}`
+        : `.page-bg-${bg.pageKey}`;
+
+      // Overlay for image backgrounds
+      const overlayCSS = (bg.backgroundType === "image" && bg.overlayColor)
+        ? `
+          ${selector} {
+            position: relative;
+          }
+          ${selector}::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-color: ${bg.overlayColor};
+            opacity: ${bg.overlayOpacity ?? 0.4};
+            pointer-events: none;
+            z-index: 0;
+          }
+          ${selector} > * {
+            position: relative;
+            z-index: 1;
+          }
+        `
+        : "";
+
+      return `${selector} { ${css} }\n${overlayCSS}`;
+    }).join("\n")}
   `;
 
   return (

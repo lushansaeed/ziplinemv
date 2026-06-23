@@ -29,7 +29,7 @@ export default async function FaqPage() {
   }, {});
 
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-faq pt-28 pb-20">
       <div className="container-brand max-w-3xl">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">

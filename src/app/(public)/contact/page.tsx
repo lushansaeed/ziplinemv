@@ -25,7 +25,7 @@ export default async function ContactPage() {
   const socials = (contact?.socialLinks as Record<string, string> | null) ?? {};
 
   return (
-    <div className="pt-28 pb-20">
+    <div className="page-bg-contact pt-28 pb-20">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
