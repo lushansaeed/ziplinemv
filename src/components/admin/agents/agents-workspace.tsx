@@ -45,7 +45,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
     startTransition(async () => {
       const r = await approveAgent(id);
       if (r.success) toast.success("Agent approved");
-      else toast.error(r.error);
+      else toast.error((r as any).error ?? "Action failed");
     });
   }
 
@@ -53,7 +53,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
     startTransition(async () => {
       const r = await rejectAgent(id);
       if (r.success) toast.success("Application rejected");
-      else toast.error(r.error);
+      else toast.error((r as any).error ?? "Action failed");
     });
   }
 
@@ -67,7 +67,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
     startTransition(async () => {
       const r = await updateAgentCommission(agentId, rate, "PACKAGE_ONLY");
       if (r.success) { toast.success("Commission updated"); setEditCommission(null); }
-      else toast.error(r.error);
+      else toast.error((r as any).error ?? "Action failed");
     });
   }
 
@@ -246,7 +246,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
           startTransition(async () => {
             const r = await suspendAgent(confirmSuspend);
             if (r.success) toast.success("Agent suspended");
-            else toast.error(r.error);
+            else toast.error((r as any).error ?? "Action failed");
           });
         }}
         title="Suspend agent?"

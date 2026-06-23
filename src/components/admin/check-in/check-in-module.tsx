@@ -220,7 +220,7 @@ export function CheckInModule() {
                   if (r.success) {
                     toast.success("Checked in successfully!");
                     setResult((prev) => prev ? { ...prev, bookingStatus: "CHECKED_IN", checkIn: { checkedInAt: new Date() } } : prev);
-                  } else toast.error(r.error);
+                  } else toast.error((r as any).error ?? "Action failed");
                 })}
                 disabled={isPending}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
@@ -236,7 +236,7 @@ export function CheckInModule() {
                   if (r.success) {
                     toast.success("Booking completed!");
                     setResult((prev) => prev ? { ...prev, bookingStatus: "COMPLETED" } : prev);
-                  } else toast.error(r.error);
+                  } else toast.error((r as any).error ?? "Action failed");
                 })}
                 disabled={isPending}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
