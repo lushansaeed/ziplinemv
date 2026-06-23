@@ -8,12 +8,13 @@ import { CmsWorkspace } from "@/components/admin/cms/cms-workspace";
 export const metadata: Metadata = { title: "CMS | Admin" };
 
 async function getCmsData() {
-  const [pages, settings, contact] = await Promise.all([
+  const [pages, settings, contact, announcements] = await Promise.all([
     prisma.websitePage.findMany({ orderBy: { slug: "asc" }, include: { sections: true } }),
     prisma.setting.findMany({ where: { group: "general" } }),
     prisma.contactSetting.findFirst(),
+    prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
   ]);
-  return { pages, settings, contact };
+  return { pages, settings, contact, announcements };
 }
 
 export default async function CmsPage() {
