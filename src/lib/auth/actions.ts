@@ -121,10 +121,12 @@ export async function getCurrentUser() {
     },
   });
 
-  // Auto-create user record on first login if not in DB yet
+  // Auto-create or link user record on first login
   if (!dbUser && user.email) {
-    dbUser = await prisma.user.create({
-      data: {
+    dbUser = await prisma.user.upsert({
+      where:  { email: user.email },
+      update: { supabaseUid: user.id },
+      create: {
         supabaseUid: user.id,
         email:       user.email,
         name:        user.user_metadata?.name ?? user.email.split("@")[0],
