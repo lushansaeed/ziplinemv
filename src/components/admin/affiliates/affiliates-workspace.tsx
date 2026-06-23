@@ -84,7 +84,10 @@ export function AffiliatesWorkspace({ affiliates, applications, pendingCoupons, 
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 text-xs font-semibold hover:bg-green-200 transition-colors disabled:opacity-50">
                           <Check className="w-3.5 h-3.5" /> Approve
                         </button>
-                        <button onClick={() => startTransition(() => rejectAffiliate(app.id).then(r => r.success ? toast.success("Rejected") : toast.error((r as any).error ?? "Action failed")))}
+                        <button onClick={() => startTransition(async () => {
+                            const r = await rejectAffiliate(app.id);
+                            r.success ? toast.success("Rejected") : toast.error((r as any).error ?? "Action failed");
+                          })}
                           disabled={isPending}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 text-xs font-semibold hover:bg-red-200 transition-colors disabled:opacity-50">
                           <X className="w-3.5 h-3.5" /> Reject
