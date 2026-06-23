@@ -1,0 +1,3 @@
+// Supabase project: ujrudblymdipeihittik
+export const SUPABASE_URL  = "https://ujrudblymdipeihittik.supabase.co";
+export const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqcnVkYmx5bWRpcGVpaGl0dGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTU1NTUsImV4cCI6MjA5Nzc3MTU1NX0.CdQ2iRsAZwLOY8rSkIA8E30dVhQgZSepSn-PHQUgcAs";

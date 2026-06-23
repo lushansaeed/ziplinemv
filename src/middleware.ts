@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON } from "@/lib/supabase/config";
 
 // ─── Domain → route prefix mapping ──────────────────────────────────────────
 const DOMAIN_MAP: Record<string, string> = {
@@ -26,9 +27,6 @@ export async function middleware(request: NextRequest) {
 
   // ── Refresh Supabase session ──────────────────────────────────────────────
   let response = NextResponse.next({ request });
-
-  const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  ?? "https://ujrudblymdipeihittik.supabase.co";
-  const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVqcnVkYmx5bWRpcGVpaGl0dGlrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxOTU1NTUsImV4cCI6MjA5Nzc3MTU1NX0.CdQ2iRsAZwLOY8rSkIA8E30dVhQgZSepSn-PHQUgcAs";
 
   const supabase = createServerClient(
     SUPABASE_URL,
