@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { prisma } from "@/lib/prisma/client";
 import { HeroSection } from "@/components/public/home/hero-section";
 import { TrustBar } from "@/components/public/home/trust-bar";
@@ -30,7 +32,7 @@ async function getHomeData() {
       include: { category: true },
     }),
     prisma.websiteMedia.findMany({
-      where: { active: true, category: { slug: "gallery" } },
+      where: { active: true },
       orderBy: { displayOrder: "asc" },
       take: 9,
       include: { category: true },
