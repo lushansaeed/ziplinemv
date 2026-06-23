@@ -44,7 +44,7 @@ export default async function SlotsPage({
         title="Time Slots"
         description="Manage operating templates, block individual slots, and set capacity."
       />
-      <SlotsWorkspace {...data} />
+      <SlotsWorkspace {...(data as any)} />
     </div>
   );
 }

@@ -38,7 +38,7 @@ export default async function AffiliateCommissionPage() {
     <div>
       <PageHeader title="Commission" description={`Your current rate: ${affiliate.commissionRate}%`} />
       <AffiliateCommissionStatement
-        {...data}
+        {...(data as any)}
         commissionRate={Number(affiliate.commissionRate)}
         commissionBasis={affiliate.commissionBasis}
       />

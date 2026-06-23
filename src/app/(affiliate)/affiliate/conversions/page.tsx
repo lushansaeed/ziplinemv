@@ -44,7 +44,7 @@ export default async function AffiliateConversionsPage({
         title="Conversions"
         description={`${data.total} booking${data.total !== 1 ? "s" : ""} from ${data.clickTotal} clicks`}
       />
-      <AffiliateConversionsTable {...data} searchParams={searchParams as Record<string, string | undefined>} />
+      <AffiliateConversionsTable {...data} bookings={data.bookings as any} searchParams={searchParams as Record<string, string | undefined>} />
     </div>
   );
 }

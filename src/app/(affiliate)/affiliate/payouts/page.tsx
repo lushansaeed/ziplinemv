@@ -30,7 +30,7 @@ export default async function AffiliatePayoutsPage() {
   return (
     <div>
       <PageHeader title="Payouts" description="Request and track your earnings." />
-      <AffiliatePayouts {...data} userId={user.id} />
+      <AffiliatePayouts {...(data as any)} userId={user.id} />
     </div>
   );
 }

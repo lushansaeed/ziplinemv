@@ -38,7 +38,7 @@ export default async function AgentCommissionPage() {
   return (
     <div>
       <PageHeader title="Commission" description={`Your current rate: ${agent.commissionRate}%`} />
-      <AgentCommissionStatement {...data} commissionRate={Number(agent.commissionRate)} commissionBasis={agent.commissionBasis} />
+      <AgentCommissionStatement {...(data as any)} commissionRate={Number(agent.commissionRate)} commissionBasis={agent.commissionBasis} />
     </div>
   );
 }

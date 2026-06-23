@@ -22,7 +22,7 @@ export default async function CmsPage() {
   return (
     <div>
       <PageHeader title="Content Management" description="Edit site settings, hero copy, contact details, and page sections." />
-      <CmsWorkspace {...data} />
+      <CmsWorkspace {...(data as any)} />
     </div>
   );
 }

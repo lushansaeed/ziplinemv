@@ -25,7 +25,7 @@ export default async function PricingPage() {
   return (
     <div>
       <PageHeader title="Price Engine" description="Packages, add-ons, promo codes, and commission settings." />
-      <PricingWorkspace {...data} />
+      <PricingWorkspace {...(data as any)} />
     </div>
   );
 }

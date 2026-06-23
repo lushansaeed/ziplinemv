@@ -24,7 +24,7 @@ export default async function WebsiteMediaPage() {
   return (
     <div>
       <PageHeader title="Website Media" description="Manage hero images, gallery, package images, and all frontend media." />
-      <WebsiteMediaManager {...data} />
+      <WebsiteMediaManager {...(data as any)} />
     </div>
   );
 }
