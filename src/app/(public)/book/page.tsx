@@ -32,6 +32,7 @@ export default async function BookPage({
 
   return (
     <div className="min-h-screen pt-24 pb-20">
+      <PageBackground pageKey="book" />
       <BookingWizard
         packages={packages as any}
         addOns={addOns as any}

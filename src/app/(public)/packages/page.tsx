@@ -59,6 +59,7 @@ export default async function PackagesPage() {
 
   return (
     <div className="pt-28 pb-20">
+      <PageBackground pageKey="packages" />
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-16 space-y-4">

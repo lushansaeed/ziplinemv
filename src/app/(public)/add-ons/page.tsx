@@ -38,6 +38,7 @@ export default async function AddOnsPage() {
 
   return (
     <div className="pt-28 pb-20">
+      <PageBackground pageKey="add-ons" />
       <div className="container-brand">
         {/* Hero header */}
         <div className="text-center mb-16 space-y-4">

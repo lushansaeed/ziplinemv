@@ -31,6 +31,7 @@ export default async function FaqPage() {
 
   return (
     <div className="pt-28 pb-20">
+      <PageBackground pageKey="faq" />
       <div className="container-brand max-w-3xl">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
