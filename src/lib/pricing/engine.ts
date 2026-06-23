@@ -39,7 +39,7 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
       : Promise.resolve(null),
     input.affiliateCouponCode
       ? prisma.affiliateCoupon.findFirst({
-          where: { code: input.affiliateCouponCode.toUpperCase(), status: "APPROVED", active: true },
+          where: { code: input.affiliateCouponCode.toUpperCase(), status: "APPROVED" },
         })
       : Promise.resolve(null),
   ]);
