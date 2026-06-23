@@ -2,9 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ─── Fonts loaded via next/font in layout.tsx ──────────────────────── */
-/* Display: Caveat (brand: Kindness Matters — hand-scripted, expressive)  */
-/* Body:    Plus Jakarta Sans (brand: Agrandir — modern geometric sans)   */
+/* ─── Brand Fonts ───────────────────────────────────────────────────── */
+/* Display: Kindness Matters (self-hosted woff2)                          */
+/* Body:    Plus Jakarta Sans (brand: Agrandir — loaded via next/font)    */
+
+@font-face {
+  font-family: 'Kindness Matters';
+  src: url('/fonts/Kindness-Matters.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
 
 /* ─── CSS Custom Properties ─────────────────────────────────────────── */
 @layer base {
@@ -36,10 +44,8 @@
     --chart-4:            130 70% 45%;
     --chart-5:            350 70% 60%;
 
-    /* Brand font vars — matched to Vahmāfushi guidelines */
-    /* Caveat ≈ Kindness Matters (display/handscript) */
-    /* Plus Jakarta Sans ≈ Agrandir (body/interface)  */
-    --font-display: 'Caveat', cursive;
+    /* Brand fonts — matched to Vahmāfushi guidelines */
+    --font-display: 'Kindness Matters', cursive;
     --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
     --font-mono:    'Menlo', 'Monaco', 'Cascadia Code', monospace;
   }

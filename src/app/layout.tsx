@@ -1,17 +1,8 @@
 import type { Metadata } from "next";
-import { Caveat, Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-
-// Brand font: Kindness Matters (commercial) → Caveat as open-source equivalent
-// Expressive, hand-scripted — used for display headings and brand moments
-const caveat = Caveat({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-  weight: ["400", "500", "600", "700"],
-});
 
 // Brand font: Agrandir (commercial) → Plus Jakarta Sans as open-source equivalent
 // Modern geometric sans — used for all UI, body copy, navigation
@@ -72,7 +63,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${caveat.variable} ${jakarta.variable} font-body antialiased`}>
+      <body className={`${jakarta.variable} font-body antialiased`}>
         <ThemeProvider>
           {children}
         </ThemeProvider>
