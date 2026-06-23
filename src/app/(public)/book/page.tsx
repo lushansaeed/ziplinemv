@@ -1,0 +1,41 @@
+import type { Metadata } from "next";
+import { prisma } from "@/lib/prisma/client";
+import { BookingWizard } from "@/components/booking/booking-wizard";
+
+export const metadata: Metadata = {
+  title: "Book Your Flight — Zipline Maldives",
+  description: "Book your zipline experience. Choose your date, package, and add-ons in minutes.",
+};
+
+async function getBookingData(packageSlug?: string) {
+  const [packages, addOns] = await Promise.all([
+    prisma.package.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
+    prisma.addOn.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
+  ]);
+
+  const preselectedPackage = packageSlug
+    ? packages.find((p) => p.slug === packageSlug) ?? null
+    : null;
+
+  return { packages, addOns, preselectedPackage };
+}
+
+export default async function BookPage({
+  searchParams,
+}: {
+  searchParams: { package?: string; date?: string; coupon?: string };
+}) {
+  const { packages, addOns, preselectedPackage } = await getBookingData(searchParams.package);
+
+  return (
+    <div className="min-h-screen pt-24 pb-20">
+      <BookingWizard
+        packages={packages}
+        addOns={addOns}
+        preselectedPackageId={preselectedPackage?.id}
+        initialDate={searchParams.date}
+        affiliateCoupon={searchParams.coupon}
+      />
+    </div>
+  );
+}
