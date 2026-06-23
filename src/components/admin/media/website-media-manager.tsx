@@ -42,14 +42,21 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename: file.name, contentType: file.type }),
       });
-      const { uploadUrl, publicUrl, storagePath } = await urlRes.json();
+      const urlData = await urlRes.json();
+      if (!urlRes.ok || !urlData.uploadUrl || !urlData.publicUrl) {
+        throw new Error(urlData.error ?? "Could not generate upload URL. Check SUPABASE_SERVICE_ROLE_KEY is set in Vercel.");
+      }
+      const { uploadUrl, publicUrl, storagePath } = urlData;
 
       // 2. Upload to Supabase storage
-      await fetch(uploadUrl, {
+      const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type },
         body: file,
       });
+      if (!uploadRes.ok) {
+        throw new Error(`Upload failed: ${uploadRes.status} ${uploadRes.statusText}`);
+      }
 
       // 3. Create media record
       const createRes = await fetch("/api/admin/media", {

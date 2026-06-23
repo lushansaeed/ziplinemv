@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { PolicyPage } from "@/components/public/policy-page";

@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Video, Tv2, ArrowRight, Clock, Star, AlertTriangle } from "lucide-react";
