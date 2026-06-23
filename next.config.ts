@@ -5,10 +5,25 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "images.unsplash.com"
-      }
-    ]
-  }
+        hostname: "*.supabase.co",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+      },
+    ],
+  },
+  experimental: {
+    serverActions: {
+      allowedOrigins: [
+        "zipline.mv",
+        "admin.zipline.mv",
+        "agents.zipline.mv",
+        "affiliate.zipline.mv",
+        "localhost:3000",
+      ],
+    },
+  },
 };
 
 export default nextConfig;

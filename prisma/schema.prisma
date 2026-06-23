@@ -1,3 +1,6 @@
+// ─── Prisma Schema — Zipline MV ─────────────────────────────────────────────
+// Supabase PostgreSQL · Role-based · Multi-portal · Future-proof (activities)
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,22 +11,44 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────────────────────────────────────
+
 enum UserRole {
   SUPER_ADMIN
   ADMIN
+  OPERATIONS_MANAGER
   BOOKING_STAFF
-  COUNTER_STAFF
-  LAUNCHING_STAFF
-  LANDING_STAFF
+  MEDIA_STAFF
+  FINANCE
   AGENT
   AFFILIATE
-  CUSTOMER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum BookingSource {
+  DIRECT
+  WALK_IN
+  AGENT
+  AFFILIATE
 }
 
 enum BookingStatus {
-  PENDING
   CONFIRMED
-  PAID
   CHECKED_IN
   COMPLETED
   CANCELLED
@@ -33,24 +58,37 @@ enum BookingStatus {
 
 enum PaymentStatus {
   UNPAID
+  PAID
   PARTIALLY_PAID
-  PAID
   REFUNDED
+  FAILED
+  COMPLIMENTARY
 }
 
-enum CommissionStatus {
+enum PaymentMethod {
+  CASH
+  CARD
+  BANK_TRANSFER
+  ONLINE
+  PAYMENT_LINK
+  COMPLIMENTARY
+}
+
+enum WaiverStatus {
   PENDING
-  ELIGIBLE
-  APPROVED
-  PAID
-  REJECTED
+  SIGNED
+  EXEMPTED
 }
 
-enum BookingSource {
-  DIRECT_BOOKING
-  WALK_IN
-  AGENT
-  AFFILIATE
+enum MediaDeliveryStatus {
+  NOT_APPLICABLE
+  PENDING
+  PROCESSING
+  UPLOADED
+  SENT_TO_CUSTOMER
+  ISSUE_REPORTED
+  REFUNDED
+  RESOLVED
 }
 
 enum MediaType {
@@ -58,221 +96,857 @@ enum MediaType {
   VIDEO
 }
 
+enum PolicyType {
+  TERMS_AND_CONDITIONS
+  REFUND_POLICY
+  IMPORTANT_INFORMATION
+  PRIVACY_POLICY
+}
+
+enum PricingRuleType {
+  TOURIST
+  LOCAL
+  CHILD
+  GROUP
+  AGENT
+  WALK_IN
+  SEASONAL
+  DATE_SPECIFIC
+  TIME_SPECIFIC
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+}
+
+enum CommissionBasis {
+  PACKAGE_ONLY
+  PACKAGE_AND_ADDONS
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSING
+  PAID
+  REJECTED
+}
+
+enum SlotStatus {
+  AVAILABLE
+  FULL
+  BLOCKED
+  WEATHER_CLOSED
+  EVENT_CLOSED
+}
+
+enum NotificationType {
+  BOOKING_CONFIRMATION
+  BOOKING_CANCELLATION
+  WAIVER_REMINDER
+  MEDIA_DELIVERY
+  AGENT_APPROVAL
+  AFFILIATE_APPROVAL
+  PAYMENT_RECEIVED
+  REFUND_PROCESSED
+  ADMIN_NEW_BOOKING
+  AFFILIATE_CONVERSION
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// IDENTITY & AUTH
+// ─────────────────────────────────────────────────────────────────────────────
+
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  name         String?
-  role         UserRole    @default(CUSTOMER)
-  passwordHash String?
-  isActive     Boolean     @default(true)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  customer     Customer?
-  agent        Agent?
-  affiliate    Affiliate?
-  auditLogs    AuditLog[]
+  id           String     @id @default(cuid())
+  supabaseUid  String?    @unique @map("supabase_uid")
+  email        String     @unique
+  name         String
+  role         UserRole   @default(BOOKING_STAFF)
+  status       UserStatus @default(ACTIVE)
+  avatarUrl    String?    @map("avatar_url")
+  phone        String?
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  agent          Agent?
+  affiliate      Affiliate?
+  bookingsCreated Booking[]     @relation("CreatedBy")
+  auditLogs      AuditLog[]
+  mediaUploads   WebsiteMedia[]
+  checkIns       CheckIn[]      @relation("CheckedInBy")
+  mediaAssigned  CustomerMediaDelivery[] @relation("AssignedTo")
+  payoutRequests PayoutRequest[]
+
+  @@map("users")
 }
 
-model Customer {
-  id          String    @id @default(cuid())
-  userId      String?   @unique
-  user        User?     @relation(fields: [userId], references: [id])
-  name        String
-  nationality String?
-  phone       String
-  email       String?
-  isTourist   Boolean   @default(true)
-  source      BookingSource @default(DIRECT_BOOKING)
-  agentId     String?
-  agent       Agent?    @relation("AgentCustomers", fields: [agentId], references: [id])
-  affiliateId String?
-  affiliate   Affiliate? @relation("AffiliateCustomers", fields: [affiliateId], references: [id])
-  affiliateCodeId String?
-  affiliateCode AffiliateCode? @relation("AffiliateCodeCustomers", fields: [affiliateCodeId], references: [id])
-  bookings    Booking[]
-  createdAt   DateTime  @default(now())
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  user      User?    @relation(fields: [userId], references: [id])
+  role      String?
+  action    String
+  module    String
+  recordId  String?  @map("record_id")
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
-model Booking {
-  id                String        @id @default(cuid())
-  reference         String        @unique
-  customerId        String
-  customer          Customer      @relation(fields: [customerId], references: [id])
-  date              DateTime
-  timeSlotId        String
-  timeSlot          TimeSlot      @relation(fields: [timeSlotId], references: [id])
-  riderCount        Int
-  totalAmount       Decimal       @db.Decimal(10, 2)
-  currency          String
-  paymentStatus     PaymentStatus @default(UNPAID)
-  bookingStatus     BookingStatus @default(PENDING)
-  source            BookingSource @default(DIRECT_BOOKING)
-  agentId           String?
-  agent             Agent?        @relation(fields: [agentId], references: [id])
-  affiliateId       String?
-  affiliate         Affiliate?    @relation(fields: [affiliateId], references: [id])
-  affiliateCodeId   String?
-  affiliateCode     AffiliateCode? @relation(fields: [affiliateCodeId], references: [id])
-  commissionAmount  Decimal?      @db.Decimal(10, 2)
-  internalNotes     String?
-  createdById       String?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  riders            BookingRider[]
-  addons            BookingAddon[]
-  payments          Payment[]
-  commissions       Commission[]
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// AGENTS
+// ─────────────────────────────────────────────────────────────────────────────
 
-model BookingRider {
-  id        String  @id @default(cuid())
-  bookingId String
-  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  name      String?
-  type      String
-  weightKg  Decimal? @db.Decimal(5, 2)
-}
+model AgentApplication {
+  id                    String            @id @default(cuid())
+  businessName          String            @map("business_name")
+  contactPerson         String            @map("contact_person")
+  email                 String
+  phone                 String
+  island                String?
+  businessType          String?           @map("business_type")
+  address               String?
+  website               String?
+  expectedMonthlyBookings Int?            @map("expected_monthly_bookings")
+  documentsUrls         String[]          @map("documents_urls")
+  agreementAccepted     Boolean           @default(false) @map("agreement_accepted")
+  status                ApplicationStatus @default(PENDING)
+  adminNotes            String?           @map("admin_notes")
+  submittedAt           DateTime          @default(now()) @map("submitted_at")
+  reviewedAt            DateTime?         @map("reviewed_at")
 
-model BookingAddon {
-  id        String  @id @default(cuid())
-  bookingId String
-  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  addonKey  String
-  label     String
-  price     Decimal @db.Decimal(10, 2)
-  currency  String
+  agent Agent?
+
+  @@map("agent_applications")
 }
 
 model Agent {
-  id                String       @id @default(cuid())
-  userId            String       @unique
-  user              User         @relation(fields: [userId], references: [id])
-  agencyName        String
-  commissionPercent Decimal      @default(10) @db.Decimal(5, 2)
-  isApproved        Boolean      @default(false)
-  isSuspended       Boolean      @default(false)
-  bookings          Booking[]
-  customers         Customer[]    @relation("AgentCustomers")
-  rates             AgentRate[]
-  commissions       Commission[]
+  id               String            @id @default(cuid())
+  userId           String            @unique @map("user_id")
+  user             User              @relation(fields: [userId], references: [id])
+  applicationId    String?           @unique @map("application_id")
+  application      AgentApplication? @relation(fields: [applicationId], references: [id])
+  businessName     String            @map("business_name")
+  contactPerson    String            @map("contact_person")
+  email            String
+  phone            String
+  island           String?
+  businessType     String?           @map("business_type")
+  address          String?
+  website          String?
+  commissionRate   Decimal           @default(10) @map("commission_rate") @db.Decimal(5, 2)
+  commissionBasis  CommissionBasis   @default(PACKAGE_ONLY) @map("commission_basis")
+  canMakeUnpaidBookings Boolean      @default(false) @map("can_make_unpaid_bookings")
+  specialPricing   Json?             @map("special_pricing")
+  status           ApplicationStatus @default(PENDING)
+  approvedAt       DateTime?         @map("approved_at")
+  notes            String?
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+
+  bookings    Booking[]
+  customers   Customer[]
+  commissions AgentCommission[]
+
+  @@map("agents")
 }
 
-model AgentRate {
-  id        String  @id @default(cuid())
-  agentId   String
-  agent     Agent   @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  name      String
-  price     Decimal @db.Decimal(10, 2)
-  currency  String
-  validFrom DateTime?
-  validTo   DateTime?
+model AgentCommission {
+  id        String      @id @default(cuid())
+  bookingId String      @unique @map("booking_id")
+  booking   Booking     @relation(fields: [bookingId], references: [id])
+  agentId   String      @map("agent_id")
+  agent     Agent       @relation(fields: [agentId], references: [id])
+  amount    Decimal     @db.Decimal(10, 2)
+  rate      Decimal     @db.Decimal(5, 2)
+  basis     CommissionBasis
+  status    PayoutStatus @default(PENDING)
+  paidAt    DateTime?   @map("paid_at")
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  @@index([agentId])
+  @@map("agent_commissions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AFFILIATES
+// ─────────────────────────────────────────────────────────────────────────────
+
+model AffiliateApplication {
+  id                 String            @id @default(cuid())
+  name               String
+  contactPerson      String            @map("contact_person")
+  email              String
+  phone              String
+  website            String?
+  promotionChannel   String?           @map("promotion_channel")
+  expectedTraffic    String?           @map("expected_traffic")
+  preferredCoupon    String?           @map("preferred_coupon")
+  paymentDetails     Json?             @map("payment_details")
+  agreementAccepted  Boolean           @default(false) @map("agreement_accepted")
+  status             ApplicationStatus @default(PENDING)
+  adminNotes         String?           @map("admin_notes")
+  submittedAt        DateTime          @default(now()) @map("submitted_at")
+  reviewedAt         DateTime?         @map("reviewed_at")
+
+  affiliate Affiliate?
+
+  @@map("affiliate_applications")
 }
 
 model Affiliate {
-  id          String          @id @default(cuid())
-  userId      String          @unique
-  user        User            @relation(fields: [userId], references: [id])
-  displayName String
-  isApproved  Boolean         @default(false)
-  codes       AffiliateCode[]
-  customers   Customer[]       @relation("AffiliateCustomers")
+  id               String                @id @default(cuid())
+  userId           String                @unique @map("user_id")
+  user             User                  @relation(fields: [userId], references: [id])
+  applicationId    String?               @unique @map("application_id")
+  application      AffiliateApplication? @relation(fields: [applicationId], references: [id])
+  name             String
+  contactPerson    String                @map("contact_person")
+  email            String
+  phone            String
+  website          String?
+  channel          String?
+  commissionRate   Decimal               @default(5) @map("commission_rate") @db.Decimal(5, 2)
+  commissionBasis  CommissionBasis       @default(PACKAGE_ONLY) @map("commission_basis")
+  cookieDays       Int                   @default(30) @map("cookie_days")
+  paymentDetails   Json?                 @map("payment_details")
+  status           ApplicationStatus     @default(PENDING)
+  approvedAt       DateTime?             @map("approved_at")
+  notes            String?
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  links       AffiliateLink[]
+  coupons     AffiliateCoupon[]
   bookings    Booking[]
-  commissions Commission[]
+  commissions AffiliateCommission[]
+
+  @@map("affiliates")
 }
 
-model AffiliateCode {
-  id          String     @id @default(cuid())
-  affiliateId String
-  affiliate   Affiliate  @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
-  code        String     @unique
-  clicks      Int        @default(0)
-  isActive    Boolean    @default(true)
-  customers   Customer[] @relation("AffiliateCodeCustomers")
-  bookings    Booking[]
+model AffiliateLink {
+  id          String    @id @default(cuid())
+  affiliateId String    @map("affiliate_id")
+  affiliate   Affiliate @relation(fields: [affiliateId], references: [id])
+  slug        String    @unique
+  fullUrl     String    @map("full_url")
+  label       String?
+  active      Boolean   @default(true)
+  clickCount  Int       @default(0) @map("click_count")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  clicks      AffiliateClick[]
+
+  @@index([affiliateId])
+  @@map("affiliate_links")
 }
 
-model Commission {
+model AffiliateCoupon {
+  id              String      @id @default(cuid())
+  affiliateId     String      @map("affiliate_id")
+  affiliate       Affiliate   @relation(fields: [affiliateId], references: [id])
+  code            String      @unique
+  discountType    DiscountType @map("discount_type")
+  discountValue   Decimal      @map("discount_value") @db.Decimal(10, 2)
+  maxUses         Int?         @map("max_uses")
+  usedCount       Int          @default(0) @map("used_count")
+  status          ApplicationStatus @default(PENDING)
+  approvedAt      DateTime?    @map("approved_at")
+  validFrom       DateTime?    @map("valid_from")
+  validTo         DateTime?    @map("valid_to")
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  clicks    AffiliateClick[]
+  bookings  Booking[]
+
+  @@index([affiliateId])
+  @@map("affiliate_coupons")
+}
+
+model AffiliateClick {
   id          String           @id @default(cuid())
-  bookingId   String
-  booking     Booking          @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  agentId     String?
-  agent       Agent?           @relation(fields: [agentId], references: [id])
-  affiliateId String?
-  affiliate   Affiliate?       @relation(fields: [affiliateId], references: [id])
-  amount      Decimal          @db.Decimal(10, 2)
-  currency    String
-  status      CommissionStatus @default(PENDING)
-  paidAt      DateTime?
-  notes       String?
+  linkId      String?          @map("link_id")
+  link        AffiliateLink?   @relation(fields: [linkId], references: [id])
+  couponId    String?          @map("coupon_id")
+  coupon      AffiliateCoupon? @relation(fields: [couponId], references: [id])
+  sessionId   String?          @map("session_id")
+  ipAddress   String?          @map("ip_address")
+  userAgent   String?          @map("user_agent")
+  referrer    String?
+  convertedAt DateTime?        @map("converted_at")
+  bookingId   String?          @unique @map("booking_id")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([linkId])
+  @@index([couponId])
+  @@map("affiliate_clicks")
 }
 
-model Payment {
-  id        String        @id @default(cuid())
-  bookingId String
-  booking   Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  amount    Decimal       @db.Decimal(10, 2)
-  currency  String
-  method    String
-  status    PaymentStatus @default(UNPAID)
-  createdAt DateTime      @default(now())
+model AffiliateCommission {
+  id          String      @id @default(cuid())
+  bookingId   String      @unique @map("booking_id")
+  booking     Booking     @relation(fields: [bookingId], references: [id])
+  affiliateId String      @map("affiliate_id")
+  affiliate   Affiliate   @relation(fields: [affiliateId], references: [id])
+  amount      Decimal     @db.Decimal(10, 2)
+  rate        Decimal     @db.Decimal(5, 2)
+  basis       CommissionBasis
+  status      PayoutStatus @default(PENDING)
+  paidAt      DateTime?   @map("paid_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  @@index([affiliateId])
+  @@map("affiliate_commissions")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CUSTOMERS & RIDERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Customer {
+  id           String        @id @default(cuid())
+  name         String
+  phone        String
+  phoneCountry String        @default("MV") @map("phone_country")
+  email        String?
+  nationality  String?
+  hotel        String?
+  source       BookingSource @default(DIRECT)
+  agentId      String?       @map("agent_id")
+  agent        Agent?        @relation(fields: [agentId], references: [id])
+  affiliateId  String?       @map("affiliate_id")
+  affiliate    Affiliate?    @relation(fields: [affiliateId], references: [id])
+  notes        String?
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  bookings Booking[]
+  riders   Rider[]
+
+  @@index([agentId])
+  @@index([affiliateId])
+  @@map("customers")
+}
+
+model Rider {
+  id         String   @id @default(cuid())
+  customerId String   @map("customer_id")
+  customer   Customer @relation(fields: [customerId], references: [id])
+  name       String
+  age        Int?
+  weight     Decimal? @db.Decimal(5, 2)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  bookingRiders BookingRider[]
+  waivers       Waiver[]
+
+  @@index([customerId])
+  @@map("riders")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVITIES (future-proof: zipline → snorkelling, sunset cruise, etc.)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Activity {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  packages  Package[]
+  addOns    AddOn[]
+  timeSlots TimeSlot[]
+  slotTemplates SlotTemplate[]
+
+  @@map("activities")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CATALOG — PACKAGES & ADD-ONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Package {
+  id                        String   @id @default(cuid())
+  activityId                String   @map("activity_id")
+  activity                  Activity @relation(fields: [activityId], references: [id])
+  name                      String
+  slug                      String   @unique
+  description               String?
+  touristPrice              Decimal  @map("tourist_price") @db.Decimal(10, 2)
+  localPrice                Decimal? @map("local_price") @db.Decimal(10, 2)
+  childPrice                Decimal? @map("child_price") @db.Decimal(10, 2)
+  currency                  String   @default("USD")
+  included                  String[]
+  excluded                  String[]
+  featured                  Boolean  @default(false)
+  imageUrl                  String?  @map("image_url")
+  videoUrl                  String?  @map("video_url")
+  packageTerms              String?  @map("package_terms")
+  maxParticipants           Int?     @map("max_participants")
+  agentCommissionEligible   Boolean  @default(true) @map("agent_commission_eligible")
+  affiliateCommissionEligible Boolean @default(true) @map("affiliate_commission_eligible")
+  displayOrder              Int      @default(0) @map("display_order")
+  active                    Boolean  @default(true)
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  bookings PricingRule[]
+  bookingsList Booking[]
+
+  @@map("packages")
+}
+
+model AddOn {
+  id           String   @id @default(cuid())
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id])
+  name         String
+  description  String?
+  price        Decimal  @db.Decimal(10, 2)
+  currency     String   @default("USD")
+  mediaUrl     String?  @map("media_url")
+  bestFor      String?  @map("best_for")
+  rules        String?
+  displayOrder Int      @default(0) @map("display_order")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  bookingAddOns BookingAddOn[]
+
+  @@map("add_ons")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRICING ENGINE
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PricingRule {
+  id          String          @id @default(cuid())
+  packageId   String?         @map("package_id")
+  package     Package?        @relation(fields: [packageId], references: [id])
+  ruleType    PricingRuleType @map("rule_type")
+  appliesTo   String?         @map("applies_to")
+  valueType   DiscountType    @map("value_type")
+  value       Decimal         @db.Decimal(10, 4)
+  priority    Int             @default(0)
+  dateStart   DateTime?       @map("date_start")
+  dateEnd     DateTime?       @map("date_end")
+  active      Boolean         @default(true)
+  createdAt   DateTime        @default(now()) @map("created_at")
+
+  @@index([packageId])
+  @@map("pricing_rules")
+}
+
+model PromoCode {
+  id           String       @id @default(cuid())
+  code         String       @unique
+  description  String?
+  discountType DiscountType @map("discount_type")
+  discountValue Decimal     @map("discount_value") @db.Decimal(10, 2)
+  maxUses      Int?         @map("max_uses")
+  usedCount    Int          @default(0) @map("used_count")
+  minOrderAmount Decimal?   @map("min_order_amount") @db.Decimal(10, 2)
+  validFrom    DateTime?    @map("valid_from")
+  validTo      DateTime?    @map("valid_to")
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now()) @map("created_at")
+
+  bookings Booking[]
+
+  @@map("promo_codes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TIME SLOTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SlotTemplate {
+  id         String   @id @default(cuid())
+  activityId String   @map("activity_id")
+  activity   Activity @relation(fields: [activityId], references: [id])
+  dayOfWeek  Int      @map("day_of_week") // 0=Sun..6=Sat
+  startTime  String   @map("start_time")  // "09:00"
+  endTime    String   @map("end_time")    // "09:30"
+  capacity   Int      @default(8)
+  active     Boolean  @default(true)
+
+  @@map("slot_templates")
 }
 
 model TimeSlot {
-  id          String    @id @default(cuid())
-  label       String
-  startsAt    DateTime
-  maxRiders   Int       @default(8)
-  isActive    Boolean   @default(true)
-  bookings    Booking[]
+  id           String     @id @default(cuid())
+  activityId   String     @map("activity_id")
+  activity     Activity   @relation(fields: [activityId], references: [id])
+  date         DateTime   @db.Date
+  startTime    String     @map("start_time")
+  endTime      String     @map("end_time")
+  capacity     Int        @default(8)
+  bookedCount  Int        @default(0) @map("booked_count")
+  status       SlotStatus @default(AVAILABLE)
+  priceOverride Decimal?  @map("price_override") @db.Decimal(10, 2)
+  notes        String?
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  bookings Booking[]
+
+  @@unique([activityId, date, startTime])
+  @@index([date])
+  @@map("time_slots")
 }
 
-model PricingRule {
-  id          String    @id @default(cuid())
-  name        String
-  audience    String
-  adultPrice  Decimal   @db.Decimal(10, 2)
-  childPrice  Decimal   @db.Decimal(10, 2)
-  currency    String
-  validFrom   DateTime?
-  validTo     DateTime?
-  minGroup    Int?
-  isActive    Boolean   @default(true)
+// ─────────────────────────────────────────────────────────────────────────────
+// BOOKINGS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Booking {
+  id              String        @id @default(cuid())
+  reference       String        @unique
+  customerId      String        @map("customer_id")
+  customer        Customer      @relation(fields: [customerId], references: [id])
+  agentId         String?       @map("agent_id")
+  agent           Agent?        @relation(fields: [agentId], references: [id])
+  affiliateId     String?       @map("affiliate_id")
+  affiliate       Affiliate?    @relation(fields: [affiliateId], references: [id])
+  affiliateCouponId String?     @map("affiliate_coupon_id")
+  affiliateCoupon AffiliateCoupon? @relation(fields: [affiliateCouponId], references: [id])
+  promoCodeId     String?       @map("promo_code_id")
+  promoCode       PromoCode?    @relation(fields: [promoCodeId], references: [id])
+  packageId       String        @map("package_id")
+  package         Package       @relation(fields: [packageId], references: [id])
+  slotId          String        @map("slot_id")
+  slot            TimeSlot      @relation(fields: [slotId], references: [id])
+  bookingDate     DateTime      @map("booking_date") @db.Date
+  numRiders       Int           @map("num_riders")
+  source          BookingSource @default(DIRECT)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  discountAmount  Decimal       @default(0) @map("discount_amount") @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  currency        String        @default("USD")
+  paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
+  paymentMethod   PaymentMethod? @map("payment_method")
+  bookingStatus   BookingStatus @default(CONFIRMED) @map("booking_status")
+  waiverStatus    WaiverStatus  @default(PENDING) @map("waiver_status")
+  mediaStatus     MediaDeliveryStatus @default(NOT_APPLICABLE) @map("media_status")
+  qrCode          String?       @map("qr_code")
+  notes           String?
+  createdById     String?       @map("created_by")
+  createdBy       User?         @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  riders           BookingRider[]
+  addOns           BookingAddOn[]
+  payments         Payment[]
+  refunds          Refund[]
+  waivers          Waiver[]
+  checkIn          CheckIn?
+  mediaDelivery    CustomerMediaDelivery?
+  agentCommission  AgentCommission?
+  affiliateCommission AffiliateCommission?
+
+  @@index([customerId])
+  @@index([agentId])
+  @@index([affiliateId])
+  @@index([bookingDate])
+  @@index([bookingStatus])
+  @@index([source])
+  @@map("bookings")
 }
 
-model MediaFile {
-  id          String    @id @default(cuid())
-  type        MediaType
-  url         String
-  fallbackUrl String?
-  caption     String?
-  placement   String
-  isFeatured  Boolean   @default(false)
-  sortOrder   Int       @default(0)
-  createdAt   DateTime  @default(now())
-}
-
-model WebsiteContent {
+model BookingRider {
   id        String   @id @default(cuid())
-  key       String   @unique
-  value     Json
-  updatedAt DateTime @updatedAt
+  bookingId String   @map("booking_id")
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  riderId   String?  @map("rider_id")
+  rider     Rider?   @relation(fields: [riderId], references: [id])
+  name      String
+  age       Int?
+  weight    Decimal? @db.Decimal(5, 2)
+
+  @@index([bookingId])
+  @@map("booking_riders")
+}
+
+model BookingAddOn {
+  id          String   @id @default(cuid())
+  bookingId   String   @map("booking_id")
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  addOnId     String   @map("add_on_id")
+  addOn       AddOn    @relation(fields: [addOnId], references: [id])
+  quantity    Int      @default(1)
+  pricePerUnit Decimal @map("price_per_unit") @db.Decimal(10, 2)
+  total       Decimal  @db.Decimal(10, 2)
+
+  @@index([bookingId])
+  @@map("booking_add_ons")
+}
+
+model Waiver {
+  id            String       @id @default(cuid())
+  bookingId     String       @map("booking_id")
+  booking       Booking      @relation(fields: [bookingId], references: [id])
+  riderId       String?      @map("rider_id")
+  rider         Rider?       @relation(fields: [riderId], references: [id])
+  riderName     String       @map("rider_name")
+  signatureData String?      @map("signature_data")
+  signedAt      DateTime?    @map("signed_at")
+  ipAddress     String?      @map("ip_address")
+  deviceInfo    String?      @map("device_info")
+  status        WaiverStatus @default(PENDING)
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("waivers")
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  bookingId    String        @map("booking_id")
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  amount       Decimal       @db.Decimal(10, 2)
+  currency     String        @default("USD")
+  method       PaymentMethod
+  reference    String?
+  gatewayRef   String?       @map("gateway_ref")
+  status       PaymentStatus
+  metadata     Json?
+  createdAt    DateTime      @default(now()) @map("created_at")
+
+  refunds Refund[]
+
+  @@index([bookingId])
+  @@map("payments")
+}
+
+model Refund {
+  id        String        @id @default(cuid())
+  bookingId String        @map("booking_id")
+  booking   Booking       @relation(fields: [bookingId], references: [id])
+  paymentId String?       @map("payment_id")
+  payment   Payment?      @relation(fields: [paymentId], references: [id])
+  amount    Decimal       @db.Decimal(10, 2)
+  reason    String?
+  status    PayoutStatus
+  gatewayRef String?      @map("gateway_ref")
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("refunds")
+}
+
+model CheckIn {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique @map("booking_id")
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  checkedInAt   DateTime @default(now()) @map("checked_in_at")
+  checkedInById String?  @map("checked_in_by")
+  checkedInBy   User?    @relation("CheckedInBy", fields: [checkedInById], references: [id])
+  notes         String?
+
+  @@map("check_ins")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MEDIA
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MediaCategory {
+  id          String         @id @default(cuid())
+  name        String
+  slug        String         @unique
+  description String?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  media WebsiteMedia[]
+
+  @@map("media_categories")
+}
+
+model WebsiteMedia {
+  id                String        @id @default(cuid())
+  categoryId        String?       @map("category_id")
+  category          MediaCategory? @relation(fields: [categoryId], references: [id])
+  title             String?
+  caption           String?
+  altText           String?       @map("alt_text")
+  type              MediaType
+  url               String
+  storagePath       String?       @map("storage_path")
+  frontendLocation  String?       @map("frontend_location")
+  active            Boolean       @default(true)
+  displayOrder      Int           @default(0) @map("display_order")
+  uploadedById      String?       @map("uploaded_by")
+  uploadedBy        User?         @relation(fields: [uploadedById], references: [id])
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@index([categoryId])
+  @@map("website_media")
+}
+
+model CustomerMediaDelivery {
+  id                 String              @id @default(cuid())
+  bookingId          String              @unique @map("booking_id")
+  booking            Booking             @relation(fields: [bookingId], references: [id])
+  photographyStatus  MediaDeliveryStatus @default(NOT_APPLICABLE) @map("photography_status")
+  photo360Status     MediaDeliveryStatus @default(NOT_APPLICABLE) @map("photo_360_status")
+  droneStatus        MediaDeliveryStatus @default(NOT_APPLICABLE) @map("drone_status")
+  mediaUrl           String?             @map("media_url")
+  deliveryStatus     MediaDeliveryStatus @default(PENDING) @map("delivery_status")
+  deliveredAt        DateTime?           @map("delivered_at")
+  assignedToId       String?             @map("assigned_to")
+  assignedTo         User?               @relation("AssignedTo", fields: [assignedToId], references: [id])
+  notes              String?
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  @@map("customer_media_delivery")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CMS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model WebsitePage {
+  id             String           @id @default(cuid())
+  slug           String           @unique
+  title          String
+  seoTitle       String?          @map("seo_title")
+  seoDescription String?          @map("seo_description")
+  active         Boolean          @default(true)
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  sections WebsiteSection[]
+
+  @@map("website_pages")
+}
+
+model WebsiteSection {
+  id         String      @id @default(cuid())
+  pageId     String      @map("page_id")
+  page       WebsitePage @relation(fields: [pageId], references: [id])
+  sectionKey String      @map("section_key")
+  content    Json
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+
+  @@unique([pageId, sectionKey])
+  @@map("website_sections")
+}
+
+model Faq {
+  id           String   @id @default(cuid())
+  category     String
+  question     String
+  answer       String
+  displayOrder Int      @default(0) @map("display_order")
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@map("faqs")
+}
+
+model Policy {
+  id        String     @id @default(cuid())
+  type      PolicyType @unique
+  content   String     @db.Text
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  @@map("policies")
 }
 
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
   value     Json
-  updatedAt DateTime @updatedAt
+  type      String   @default("string")
+  label     String?
+  group     String?
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }
 
-model AuditLog {
-  id        String   @id @default(cuid())
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id])
-  action    String
-  entity    String
-  entityId  String?
-  before    Json?
-  after     Json?
-  createdAt DateTime @default(now())
+model Announcement {
+  id        String    @id @default(cuid())
+  text      String
+  ctaLabel  String?   @map("cta_label")
+  ctaUrl    String?   @map("cta_url")
+  active    Boolean   @default(true)
+  startsAt  DateTime? @map("starts_at")
+  endsAt    DateTime? @map("ends_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("announcements")
+}
+
+model ContactSetting {
+  id          String   @id @default(cuid())
+  whatsapp    String?
+  phone       String?
+  email       String?
+  address     String?
+  mapsUrl     String?  @map("maps_url")
+  operatingHours Json? @map("operating_hours")
+  socialLinks Json?    @map("social_links")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("contact_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATIONS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model NotificationLog {
+  id          String           @id @default(cuid())
+  type        NotificationType
+  recipientId String?          @map("recipient_id")
+  channel     String           // email | whatsapp | sms
+  to          String
+  subject     String?
+  body        String?          @db.Text
+  status      String           @default("pending")
+  sentAt      DateTime?        @map("sent_at")
+  error       String?
+  metadata    Json?
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  @@index([recipientId])
+  @@map("notification_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAYOUTS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PayoutRequest {
+  id          String       @id @default(cuid())
+  userId      String       @map("user_id")
+  user        User         @relation(fields: [userId], references: [id])
+  type        String       // agent | affiliate
+  amount      Decimal      @db.Decimal(10, 2)
+  currency    String       @default("USD")
+  status      PayoutStatus @default(PENDING)
+  notes       String?
+  processedAt DateTime?    @map("processed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("payout_requests")
 }
