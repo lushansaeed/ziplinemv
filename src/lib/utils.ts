@@ -1,2 +1,3 @@
-// Re-export from the full utils module for shadcn/ui compatibility
-export { cn } from "@/lib/utils/index";
+// Central re-export — all components import from "@/lib/utils"
+// The full implementations live in @/lib/utils/index.ts
+export * from "@/lib/utils/index";
