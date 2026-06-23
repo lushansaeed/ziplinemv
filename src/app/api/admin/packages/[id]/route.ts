@@ -8,15 +8,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { touristPrice, localPrice, childPrice, ...rest } = body;
+
+  // Strip read-only / relational fields that Prisma won't accept in update
+  const {
+    id: _id, activityId: _activityId, createdAt: _c, updatedAt: _u, _count: _cnt,
+    touristPrice, localPrice, childPrice,
+    ...rest
+  } = body;
 
   const pkg = await prisma.package.update({
     where: { id: params.id },
     data: {
       ...rest,
       ...(touristPrice !== undefined ? { touristPrice: parseFloat(touristPrice) } : {}),
-      ...(localPrice !== undefined ? { localPrice: localPrice ? parseFloat(localPrice) : null } : {}),
-      ...(childPrice !== undefined ? { childPrice: childPrice ? parseFloat(childPrice) : null } : {}),
+      ...(localPrice   !== undefined ? { localPrice:   localPrice   ? parseFloat(localPrice)   : null } : {}),
+      ...(childPrice   !== undefined ? { childPrice:   childPrice   ? parseFloat(childPrice)   : null } : {}),
     },
   });
 

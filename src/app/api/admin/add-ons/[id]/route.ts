@@ -7,7 +7,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { price, ...rest } = await req.json();
+  const body = await req.json();
+  const { id: _id, activityId: _a, createdAt: _c, updatedAt: _u, price, ...rest } = body;
   const addon = await prisma.addOn.update({
     where: { id: params.id },
     data: { ...rest, ...(price !== undefined ? { price: parseFloat(price) } : {}) },
