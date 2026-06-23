@@ -86,7 +86,7 @@ export async function getCurrentUser() {
 
   if (!user) return null;
 
-  const dbUser = await prisma.user.findUnique({
+  let dbUser = await prisma.user.findUnique({
     where: { supabaseUid: user.id },
     select: {
       id: true,
@@ -99,6 +99,29 @@ export async function getCurrentUser() {
       affiliate: { select: { id: true, name: true, status: true } },
     },
   });
+
+  // Auto-create user record on first login if not in DB yet
+  if (!dbUser && user.email) {
+    dbUser = await prisma.user.create({
+      data: {
+        supabaseUid: user.id,
+        email:       user.email,
+        name:        user.user_metadata?.name ?? user.email.split("@")[0],
+        role:        UserRole.BOOKING_STAFF,
+        status:      "ACTIVE",
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        status: true,
+        avatarUrl: true,
+        agent: { select: { id: true, businessName: true, status: true } },
+        affiliate: { select: { id: true, name: true, status: true } },
+      },
+    });
+  }
 
   return dbUser;
 }
