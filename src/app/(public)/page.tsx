@@ -9,7 +9,6 @@ import { AddOnsPreview } from "@/components/public/home/addons-preview";
 import { GalleryWall } from "@/components/public/home/gallery-wall";
 import { StoryTeaser } from "@/components/public/home/story-teaser";
 import { PartnersCTA } from "@/components/public/home/partners-cta";
-import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -51,7 +50,7 @@ export default async function HomePage() {
   const { packages, addOns, heroMedia, galleryMedia, settingsMap } = await getHomeData();
 
   return (
-    <PageBackground pageKey="home">
+    <>
       <HeroSection heroMedia={heroMedia} />
       <TrustBar settings={settingsMap} />
       <RouteSection />
@@ -60,6 +59,6 @@ export default async function HomePage() {
       <GalleryWall items={galleryMedia} />
       <StoryTeaser />
       <PartnersCTA />
-    </PageBackground>
+    </>
   );
 }

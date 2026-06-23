@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -12,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function OurStoryPage() {
   return (
-    <PageBackground pageKey="our-story" className="pt-28 pb-20">
+    <div className="pt-28 pb-20">
       <div className="container-brand max-w-4xl">
 
         {/* Header */}
@@ -131,6 +130,6 @@ export default function OurStoryPage() {
           </div>
         </div>
       </div>
-    </PageBackground>
+    </div>
   );
 }

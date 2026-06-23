@@ -1,4 +1,3 @@
-import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { BookingWizard } from "@/components/booking/booking-wizard";
@@ -31,7 +30,7 @@ export default async function BookPage({
   const { packages, addOns, preselectedPackage } = await getBookingData(searchParams.package);
 
   return (
-    <PageBackground pageKey="book" className="min-h-screen pt-24 pb-20">
+    <div className="min-h-screen pt-24 pb-20">
       <BookingWizard
         packages={packages as any}
         addOns={addOns as any}
@@ -39,6 +38,6 @@ export default async function BookPage({
         initialDate={searchParams.date}
         affiliateCoupon={searchParams.coupon}
       />
-    </PageBackground>
+    </div>
   );
 }

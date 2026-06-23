@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { Phone, Mail, MapPin, Clock, MessageCircle, Instagram, Facebook } from "lucide-react";
@@ -26,7 +25,7 @@ export default async function ContactPage() {
   const socials = (contact?.socialLinks as Record<string, string> | null) ?? {};
 
   return (
-    <PageBackground pageKey="contact" className="pt-28 pb-20">
+    <div className="pt-28 pb-20">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
@@ -157,6 +156,6 @@ export default async function ContactPage() {
           </div>
         )}
       </div>
-    </PageBackground>
+    </div>
   );
 }

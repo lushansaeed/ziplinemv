@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic";
 
-import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Camera, Video, Tv2, ArrowRight, Clock, Star, AlertTriangle } from "lucide-react";
@@ -37,7 +36,7 @@ export default async function AddOnsPage() {
   ];
 
   return (
-    <PageBackground pageKey="add-ons" className="pt-28 pb-20">
+    <div className="pt-28 pb-20">
       <div className="container-brand">
         {/* Hero header */}
         <div className="text-center mb-16 space-y-4">
@@ -162,6 +161,6 @@ export default async function AddOnsPage() {
           </Link>
         </div>
       </div>
-    </PageBackground>
+    </div>
   );
 }
