@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma/client";
 
 export interface PriceInput {
-  packageId: string;
-  addOnIds:  string[];
-  numRiders: number;
-  date:      string;
-  nationality?: string;       // "MV" for local pricing
-  agentId?:     string;
-  promoCode?:   string;
+  packageId:        string;
+  addOnIds:         string[];
+  addOnQuantities?: Record<string, number>; // addOnId → qty; defaults to numRiders if not set
+  numRiders:        number;
+  date:             string;
+  nationality?:     string;
+  agentId?:         string;
+  promoCode?:       string;
   affiliateCouponCode?: string;
 }
 
@@ -55,7 +56,10 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
     : Number(pkg.touristPrice);
 
   const basePrice  = unitPrice * input.numRiders;
-  const addOnsTotal = addOns.reduce((sum, a) => sum + Number(a.price) * input.numRiders, 0);
+  const addOnsTotal = addOns.reduce((sum, a) => {
+    const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
+    return sum + Number(a.price) * qty;
+  }, 0);
   const subtotal    = basePrice + addOnsTotal;
 
   // Discount resolution: promo > affiliate coupon
@@ -85,11 +89,14 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
   // Line items
   const lines: PriceResult["lines"] = [
     { label: `${pkg.name} × ${input.numRiders}`, amount: basePrice, type: "base" },
-    ...addOns.map((a) => ({
-      label:  `${a.name} × ${input.numRiders}`,
-      amount: Number(a.price) * input.numRiders,
-      type:   "addon",
-    })),
+    ...addOns.map((a) => {
+      const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
+      return {
+        label:  `${a.name} × ${qty}`,
+        amount: Number(a.price) * qty,
+        type:   "addon" as const,
+      };
+    }),
   ];
   if (discountAmount > 0) {
     lines.push({ label: discountLabel, amount: -discountAmount, type: "discount" });

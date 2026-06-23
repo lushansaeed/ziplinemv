@@ -9,10 +9,11 @@ import QRCode from "qrcode";
 
 export interface CreateBookingInput {
   // Slot + package
-  slotId:    string;
-  packageId: string;
-  addOnIds:  string[];
-  date:      string;
+  slotId:          string;
+  packageId:       string;
+  addOnIds:        string[];
+  addOnQuantities?: Record<string, number>; // addOnId → qty
+  date:            string;
   numRiders: number;
   // Customer
   customerName:         string;
@@ -166,13 +167,15 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           select: { id: true, price: true },
         });
         await tx.bookingAddOn.createMany({
-          data: addOnRecords.map((a) => ({
+          data: addOnRecords.map((a) => {
+            const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
+            return {
             bookingId:    b.id,
             addOnId:      a.id,
-            quantity:     input.numRiders,
+            quantity:     qty,
             pricePerUnit: Number(a.price),
-            total:        Number(a.price) * input.numRiders,
-          })),
+            total:        Number(a.price) * qty,
+          }; }),
         });
 
         // Set media status

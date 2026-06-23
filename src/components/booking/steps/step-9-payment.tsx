@@ -72,6 +72,7 @@ export function Step9Payment() {
             slotId:               store.slotId,
             packageId:            store.packageId,
             addOnIds:             store.addOnIds,
+            addOnQuantities:      store.addOnQuantities,
             date:                 store.date,
             numRiders:            store.numRiders,
             customerName:         store.customerName,

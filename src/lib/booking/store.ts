@@ -19,10 +19,11 @@ export interface BookingState {
   packageId: string;
   packageName: string;
   packagePrice: number;
-  // Step 5
-  addOnIds: string[];
+  // Step 5 — quantities keyed by addOnId (0 = not selected)
+  addOnIds: string[];               // selected addOnIds (qty > 0)
   addOnNames: Record<string, string>;
   addOnPrices: Record<string, number>;
+  addOnQuantities: Record<string, number>; // addOnId → qty (0..numRiders)
   // Step 6 — customer
   customerName: string;
   customerPhone: string;
@@ -57,7 +58,7 @@ export interface BookingState {
 const INITIAL: BookingState = {
   date: "", slotId: "", slotTime: "", numRiders: 1,
   packageId: "", packageName: "", packagePrice: 0,
-  addOnIds: [], addOnNames: {}, addOnPrices: {},
+  addOnIds: [], addOnNames: {}, addOnPrices: {}, addOnQuantities: {},
   customerName: "", customerPhone: "", customerPhoneCountry: "MV",
   customerEmail: "", customerNationality: "", customerHotel: "",
   riders: [{ name: "", age: "", weight: "" }],
@@ -76,6 +77,7 @@ interface BookingActions {
   reset: () => void;
   syncRiders: (count: number) => void;
   toggleAddOn: (id: string, name: string, price: number) => void;
+  setAddOnQty: (id: string, name: string, price: number, qty: number) => void;
 }
 
 export const useBookingStore = create<BookingState & BookingActions>()(
@@ -109,9 +111,27 @@ export const useBookingStore = create<BookingState & BookingActions>()(
           const ids   = has ? s.addOnIds.filter((x) => x !== id) : [...s.addOnIds, id];
           const names = { ...s.addOnNames };
           const prices = { ...s.addOnPrices };
-          if (has) { delete names[id]; delete prices[id]; }
-          else { names[id] = name; prices[id] = price; }
-          return { addOnIds: ids, addOnNames: names, addOnPrices: prices };
+          const quantities = { ...s.addOnQuantities };
+          if (has) { delete names[id]; delete prices[id]; delete quantities[id]; }
+          else { names[id] = name; prices[id] = price; quantities[id] = s.numRiders; }
+          return { addOnIds: ids, addOnNames: names, addOnPrices: prices, addOnQuantities: quantities };
+        }),
+
+      setAddOnQty: (id, name, price, qty) =>
+        set((s) => {
+          const names      = { ...s.addOnNames };
+          const prices     = { ...s.addOnPrices };
+          const quantities = { ...s.addOnQuantities };
+          if (qty <= 0) {
+            // Remove from selection
+            delete names[id]; delete prices[id]; delete quantities[id];
+            return { addOnIds: s.addOnIds.filter((x) => x !== id), addOnNames: names, addOnPrices: prices, addOnQuantities: quantities };
+          }
+          // Add/update
+          const capped = Math.min(qty, s.numRiders);
+          names[id] = name; prices[id] = price; quantities[id] = capped;
+          const ids = s.addOnIds.includes(id) ? s.addOnIds : [...s.addOnIds, id];
+          return { addOnIds: ids, addOnNames: names, addOnPrices: prices, addOnQuantities: quantities };
         }),
     }),
     {
@@ -121,7 +141,7 @@ export const useBookingStore = create<BookingState & BookingActions>()(
         date: state.date, slotId: state.slotId, slotTime: state.slotTime,
         numRiders: state.numRiders, packageId: state.packageId,
         packageName: state.packageName, packagePrice: state.packagePrice,
-        addOnIds: state.addOnIds, addOnNames: state.addOnNames, addOnPrices: state.addOnPrices,
+        addOnIds: state.addOnIds, addOnNames: state.addOnNames, addOnPrices: state.addOnPrices, addOnQuantities: state.addOnQuantities,
         affiliateCoupon: state.affiliateCoupon, affiliateLinkId: state.affiliateLinkId,
         currentStep: state.currentStep,
       }),

@@ -7,6 +7,7 @@ const schema = z.object({
   slotId:               z.string(),
   packageId:            z.string(),
   addOnIds:             z.array(z.string()).default([]),
+  addOnQuantities:      z.record(z.string(), z.number()).optional(),
   date:                 z.string(),
   numRiders:            z.number().min(1).max(20),
   customerName:         z.string().min(2),
