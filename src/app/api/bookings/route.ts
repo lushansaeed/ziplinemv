@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/booking/create";
+import { sendBookingConfirmation, sendAdminNewBookingAlert } from "@/lib/notifications/email";
 import { z } from "zod";
 
 const schema = z.object({
@@ -34,6 +35,12 @@ export async function POST(req: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 422 });
+    }
+
+    // Fire notifications asynchronously — don't block the response
+    if (result.bookingId) {
+      sendBookingConfirmation(result.bookingId).catch(console.error);
+      sendAdminNewBookingAlert(result.bookingId).catch(console.error);
     }
 
     return NextResponse.json(result, { status: 201 });

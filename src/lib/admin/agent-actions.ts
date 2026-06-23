@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireRole } from "@/lib/auth/actions";
 import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
 import { ApplicationStatus, UserStatus } from "@prisma/client";
+import { sendAgentApprovalNotification } from "@/lib/notifications/email";
 
 export async function approveAgent(applicationId: string) {
   const admin = await requireRole(ADMIN_AND_ABOVE as any);
@@ -57,6 +58,10 @@ export async function approveAgent(applicationId: string) {
       },
     }),
   ]);
+
+  // Send approval email (fire and forget)
+  const newAgent = await prisma.agent.findUnique({ where: { userId: user.id }, select: { id: true } });
+  if (newAgent) sendAgentApprovalNotification(newAgent.id).catch(console.error);
 
   revalidatePath("/admin/agents");
   return { success: true };
