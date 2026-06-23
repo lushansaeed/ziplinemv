@@ -50,7 +50,7 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
     return val;
   }
 
-  const groups = [...new Set(settings.map((s) => s.group ?? "general"))];
+  const groups = Array.from(new Set(settings.map((s) => s.group ?? "general")));
 
   return (
     <div className="p-6 space-y-8">

@@ -51,7 +51,7 @@ export default async function GalleryPage() {
 
   // Group by category
   const categories = media.length > 0
-    ? [...new Set(media.map((m) => m.category?.name ?? "Gallery"))]
+    ? Array.from(new Set(media.map((m) => m.category?.name ?? "Gallery")))
     : ["Gallery"];
 
   return (

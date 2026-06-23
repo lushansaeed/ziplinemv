@@ -15,7 +15,7 @@ export function FaqManager({ faqs: initialFaqs }: { faqs: Faq[] }) {
   const [newFaq, setNewFaq]         = useState({ category: "", question: "", answer: "", displayOrder: 0 });
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const categories = [...new Set(faqs.map((f) => f.category))];
+  const categories = Array.from(new Set(faqs.map((f) => f.category)));
 
   async function createFaq() {
     if (!newFaq.category || !newFaq.question || !newFaq.answer) {
