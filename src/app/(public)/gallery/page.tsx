@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { GalleryGrid } from "@/components/public/gallery-grid";
@@ -23,7 +24,7 @@ export default async function GalleryPage() {
   const media = await getMedia();
 
   return (
-    <div className="page-bg-gallery pt-28 pb-20">
+    <PageBackground pageKey="gallery" className="pt-28 pb-20">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
@@ -47,6 +48,6 @@ export default async function GalleryPage() {
           <GalleryGrid items={media} />
         )}
       </div>
-    </div>
+    </PageBackground>
   );
 }

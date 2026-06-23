@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { PageBackground } from "@/components/public/page-background";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma/client";
@@ -29,7 +30,7 @@ export default async function FaqPage() {
   }, {});
 
   return (
-    <div className="page-bg-faq pt-28 pb-20">
+    <PageBackground pageKey="faq" className="pt-28 pb-20">
       <div className="container-brand max-w-3xl">
         {/* Header */}
         <div className="text-center mb-14 space-y-4">
@@ -90,6 +91,6 @@ export default async function FaqPage() {
           </Link>
         </div>
       </div>
-    </div>
+    </PageBackground>
   );
 }
