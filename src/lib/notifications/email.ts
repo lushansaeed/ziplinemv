@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { format } from "date-fns";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Lazy init — avoids build-time error when RESEND_API_KEY is not set
+const getResend = () => new Resend(process.env.RESEND_API_KEY ?? "placeholder");
 const FROM   = process.env.EMAIL_FROM ?? "Zipline Maldives <hello@zipline.mv>";
 
 // ─── Email HTML builder ───────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ export async function sendBookingConfirmation(bookingId: string) {
     </p>
   `, `Your booking ${booking.reference} is confirmed.`);
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      booking.customer.email,
     subject: `✓ Booking confirmed — ${booking.reference} | Zipline Maldives`,
@@ -180,7 +181,7 @@ export async function sendBookingCancellation(bookingId: string) {
     ${cta("Book again", `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://zipline.mv"}/book`)}
   `, `Your booking ${booking.reference} has been cancelled.`);
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      booking.customer.email,
     subject: `Booking cancelled — ${booking.reference} | Zipline Maldives`,
@@ -209,7 +210,7 @@ export async function sendWaiverReminder(bookingId: string) {
     ${p("Waivers can be signed at check-in, but completing them early saves time.", true)}
   `, `Sign your waiver for booking ${booking.reference}.`);
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      booking.customer.email,
     subject: `Reminder: Sign your waiver — ${booking.reference} | Zipline Maldives`,
@@ -236,7 +237,7 @@ export async function sendMediaDeliveryNotification(bookingId: string, mediaUrl:
     ${p("Links expire after 30 days. Download and save your content.", true)}
   `, "Your Zipline Maldives media is ready to download.");
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      booking.customer.email,
     subject: `Your Zipline Maldives media is ready 🎉 | ${booking.reference}`,
@@ -264,7 +265,7 @@ export async function sendAgentApprovalNotification(agentId: string) {
     ${cta("Log in to agent portal", siteUrl)}
   `, "Your agent application has been approved.");
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      agent.email,
     subject: `Agent application approved — Welcome to Zipline Maldives`,
@@ -290,7 +291,7 @@ export async function sendAffiliateApprovalNotification(affiliateId: string) {
     ${cta("Log in to affiliate portal", siteUrl)}
   `, "Your affiliate application has been approved.");
 
-  const { error } = await resend.emails.send({
+  const { error } = await getResend().emails.send({
     from:    FROM,
     to:      affiliate.email,
     subject: `Affiliate application approved — Welcome to Zipline Maldives`,
@@ -323,7 +324,7 @@ export async function sendAdminNewBookingAlert(bookingId: string) {
     ${cta("View in admin", `${process.env.NEXT_PUBLIC_ADMIN_URL ?? "https://admin.zipline.mv"}/admin/bookings`)}
   `);
 
-  await resend.emails.send({
+  await getResend().emails.send({
     from:    FROM,
     to:      adminEmail,
     subject: `New booking: ${booking.reference} — ${booking.customer.name}`,
