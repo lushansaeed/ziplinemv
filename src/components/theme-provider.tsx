@@ -1,3 +1,4 @@
+import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 
 // ─── Defaults (Vahmāfushi brand) ─────────────────────────────────────────────
@@ -21,6 +22,7 @@ const DEFAULTS = {
 };
 
 async function getActiveTheme() {
+  noStore(); // always fetch fresh — never serve cached theme vars
   try {
     const [theme, settings, backgrounds] = await Promise.all([
       prisma.websiteTheme.findFirst({ where: { isActive: true } }),
