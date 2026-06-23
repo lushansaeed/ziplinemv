@@ -14,26 +14,43 @@ export interface ActionItem {
 }
 
 interface ActionDropdownProps {
-  items:    ActionItem[];
-  label?:   string;
+  items:  ActionItem[];
+  label?: string;
 }
 
 export function ActionDropdown({ items, label }: ActionDropdownProps) {
-  const [open, setOpen]   = useState(false);
-  const ref               = useRef<HTMLDivElement>(null);
+  const [open, setOpen]       = useState(false);
+  const [flipUp, setFlipUp]   = useState(false);
+  const btnRef                = useRef<HTMLButtonElement>(null);
+  const menuRef               = useRef<HTMLDivElement>(null);
+  const containerRef          = useRef<HTMLDivElement>(null);
 
+  // Close on outside click
   useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
     }
-    document.addEventListener("mousedown", onClickOutside);
-    return () => document.removeEventListener("mousedown", onClickOutside);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // Detect if menu would overflow viewport bottom — if so, open upward
+  function handleOpen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!open && btnRef.current) {
+      const rect        = btnRef.current.getBoundingClientRect();
+      const spaceBelow  = window.innerHeight - rect.bottom;
+      const menuHeight  = items.length * 38 + 16; // approx
+      setFlipUp(spaceBelow < menuHeight);
+    }
+    setOpen((v) => !v);
+  }
+
   return (
-    <div ref={ref} className="relative">
+    <div ref={containerRef} className="relative">
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        ref={btnRef}
+        onClick={handleOpen}
         className={cn(
           "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium",
           "border border-border hover:bg-muted transition-colors",
@@ -44,11 +61,21 @@ export function ActionDropdown({ items, label }: ActionDropdownProps) {
       </button>
 
       {open && (
-        <div className={cn(
-          "absolute right-0 top-full mt-1 z-50 w-48",
-          "bg-popover border border-border rounded-xl shadow-lg py-1",
-          "animate-scale-in"
-        )}>
+        // Render in a portal-like fixed position to escape table overflow:hidden
+        <div
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            top:  flipUp ? undefined : (btnRef.current?.getBoundingClientRect().bottom ?? 0) + 4,
+            bottom: flipUp ? (window.innerHeight - (btnRef.current?.getBoundingClientRect().top ?? 0) + 4) : undefined,
+            right: Math.max(8, window.innerWidth - (btnRef.current?.getBoundingClientRect().right ?? 0)),
+            zIndex: 9999,
+          }}
+          className={cn(
+            "w-52 bg-popover border border-border rounded-xl shadow-xl py-1",
+            "animate-scale-in"
+          )}
+        >
           {items.map((item, i) => {
             const Icon = item.icon;
             return (
