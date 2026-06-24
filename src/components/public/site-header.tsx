@@ -18,8 +18,22 @@ const NAV = [
 export function SiteHeader() {
   const [scrolled, setScrolled]     = useState(false);
   const [menuOpen, setMenuOpen]     = useState(false);
+  const [logoUrl, setLogoUrl]       = useState("");
+  const [logoSize, setLogoSize]     = useState("md");
+  const [logoText, setLogoText]     = useState("Zipline Maldives");
   const pathname                    = usePathname();
   const isHome                      = pathname === "/";
+
+  useEffect(() => {
+    fetch("/api/public/settings?keys=site_logo_url,site_logo_size,site_logo_text")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.site_logo_url)  setLogoUrl(d.site_logo_url);
+        if (d.site_logo_size) setLogoSize(d.site_logo_size);
+        if (d.site_logo_text) setLogoText(d.site_logo_text);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -43,14 +57,25 @@ export function SiteHeader() {
         <div className="container-brand flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-brand-sm group-hover:shadow-brand-md transition-shadow">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 17L12 9L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
-              </svg>
+            <div className={cn(
+              "rounded-xl bg-brand-gradient flex items-center justify-center shadow-brand-sm group-hover:shadow-brand-md transition-shadow overflow-hidden flex-shrink-0",
+              logoSize === "sm" ? "w-7 h-7" : logoSize === "lg" ? "w-12 h-12" : "w-9 h-9"
+            )}>
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt={logoText}
+                  className="w-full h-full object-contain p-0.5"
+                />
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M7 17L12 9L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
+                </svg>
+              )}
             </div>
             <div className="leading-tight">
-              <p className="font-display font-bold text-white text-[15px] leading-none">Zipline Maldives</p>
+              <p className="font-display font-bold text-white text-[15px] leading-none">{logoText}</p>
               <p className="text-white/40 text-[10px] tracking-wide">Vahmāfushi Island</p>
             </div>
           </Link>

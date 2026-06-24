@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff } from "lucide-react";
+import { useState, useTransition, useRef } from "react";
+import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -20,8 +20,13 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
     const s = settings?.find((s: any) => s.key === key);
     return s ? String(s.value) : fallback;
   };
-  const [siteName, setSiteName] = useState(getS("site_name", "Zipline Maldives"));
-  const [tagline, setTagline]   = useState(getS("site_tagline", "Drop in by zipline. Leave with a story."));
+  const [siteName, setSiteName]   = useState(getS("site_name", "Zipline Maldives"));
+  const [tagline, setTagline]     = useState(getS("site_tagline", "Drop in by zipline. Leave with a story."));
+  const [logoUrl, setLogoUrl]     = useState(getS("site_logo_url", ""));
+  const [logoSize, setLogoSize]   = useState(getS("site_logo_size", "md"));
+  const [logoText, setLogoText]   = useState(getS("site_logo_text", "Zipline Maldives"));
+  const [uploading, setUploading] = useState(false);
+  const logoInputRef              = useRef<HTMLInputElement>(null);
 
   // Contact
   const [whatsapp, setWhatsapp] = useState(contact?.whatsapp ?? "");
@@ -45,10 +50,30 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
     startTransition(async () => {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ site_name: siteName, site_tagline: tagline }),
+        body: JSON.stringify({
+          site_name: siteName, site_tagline: tagline,
+          site_logo_url: logoUrl, site_logo_size: logoSize, site_logo_text: logoText,
+        }),
       });
       if (res.ok) toast.success("Settings saved"); else toast.error("Failed to save");
     });
+  }
+
+  async function uploadLogo(file: File) {
+    setUploading(true);
+    try {
+      const urlRes = await fetch("/api/admin/media/upload-url", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const { uploadUrl, publicUrl } = await urlRes.json();
+      if (!uploadUrl) throw new Error("Could not get upload URL");
+      await fetch(uploadUrl, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      setLogoUrl(publicUrl);
+      toast.success("Logo uploaded — click Save to apply");
+    } catch (err: any) {
+      toast.error(err.message ?? "Upload failed");
+    } finally { setUploading(false); }
   }
 
   async function saveContact() {
@@ -121,19 +146,118 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
 
       {/* General */}
       {currentTab === "general" && (
-        <div className="admin-card space-y-5 max-w-xl">
-          <p className="font-semibold text-sm">Site identity</p>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground font-medium">Site name</label>
-            <input value={siteName} onChange={(e) => setSiteName(e.target.value)} className={inputCls} />
+        <div className="space-y-5 max-w-xl">
+          {/* Logo */}
+          <div className="admin-card space-y-4">
+            <p className="font-semibold text-sm">Logo</p>
+
+            {/* Current logo preview */}
+            <div className="flex items-center gap-4 p-3 bg-muted/40 rounded-xl">
+              <div className="w-12 h-12 rounded-xl bg-brand-gradient flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {logoUrl ? (
+                  <img
+                    src={logoUrl}
+                    alt="Logo"
+                    className={cn(
+                      "object-contain",
+                      logoSize === "sm" ? "w-6 h-6" : logoSize === "lg" ? "w-10 h-10" : "w-8 h-8"
+                    )}
+                  />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">{logoText}</p>
+                <p className="text-xs text-muted-foreground">{logoUrl ? "Custom logo uploaded" : "Using default icon"}</p>
+              </div>
+              {logoUrl && (
+                <button onClick={() => setLogoUrl("")} className="text-xs text-destructive hover:underline flex-shrink-0">
+                  Remove
+                </button>
+              )}
+            </div>
+
+            {/* Upload */}
+            <div>
+              <label className="text-xs text-muted-foreground font-medium block mb-1.5">Logo image</label>
+              <div className="flex gap-2">
+                <input
+                  value={logoUrl}
+                  onChange={(e) => setLogoUrl(e.target.value)}
+                  placeholder="https://... or upload below"
+                  className={cn(inputCls, "flex-1")}
+                />
+                <button
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploading}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-50"
+                >
+                  <Upload className="w-4 h-4" />
+                  {uploading ? "Uploading…" : "Upload"}
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">PNG or SVG with transparent background recommended.</p>
+            </div>
+
+            {/* Size */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Logo size</label>
+              <div className="flex gap-2">
+                {[
+                  { value: "sm", label: "Small",  size: "w-6 h-6" },
+                  { value: "md", label: "Medium", size: "w-8 h-8" },
+                  { value: "lg", label: "Large",  size: "w-10 h-10" },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setLogoSize(opt.value)}
+                    className={cn(
+                      "flex-1 flex flex-col items-center gap-1.5 py-2.5 rounded-xl border text-xs font-medium transition-all",
+                      logoSize === opt.value
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:bg-muted text-muted-foreground"
+                    )}
+                  >
+                    <div className={cn("rounded bg-muted-foreground/20", opt.size)} />
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Logo text fallback */}
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Logo text (shown next to logo)</label>
+              <input value={logoText} onChange={(e) => setLogoText(e.target.value)} className={inputCls} placeholder="Zipline Maldives" />
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs text-muted-foreground font-medium">Tagline</label>
-            <input value={tagline} onChange={(e) => setTagline(e.target.value)} className={inputCls} />
-            <p className="text-xs text-muted-foreground">Shown in the hero section of the homepage.</p>
+
+          {/* Site identity */}
+          <div className="admin-card space-y-4">
+            <p className="font-semibold text-sm">Site identity</p>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Site name</label>
+              <input value={siteName} onChange={(e) => setSiteName(e.target.value)} className={inputCls} />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Tagline</label>
+              <input value={tagline} onChange={(e) => setTagline(e.target.value)} className={inputCls} />
+              <p className="text-xs text-muted-foreground">Shown in the hero section of the homepage.</p>
+            </div>
           </div>
+
           <button onClick={saveGeneral} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
-            <Save className="w-4 h-4" /> Save
+            <Save className="w-4 h-4" /> Save all
           </button>
         </div>
       )}

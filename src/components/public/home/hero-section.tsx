@@ -15,7 +15,8 @@ interface HeroSectionProps {
 }
 
 // Fallback gradient hero while no media is uploaded
-const FALLBACK_BG = "bg-gradient-to-br from-brand-deep via-[#0a1f35] to-brand-deep";
+// Transparent fallback — allows page background (set via admin theme) to show through
+const FALLBACK_BG = "bg-transparent";
 
 export function HeroSection({ heroMedia }: HeroSectionProps) {
   const videoRef   = useRef<HTMLVideoElement>(null);
