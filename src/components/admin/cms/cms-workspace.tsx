@@ -151,32 +151,38 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
           <div className="admin-card space-y-4">
             <p className="font-semibold text-sm">Logo</p>
 
-            {/* Current logo preview */}
-            <div className="flex items-center gap-4 p-3 bg-muted/40 rounded-xl">
-              <div className="w-12 h-12 rounded-xl bg-brand-gradient flex items-center justify-center flex-shrink-0 overflow-hidden">
-                {logoUrl ? (
-                  <img
-                    src={logoUrl}
-                    alt="Logo"
-                    className={cn(
-                      "object-contain",
-                      logoSize === "sm" ? "w-6 h-6" : logoSize === "lg" ? "w-10 h-10" : "w-8 h-8"
-                    )}
-                  />
-                ) : (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            {/* Current logo preview — matches actual header behaviour */}
+            <div className="flex items-center gap-4 p-4 bg-[#0A0F1A] rounded-xl border border-white/8">
+              {logoUrl ? (
+                <img
+                  src={logoUrl}
+                  alt="Logo"
+                  className={cn(
+                    "object-contain flex-shrink-0",
+                    logoSize === "sm" ? "h-8" : logoSize === "lg" ? "h-14" : "h-10"
+                  )}
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center flex-shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                     <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7 17L12 9L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
                   </svg>
-                )}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">{logoText}</p>
-                <p className="text-xs text-muted-foreground">{logoUrl ? "Custom logo uploaded" : "Using default icon"}</p>
-              </div>
-              {logoUrl && (
-                <button onClick={() => setLogoUrl("")} className="text-xs text-destructive hover:underline flex-shrink-0">
-                  Remove
+                </div>
+              )}
+              {!logoUrl && (
+                <div className="leading-tight">
+                  <p className="text-white text-[15px] font-bold leading-none">{logoText}</p>
+                  <p className="text-white/40 text-[10px] mt-0.5">Vahmāfushi Island</p>
+                </div>
+              )}
+              <div className="flex-1" />
+              {logoUrl ? (
+                <button onClick={() => setLogoUrl("")} className="text-xs text-red-400 hover:underline flex-shrink-0">
+                  Remove logo
                 </button>
+              ) : (
+                <span className="text-xs text-white/30">Default icon</span>
               )}
             </div>
 

@@ -57,27 +57,31 @@ export function SiteHeader() {
         <div className="container-brand flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className={cn(
-              "rounded-xl bg-brand-gradient flex items-center justify-center shadow-brand-sm group-hover:shadow-brand-md transition-shadow overflow-hidden flex-shrink-0",
-              logoSize === "sm" ? "w-7 h-7" : logoSize === "lg" ? "w-12 h-12" : "w-9 h-9"
-            )}>
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt={logoText}
-                  className="w-full h-full object-contain p-0.5"
-                />
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M7 17L12 9L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
-                </svg>
-              )}
-            </div>
-            <div className="leading-tight">
-              <p className="font-display font-bold text-white text-[15px] leading-none">{logoText}</p>
-              <p className="text-white/40 text-[10px] tracking-wide">Vahmāfushi Island</p>
-            </div>
+            {logoUrl ? (
+              /* Custom logo — no box, just the image */
+              <img
+                src={logoUrl}
+                alt={logoText}
+                className={cn(
+                  "object-contain flex-shrink-0",
+                  logoSize === "sm" ? "h-8" : logoSize === "lg" ? "h-14" : "h-10"
+                )}
+              />
+            ) : (
+              /* Fallback: brand icon + text */
+              <>
+                <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center shadow-brand-sm group-hover:shadow-brand-md transition-shadow flex-shrink-0">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M7 17L12 9L17 17" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" opacity="0.55"/>
+                  </svg>
+                </div>
+                <div className="leading-tight">
+                  <p className="font-display font-bold text-white text-[15px] leading-none">{logoText}</p>
+                  <p className="text-white/40 text-[10px] tracking-wide">Vahmāfushi Island</p>
+                </div>
+              </>
+            )}
           </Link>
 
           {/* Desktop nav */}
