@@ -65,6 +65,16 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {/* Preload Kindness Matters before first paint to prevent FOUT */}
+        <link
+          rel="preload"
+          href="/fonts/Kindness-Matters.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className={`${jakarta.variable} font-body antialiased`}>
         <ThemeProvider>
           {children}
