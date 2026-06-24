@@ -57,16 +57,11 @@ export function LogoLockup({ logo, subtitle, href = "/" }: { logo: LogoData; sub
   return (
     <Link href={href} className="flex items-center gap-2.5 group">
       <LogoMark logo={logo} />
+      {/* Only show text when using the default SVG icon, not with a custom logo */}
       {!logo.url && (
         <div className="leading-tight">
           <p className="font-display font-bold text-white text-[15px] leading-none">{logo.text}</p>
           {subtitle && <p className="text-white/40 text-[10px] tracking-wide">{subtitle}</p>}
-        </div>
-      )}
-      {logo.url && subtitle && (
-        <div className="leading-tight">
-          <p className="font-display font-bold text-white text-[15px] leading-none">{logo.text}</p>
-          <p className="text-white/40 text-[10px] tracking-wide">{subtitle}</p>
         </div>
       )}
     </Link>
