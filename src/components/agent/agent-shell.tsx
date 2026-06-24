@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { UserRole } from "@prisma/client";
+import type { LogoData } from "@/components/shared/site-logo";
+import { LogoMark } from "@/components/shared/site-logo";
 
 interface AgentShellProps {
   user: {
@@ -20,6 +22,7 @@ interface AgentShellProps {
     avatarUrl?: string | null;
     agent?: { id: string; businessName: string; status: string } | null;
   };
+  logo: LogoData;
   children: React.ReactNode;
 }
 
@@ -33,7 +36,7 @@ const NAV = [
   { label: "Profile",       href: "/agents/profile",    icon: User },
 ];
 
-export function AgentShell({ user, children }: AgentShellProps) {
+export function AgentShell({ user, logo, children }: AgentShellProps) {
   const pathname    = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -44,15 +47,11 @@ export function AgentShell({ user, children }: AgentShellProps) {
     <aside className="flex flex-col h-full w-[220px] bg-card border-r border-border">
       {/* Logo */}
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M3 17L12 3L21 17" stroke="#38bdf8" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
+        <LogoMark logo={{ ...logo, size: "sm" }} />
         <div>
           <p className="text-sm font-display font-bold text-foreground leading-tight">Agent Portal</p>
           <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-            {user.agent?.businessName ?? "Zipline MV"}
+            {user.agent?.businessName ?? logo.text}
           </p>
         </div>
       </div>

@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { UserRole } from "@prisma/client";
+import type { LogoData } from "@/components/shared/site-logo";
+import { LogoMark } from "@/components/shared/site-logo";
 
 interface AffiliateShellProps {
   user: {
@@ -20,6 +22,7 @@ interface AffiliateShellProps {
     avatarUrl?: string | null;
     affiliate?: { id: string; name: string; status: string } | null;
   };
+  logo: LogoData;
   children: React.ReactNode;
 }
 
@@ -34,7 +37,7 @@ const NAV = [
   { label: "Profile",      href: "/affiliate/profile",      icon: User },
 ];
 
-export function AffiliateShell({ user, children }: AffiliateShellProps) {
+export function AffiliateShell({ user, logo, children }: AffiliateShellProps) {
   const pathname    = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -44,15 +47,11 @@ export function AffiliateShell({ user, children }: AffiliateShellProps) {
   const Sidebar = (
     <aside className="flex flex-col h-full w-[220px] bg-card border-r border-border">
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-border">
-        <div className="w-8 h-8 rounded-lg bg-brand-citrus/10 border border-brand-citrus/20 flex items-center justify-center">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-            <path d="M3 17L12 3L21 17" stroke="#F5A623" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
+        <LogoMark logo={{ ...logo, size: "sm" }} />
         <div>
           <p className="text-sm font-display font-bold text-foreground leading-tight">Affiliate</p>
           <p className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-            {user.affiliate?.name ?? "Portal"}
+            {user.affiliate?.name ?? logo.text}
           </p>
         </div>
       </div>

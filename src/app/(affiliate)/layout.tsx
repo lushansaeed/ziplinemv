@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/actions";
 import { UserRole } from "@prisma/client";
 import { AffiliateShell } from "@/components/affiliate/affiliate-shell";
+import { getLogoData } from "@/components/shared/site-logo";
 
 export default async function AffiliateLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const [user, logo] = await Promise.all([getCurrentUser(), getLogoData()]);
 
   if (!user) redirect("/auth/login?redirect=/affiliate/dashboard");
 
@@ -20,5 +21,5 @@ export default async function AffiliateLayout({
     redirect("/auth/login?error=Your+affiliate+account+is+pending+approval.");
   }
 
-  return <AffiliateShell user={user}>{children}</AffiliateShell>;
+  return <AffiliateShell user={user} logo={logo}>{children}</AffiliateShell>;
 }

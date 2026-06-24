@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { Suspense } from "react";
-import { SiteHeader } from "@/components/public/site-header";
+import { SiteHeaderServer as SiteHeader } from "@/components/public/site-header-server";
 import { SiteFooter } from "@/components/public/site-footer";
 import { AnnouncementBar } from "@/components/public/announcement-bar";
 import { AffiliateTracker } from "@/components/public/affiliate-tracker";

@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/actions";
 import { UserRole } from "@prisma/client";
 import { AgentShell } from "@/components/agent/agent-shell";
+import { getLogoData } from "@/components/shared/site-logo";
 
 export default async function AgentLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getCurrentUser();
+  const [user, logo] = await Promise.all([getCurrentUser(), getLogoData()]);
 
   if (!user) redirect("/auth/login?redirect=/agents/dashboard");
 
@@ -20,5 +21,5 @@ export default async function AgentLayout({
     redirect("/auth/login?error=Your+agent+account+is+pending+approval.");
   }
 
-  return <AgentShell user={user}>{children}</AgentShell>;
+  return <AgentShell user={user} logo={logo}>{children}</AgentShell>;
 }

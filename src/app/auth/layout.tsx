@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
+import { getLogoData, LogoMark } from "@/components/shared/site-logo";
 
 export const metadata: Metadata = {
   title: "Sign In | Zipline Maldives",
   description: "Sign in to your Zipline Maldives account.",
 };
 
-export default function AuthLayout({
+export default async function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const logo = await getLogoData();
   return (
     <div className="min-h-screen bg-brand-deep theme-public flex">
       {/* Left — brand panel (hidden on mobile) */}
@@ -22,16 +24,13 @@ export default function AuthLayout({
         {/* Logo */}
         <div className="relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white">
-                <path d="M3 17L12 3L21 17" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 17L12 9L17 17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5"/>
-              </svg>
-            </div>
-            <div>
-              <p className="text-white font-display font-bold text-lg leading-tight">Zipline Maldives</p>
-              <p className="text-white/40 text-xs">Vahmāfushi Island</p>
-            </div>
+            <LogoMark logo={logo} />
+            {!logo.url && (
+              <div>
+                <p className="text-white font-display font-bold text-lg leading-tight">{logo.text}</p>
+                <p className="text-white/40 text-xs">Vahmāfushi Island</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -77,12 +76,8 @@ export default function AuthLayout({
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
         {/* Mobile logo */}
         <div className="lg:hidden mb-8 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          <p className="text-white font-display font-bold text-lg">Zipline Maldives</p>
+          <LogoMark logo={logo} />
+          {!logo.url && <p className="text-white font-display font-bold text-lg">{logo.text}</p>}
         </div>
 
         <div className="w-full max-w-[400px]">
