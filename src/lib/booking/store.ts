@@ -33,11 +33,12 @@ export interface BookingState {
   customerHotel: string;
   // Step 7 — riders
   riders: RiderInput[];
-  // Step 8 — waiver
-  waiverAccepted: boolean;
+  // Step 8 — waiver (individual per rider + global policies)
+  riderWaivers: boolean[];      // one entry per rider — each must be true
   termsAccepted: boolean;
   refundAccepted: boolean;
   safetyAccepted: boolean;
+  waiverAccepted: boolean;      // kept for legacy compatibility
   // Step 9 — payment
   paymentMethod: string;
   promoCode: string;
@@ -66,7 +67,7 @@ const INITIAL: BookingState = {
   customerName: "", customerPhone: "", customerPhoneCountry: "MV",
   customerEmail: "", customerNationality: "", customerHotel: "",
   riders: [{ name: "", age: "", weight: "" }],
-  waiverAccepted: false, termsAccepted: false, refundAccepted: false, safetyAccepted: false,
+  riderWaivers: [], waiverAccepted: false, termsAccepted: false, refundAccepted: false, safetyAccepted: false,
   paymentMethod: "", promoCode: "", promoDiscount: 0,
   affiliateCoupon: "", affiliateLinkId: "",
   bookingReference: "", bookingId: "", totalAmount: 0, currency: "USD", qrCode: "",
@@ -106,11 +107,13 @@ export const useBookingStore = create<BookingState & BookingActions>()(
       syncRiders: (count) =>
         set((s) => {
           const current = s.riders;
+          const waivers = s.riderWaivers;
           if (count > current.length) {
-            const extra = Array(count - current.length).fill({ name: "", age: "", weight: "" });
-            return { riders: [...current, ...extra], numRiders: count };
+            const extra        = Array(count - current.length).fill({ name: "", age: "", weight: "" });
+            const extraWaivers = Array(count - waivers.length).fill(false);
+            return { riders: [...current, ...extra], numRiders: count, riderWaivers: [...waivers, ...extraWaivers] };
           }
-          return { riders: current.slice(0, count), numRiders: count };
+          return { riders: current.slice(0, count), numRiders: count, riderWaivers: waivers.slice(0, count) };
         }),
 
       toggleAddOn: (id, name, price) =>
