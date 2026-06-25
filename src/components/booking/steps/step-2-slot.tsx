@@ -6,7 +6,7 @@ import { useBookingStore } from "@/lib/booking/store";
 import { StepShell } from "../step-shell";
 import { formatDate, cn } from "@/lib/utils";
 import { parseISO } from "date-fns";
-import type { SlotAvailability } from "@/app/api/slots/route";
+import type { SlotAvailability } from "@/lib/booking/slot-types";
 
 export function Step2Slot() {
   const { date, numRiders, slotId, setField, nextStep } = useBookingStore();
