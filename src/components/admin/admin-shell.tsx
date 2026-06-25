@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
 import type { UserRole } from "@prisma/client";
 import { hasRole, ADMIN_AND_ABOVE, BOOKING_ACCESS, MEDIA_ACCESS, FINANCE_ACCESS } from "@/lib/auth/roles";
+import type { LogoData } from "@/components/shared/site-logo";
+import { LogoMark } from "@/components/shared/site-logo";
 
 interface AdminShellProps {
   user: {
@@ -22,6 +24,7 @@ interface AdminShellProps {
     role: UserRole;
     avatarUrl?: string | null;
   };
+  logo?: LogoData;
   children: React.ReactNode;
 }
 
@@ -103,7 +106,8 @@ const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-export function AdminShell({ user, children }: AdminShellProps) {
+export function AdminShell({ user, logo, children }: AdminShellProps) {
+  const defaultLogo: LogoData = { url: "", size: "sm", text: "Zipline MV" };
   const pathname        = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
@@ -126,12 +130,8 @@ export function AdminShell({ user, children }: AdminShellProps) {
         collapsed && "justify-center px-2"
       )}>
         <Link href="/admin/dashboard" className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-brand-gradient flex items-center justify-center flex-shrink-0">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </div>
-          {!collapsed && (
+          <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} />
+          {!collapsed && !(logo?.url) && (
             <div className="min-w-0">
               <p className="text-sm font-display font-bold text-foreground leading-tight truncate">
                 Zipline MV
@@ -239,12 +239,8 @@ export function AdminShell({ user, children }: AdminShellProps) {
             <Menu className="w-5 h-5 text-muted-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-brand-gradient flex items-center justify-center">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            </div>
-            <span className="font-display font-bold text-sm text-foreground">Zipline MV</span>
+            <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} />
+            {!(logo?.url) && <span className="font-display font-bold text-sm text-foreground">Zipline MV</span>}
           </div>
         </div>
 

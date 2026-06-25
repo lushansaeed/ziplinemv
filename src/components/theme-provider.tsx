@@ -27,8 +27,9 @@ async function getActiveTheme() {
     const [theme, settings] = await Promise.all([
       prisma.websiteTheme.findFirst({ where: { isActive: true } }),
       prisma.setting.findMany({ where: { key: { in: [
-        ...["theme_primary","theme_secondary","theme_accent","theme_success","theme_danger"],
+        "theme_primary","theme_secondary","theme_accent","theme_success","theme_danger",
         "hero_font_size", "hero_rotation",
+        "site_logo_url",
       ] } } }),
     ]);
     const overrides: Record<string, string> = {};
@@ -65,6 +66,9 @@ function hexToHsl(hex: string): string {
 
 export async function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme, settingOverrides } = await getActiveTheme();
+
+  // Load logo URL so we can preload it in <head> — prevents blink on navigation
+  const logoUrl = settingOverrides["site_logo_url"] as string | undefined ?? "";
 
   // Merge: DB theme > settings overrides > defaults
   const colors = {
@@ -127,6 +131,10 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: cssVars }} />
+      {/* Preload custom logo so it's ready before first paint — prevents blink */}
+      {logoUrl && (
+        <link rel="preload" href={logoUrl} as="image" />
+      )}
       {children}
     </>
   );
