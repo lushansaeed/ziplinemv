@@ -53,6 +53,10 @@ export interface BookingState {
   qrCode: string;
   // UI
   currentStep: number;
+  // Registered by StepShell so sidebar/sticky bar can mirror the Continue button
+  stepContinueDisabled: boolean;
+  stepContinueFn: (() => void) | null;
+  stepContinueLabel: string;
 }
 
 const INITIAL: BookingState = {
@@ -67,6 +71,9 @@ const INITIAL: BookingState = {
   affiliateCoupon: "", affiliateLinkId: "",
   bookingReference: "", bookingId: "", totalAmount: 0, currency: "USD", qrCode: "",
   currentStep: 1,
+  stepContinueDisabled: true,
+  stepContinueFn: null,
+  stepContinueLabel: "Continue",
 };
 
 interface BookingActions {
@@ -78,6 +85,7 @@ interface BookingActions {
   syncRiders: (count: number) => void;
   toggleAddOn: (id: string, name: string, price: number) => void;
   setAddOnQty: (id: string, name: string, price: number, qty: number) => void;
+  registerStepContinue: (disabled: boolean, fn: () => void, label?: string) => void;
 }
 
 export const useBookingStore = create<BookingState & BookingActions>()(
@@ -133,6 +141,9 @@ export const useBookingStore = create<BookingState & BookingActions>()(
           const ids = s.addOnIds.includes(id) ? s.addOnIds : [...s.addOnIds, id];
           return { addOnIds: ids, addOnNames: names, addOnPrices: prices, addOnQuantities: quantities };
         }),
+
+      registerStepContinue: (disabled, fn, label = "Continue") =>
+        set({ stepContinueDisabled: disabled, stepContinueFn: fn, stepContinueLabel: label }),
     }),
     {
       name: "zipline-booking",

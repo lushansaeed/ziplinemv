@@ -1,29 +1,39 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowLeft } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
 import { cn } from "@/lib/utils";
 
 interface StepShellProps {
-  title:       string;
-  subtitle?:   string;
-  children:    React.ReactNode;
-  onNext?:     () => void;
-  nextLabel?:  string;
+  title:        string;
+  subtitle?:    string;
+  children:     React.ReactNode;
+  onNext?:      () => void;
+  nextLabel?:   string;
   nextDisabled?: boolean;
-  isLoading?:  boolean;
-  hidePrev?:   boolean;
-  hideNext?:   boolean;
+  isLoading?:   boolean;
+  hidePrev?:    boolean;
+  hideNext?:    boolean;
 }
 
 export function StepShell({
   title, subtitle, children, onNext, nextLabel = "Continue",
   nextDisabled, isLoading, hidePrev, hideNext,
 }: StepShellProps) {
-  const { currentStep, prevStep } = useBookingStore();
+  const { currentStep, prevStep, registerStepContinue } = useBookingStore();
+
+  // Register this step's continue fn + disabled state in the store
+  // so the sidebar and mobile sticky bar can mirror it
+  useEffect(() => {
+    if (!hideNext && onNext) {
+      registerStepContinue(!!nextDisabled || !!isLoading, onNext, nextLabel);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextDisabled, isLoading, nextLabel, onNext, hideNext]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Step header */}
       <div className="space-y-1">
         <h2 className="font-display font-bold text-2xl text-white">{title}</h2>
@@ -33,9 +43,14 @@ export function StepShell({
       {/* Content */}
       <div>{children}</div>
 
-      {/* Navigation */}
+      {/* Mobile navigation — Back button + Continue (hidden on desktop, shown in sidebar) */}
       {(!hidePrev || !hideNext) && (
-        <div className="flex items-center justify-between pt-2">
+        <div className={cn(
+          "flex items-center justify-between pt-2",
+          // On desktop Continue is in sidebar — only show Back on desktop
+          "lg:flex"
+        )}>
+          {/* Back */}
           {!hidePrev && currentStep > 1 ? (
             <button
               onClick={prevStep}
@@ -48,28 +63,20 @@ export function StepShell({
             <div />
           )}
 
+          {/* Continue — visible on mobile only; desktop uses sidebar */}
           {!hideNext && onNext && (
             <button
               onClick={onNext}
               disabled={nextDisabled || isLoading}
               className={cn(
+                "lg:hidden",   // ← hidden on desktop (sidebar has it)
                 "flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold",
-                "bg-brand-gradient text-white shadow-brand-md hover:shadow-brand-lg",
+                "bg-brand-gradient text-white shadow-brand-md",
                 "transition-all duration-200 active:scale-[0.98]",
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               )}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing…
-                </>
-              ) : (
-                <>
-                  {nextLabel}
-                  <ArrowRight className="w-4 h-4" />
-                </>
-              )}
+              {isLoading ? "Processing…" : nextLabel}
             </button>
           )}
         </div>

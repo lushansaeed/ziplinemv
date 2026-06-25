@@ -1,51 +1,44 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useBookingStore } from "@/lib/booking/store";
 import { BookingProgressBar } from "./booking-progress-bar";
-import { Step1Date }       from "./steps/step-1-date";
-import { Step2Slot }       from "./steps/step-2-slot";
-import { Step3Riders }     from "./steps/step-3-riders";
-import { Step4Package }    from "./steps/step-4-package";
-import { Step5AddOns }     from "./steps/step-5-addons";
-import { Step6Customer }   from "./steps/step-6-customer";
-import { Step7RiderDetails } from "./steps/step-7-rider-details";
-import { Step8Waiver }     from "./steps/step-8-waiver";
-import { Step9Payment }    from "./steps/step-9-payment";
-import { Step10Confirm }   from "./steps/step-10-confirm";
+import { BookingSidebar }     from "./booking-sidebar";
+import { BookingMobileBar }   from "./booking-mobile-bar";
+import { Step1Date }          from "./steps/step-1-date";
+import { Step2Slot }          from "./steps/step-2-slot";
+import { Step3Riders }        from "./steps/step-3-riders";
+import { Step4Package }       from "./steps/step-4-package";
+import { Step5AddOns }        from "./steps/step-5-addons";
+import { Step6Customer }      from "./steps/step-6-customer";
+import { Step7RiderDetails }  from "./steps/step-7-rider-details";
+import { Step8Waiver }        from "./steps/step-8-waiver";
+import { Step9Payment }       from "./steps/step-9-payment";
+import { Step10Confirm }      from "./steps/step-10-confirm";
 import type { Package, AddOn } from "@prisma/client";
 import { cn } from "@/lib/utils";
 
 interface BookingWizardProps {
-  packages:            Package[];
-  addOns:              AddOn[];
+  packages:             Package[];
+  addOns:               AddOn[];
   preselectedPackageId?: string;
-  initialDate?:        string;
-  affiliateCoupon?:    string;
+  initialDate?:         string;
+  affiliateCoupon?:     string;
 }
 
 const STEPS = [
   "Date", "Time", "Riders", "Package",
   "Add-ons", "Your info", "Rider details",
-  "Safety & waiver", "Payment", "Confirmed",
+  "Safety & waiver", "Payment",
 ];
 
 export function BookingWizard({
   packages, addOns, preselectedPackageId, initialDate, affiliateCoupon,
 }: BookingWizardProps) {
-  const [mounted, setMounted] = useState(false);
   const { currentStep, setField, reset } = useBookingStore();
 
   useEffect(() => {
-    // Always start fresh when landing on /book
-    // Clears any stale step (e.g. currentStep=10 with no reference) from localStorage
     reset();
-    setMounted(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Set initial values from URL params
-  useEffect(() => {
     if (preselectedPackageId) {
       const pkg = packages.find((p) => p.id === preselectedPackageId);
       if (pkg) {
@@ -54,10 +47,10 @@ export function BookingWizard({
         setField("packagePrice", Number(pkg.touristPrice));
       }
     }
-    if (initialDate) setField("date", initialDate);
+    if (initialDate)    setField("date", initialDate);
     if (affiliateCoupon) setField("affiliateCoupon", affiliateCoupon);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preselectedPackageId, initialDate, affiliateCoupon]);
+  }, []);
 
   const stepComponent = [
     <Step1Date key={1} />,
@@ -72,55 +65,46 @@ export function BookingWizard({
     <Step10Confirm key={10} />,
   ];
 
-  // Clamp step to valid range
-  const safeStep = Math.max(1, Math.min(10, currentStep || 1));
-
-  // Don't render until client-side store is hydrated from localStorage
-  if (!mounted) {
+  if (currentStep === 10) {
     return (
-      <div className="container-brand max-w-3xl">
-        <div className="animate-pulse space-y-6">
-          <div className="h-10 bg-white/5 rounded-xl w-2/3 mx-auto" />
-          <div className="h-4 bg-white/5 rounded w-1/2 mx-auto" />
-          <div className="h-2 bg-white/5 rounded-full" />
-          <div className="h-64 bg-white/5 rounded-2xl" />
-        </div>
+      <div className="container-brand max-w-2xl animate-fade-in">
+        {stepComponent[9]}
       </div>
     );
   }
 
   return (
-    <div className="container-brand max-w-3xl">
-      {/* Header */}
-      {safeStep < 10 && (
-        <div className="text-center mb-10 space-y-2">
+    <>
+      <div className="container-brand max-w-5xl">
+        {/* Compact header */}
+        <div className="text-center mb-5">
           <h1 className="font-display font-bold text-3xl sm:text-4xl text-white">
             Book your flight
           </h1>
-          <p className="text-white/50">
+          <p className="text-white/40 text-sm mt-1">
             Maafushi → Vahmāfushi · 428m · ~60 seconds
           </p>
         </div>
-      )}
 
-      {/* Progress bar */}
-      {safeStep < 10 && (
-        <BookingProgressBar
-          currentStep={safeStep}
-          steps={STEPS.slice(0, 9)}
-        />
-      )}
+        {/* Progress bar */}
+        <div className="mb-5">
+          <BookingProgressBar currentStep={currentStep} steps={STEPS} />
+        </div>
 
-      {/* Step content */}
-      <div
-        key={safeStep}
-        className={cn(
-          "animate-fade-in",
-          safeStep === 10 ? "mt-0" : "mt-8"
-        )}
-      >
-        {stepComponent[safeStep - 1]}
+        {/* Two-column layout: content left, sidebar right */}
+        <div className="flex gap-6 items-start">
+          {/* Main step content */}
+          <div className="flex-1 min-w-0 animate-fade-in" key={currentStep}>
+            {stepComponent[currentStep - 1]}
+          </div>
+
+          {/* Desktop sidebar — hidden on mobile */}
+          <BookingSidebar />
+        </div>
       </div>
-    </div>
+
+      {/* Mobile sticky bottom bar — hidden on desktop */}
+      <BookingMobileBar />
+    </>
   );
 }

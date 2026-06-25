@@ -52,7 +52,8 @@ export function Step1Date() {
       nextDisabled={!date}
     >
       {/* Calendar — compact, max-width constrained */}
-      <div className="max-w-sm mx-auto">
+      {/* Compact calendar — max-w-sm on mobile, natural width on desktop */}
+      <div className="max-w-sm lg:max-w-xs mx-auto lg:mx-0">
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
 
           {/* Month navigation */}
