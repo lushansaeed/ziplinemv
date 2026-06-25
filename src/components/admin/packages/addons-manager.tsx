@@ -146,9 +146,15 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Price (USD) *</label>
+                  <label className="text-xs font-medium text-muted-foreground">Tourist price (USD) *</label>
                   <input type="number" min={0} step={0.01} value={editing.price ?? ""} onChange={(e) => setEditing((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} placeholder="45" className={inputCls} />
                 </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground text-brand-lime">Local price (MVR)</label>
+                  <input type="number" min={0} step={0.01} value={editing.localPriceMvr ?? ""} onChange={(e) => setEditing((p) => ({ ...p, localPriceMvr: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="695" className={inputCls} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-xs font-medium text-muted-foreground">Display order</label>
                   <input type="number" min={0} value={editing.displayOrder ?? 0} onChange={(e) => setEditing((p) => ({ ...p, displayOrder: parseInt(e.target.value) || 0 }))} className={inputCls} />

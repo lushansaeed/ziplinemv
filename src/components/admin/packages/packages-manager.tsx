@@ -8,7 +8,7 @@ import { formatCurrency, cn } from "@/lib/utils";
 
 interface Package {
   id: string; name: string; slug: string; description: string | null;
-  touristPrice: number; localPrice: number | null; childPrice: number | null;
+  touristPrice: number; localPrice: number | null; localPriceMvr?: number | null; childPrice: number | null;
   currency: string; included: string[]; excluded: string[];
   featured: boolean; imageUrl: string | null; active: boolean;
   displayOrder: number; agentCommissionEligible: boolean; affiliateCommissionEligible: boolean;
@@ -16,7 +16,7 @@ interface Package {
 }
 
 const BLANK: Omit<Package, "id" | "_count"> = {
-  name: "", slug: "", description: "", touristPrice: 0, localPrice: null,
+  name: "", slug: "", description: "", touristPrice: 0, localPrice: null, localPriceMvr: null,
   childPrice: null, currency: "USD", included: [], excluded: [],
   featured: false, imageUrl: null, active: true, displayOrder: 0,
   agentCommissionEligible: true, affiliateCommissionEligible: true,
@@ -118,8 +118,8 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
           <thead>
             <tr>
               <th>Package</th>
-              <th>Tourist price</th>
-              <th>Local price</th>
+              <th>Tourist (USD)</th>
+              <th>Local (MVR)</th>
               <th>Bookings</th>
               <th>Featured</th>
               <th>Status</th>
@@ -138,8 +138,10 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
                   <p className="text-xs text-muted-foreground line-clamp-1">{pkg.description}</p>
                 </td>
                 <td className="font-semibold text-sm">{formatCurrency(Number(pkg.touristPrice))}</td>
-                <td className="text-sm text-muted-foreground">
-                  {pkg.localPrice ? formatCurrency(Number(pkg.localPrice)) : "—"}
+                <td className="text-sm font-semibold text-brand-lime">
+                  {(pkg as any).localPriceMvr
+                    ? `MVR ${Number((pkg as any).localPriceMvr).toLocaleString()}`
+                    : <span className="text-muted-foreground font-normal">—</span>}
                 </td>
                 <td className="text-sm">{pkg._count.bookingsList}</td>
                 <td>{pkg.featured && <Star className="w-4 h-4 text-brand-citrus" />}</td>
@@ -203,8 +205,8 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
                   <input type="number" min={0} step={0.01} value={editing.touristPrice ?? ""} onChange={(e) => setEditing((p) => ({ ...p, touristPrice: parseFloat(e.target.value) || 0 }))} placeholder="75" className={inputCls} />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Local price (USD)</label>
-                  <input type="number" min={0} step={0.01} value={editing.localPrice ?? ""} onChange={(e) => setEditing((p) => ({ ...p, localPrice: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="Optional" className={inputCls} />
+                  <label className="text-xs font-medium text-muted-foreground text-brand-lime">Local price (MVR)</label>
+                  <input type="number" min={0} step={0.01} value={(editing as any).localPriceMvr ?? ""} onChange={(e) => setEditing((p) => ({ ...p, localPriceMvr: e.target.value ? parseFloat(e.target.value) : null }))} placeholder="e.g. 1100" className={inputCls} />
                 </div>
               </div>
 

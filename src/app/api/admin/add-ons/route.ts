@@ -7,7 +7,7 @@ export async function POST(req: NextRequest) {
   const auth = await requireApiRole(ADMIN_AND_ABOVE);
   if (!auth.ok) return auth.response;
 
-  const { activityId, name, description, price, currency, bestFor, rules, displayOrder, active } = await req.json();
+  const { activityId, name, description, price, localPriceMvr, currency, bestFor, rules, displayOrder, active } = await req.json();
 
   if (!activityId || !name || price === undefined) {
     return NextResponse.json({ error: "activityId, name and price are required" }, { status: 400 });
@@ -17,13 +17,14 @@ export async function POST(req: NextRequest) {
     data: {
       activityId,
       name,
-      description: description || null,
-      price:       parseFloat(price),
-      currency:    currency ?? "USD",
-      bestFor:     bestFor || null,
-      rules:       rules || null,
-      displayOrder: displayOrder ?? 0,
-      active:      active ?? true,
+      description:   description || null,
+      price:         parseFloat(price),
+      localPriceMvr: localPriceMvr ? parseFloat(localPriceMvr) : null,
+      currency:      currency ?? "USD",
+      bestFor:       bestFor || null,
+      rules:         rules || null,
+      displayOrder:  displayOrder ?? 0,
+      active:        active ?? true,
     },
   });
 

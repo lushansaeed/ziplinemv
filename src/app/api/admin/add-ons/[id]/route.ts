@@ -8,10 +8,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
-  const { id: _id, activityId: _a, createdAt: _c, updatedAt: _u, price, ...rest } = body;
+  const { id: _id, activityId: _a, createdAt: _c, updatedAt: _u, price, localPriceMvr, ...rest } = body;
   const addon = await prisma.addOn.update({
     where: { id: params.id },
-    data: { ...rest, ...(price !== undefined ? { price: parseFloat(price) } : {}) },
+    data: {
+      ...rest,
+      ...(price         !== undefined ? { price:         parseFloat(price) }                   : {}),
+      ...(localPriceMvr !== undefined ? { localPriceMvr: localPriceMvr ? parseFloat(localPriceMvr) : null } : {}),
+    },
   });
   return NextResponse.json(addon);
 }
