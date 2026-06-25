@@ -131,9 +131,7 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-      {/* Favicon is set via generateMetadata in layout.tsx — don't add <link rel=icon> here */}
-      {/* Preload logo image for the header so it's ready before first paint */}
-      {logoUrl && <link rel="preload" href={logoUrl} as="image" />}
+      {/* Favicon handled via /api/favicon proxy — no direct Supabase URLs here */}
       {children}
     </>
   );
