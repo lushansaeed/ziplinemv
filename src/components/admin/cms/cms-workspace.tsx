@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon, Type, Layout } from "lucide-react";
+import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon, Type, Layout, SortAsc } from "lucide-react";
+import { SectionOrderManager } from "./section-order-manager";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -30,8 +31,8 @@ const HOMEPAGE_SECTIONS = [
   { key: "story",    label: "Story section",    badge: "Our story",    defaultH: "Vahmāfushi is the island\nof elevated experiences." },
 ];
 
-export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements }: any) {
-  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "pages" | "sections">("general");
+export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements, sectionOrder }: any) {
+  const [currentTab, setCurrentTab] = useState<"general" | "order" | "sections" | "pages" | "contact" | "announcements">("general");
   const [isPending, startTransition] = useTransition();
 
   // General
@@ -230,11 +231,12 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   const TABS = [
-    { key: "general",       label: "General",             icon: Globe },
-    { key: "sections",      label: "Homepage sections",   icon: Layout },
-    { key: "pages",         label: "Page typography",     icon: Type },
-    { key: "contact",       label: "Contact & social",    icon: Phone },
-    { key: "announcements", label: "Announcement banner", icon: Megaphone },
+    { key: "general",       label: "General",              icon: Globe },
+    { key: "order",         label: "Section order",        icon: SortAsc },
+    { key: "sections",      label: "Section content",      icon: Layout },
+    { key: "pages",         label: "Page typography",      icon: Type },
+    { key: "contact",       label: "Contact & social",     icon: Phone },
+    { key: "announcements", label: "Announcement banner",  icon: Megaphone },
   ];
 
   return (
@@ -374,6 +376,18 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
           <button onClick={saveGeneral} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> Save all
           </button>
+        </div>
+      )}
+
+      {/* Section Order */}
+      {currentTab === "order" && (
+        <div className="space-y-4">
+          <div className="bg-muted/30 border border-border rounded-xl p-4 text-sm text-muted-foreground space-y-1">
+            <p>↑↓ Move sections up and down to reorder them on the homepage.</p>
+            <p><Eye className="w-3.5 h-3.5 inline mr-1" />Toggle visibility to show/hide sections without deleting them.</p>
+            <p><Plus className="w-3.5 h-3.5 inline mr-1" />Add custom sections and configure their content in the <strong>Section content</strong> tab.</p>
+          </div>
+          <SectionOrderManager initialSections={sectionOrder ?? []} />
         </div>
       )}
 

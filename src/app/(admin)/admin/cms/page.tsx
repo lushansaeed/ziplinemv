@@ -4,17 +4,19 @@ import { requireRole } from "@/lib/auth/actions";
 import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
 import { PageHeader } from "@/components/shared/page-header";
 import { CmsWorkspace } from "@/components/admin/cms/cms-workspace";
+import { getHomepageSections } from "@/lib/public/section-manager";
 
 export const metadata: Metadata = { title: "CMS | Admin" };
 
 async function getCmsData() {
-  const [pages, settings, contact, announcements] = await Promise.all([
+  const [pages, settings, contact, announcements, sectionOrder] = await Promise.all([
     prisma.websitePage.findMany({ orderBy: { slug: "asc" }, include: { sections: true } }),
     prisma.setting.findMany({ where: { group: { in: ["general", "hero"] } } }),
     prisma.contactSetting.findFirst(),
     prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
+    getHomepageSections(),
   ]);
-  return { pages, settings, contact, announcements };
+  return { pages, settings, contact, announcements, sectionOrder };
 }
 
 export default async function CmsPage() {
