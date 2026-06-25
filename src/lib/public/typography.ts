@@ -9,7 +9,7 @@ export interface PageTypography {
 }
 
 const PAGE_DEFAULTS: Record<string, PageTypography> = {
-  home:       { heading: "Fly from Maafushi. Land in a story.",       subheading: "428 metres of ocean, adrenaline, and unforgettable views.\nYour barefoot adventure starts in the sky.",                   fontSize: 82, rotation: 0 },
+  home:       { heading: "Fly from Maafushi.\nLand in a story.",       subheading: "428 metres of ocean, adrenaline, and unforgettable views.\nYour barefoot adventure starts in the sky.",                   fontSize: 82, rotation: 0 },
   packages:   { heading: "The ride.\nChoose yours.",                  subheading: "Three ways to fly. One unforgettable route.",                                                                               fontSize: 64, rotation: 0 },
   "add-ons":  { heading: "Add the shot.\nKeep the memory.",           subheading: "Personal phones and cameras aren't allowed on the zipline.\nThat's why we have professionals doing it for you.",          fontSize: 64, rotation: 0 },
   gallery:    { heading: "428 metres of\nstories told.",              subheading: "Every ride is different. Every story is worth keeping.",                                                                    fontSize: 64, rotation: 0 },

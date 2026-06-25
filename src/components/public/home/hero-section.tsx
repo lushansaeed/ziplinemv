@@ -95,7 +95,7 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
         <h1
           className="font-display font-bold text-white text-balance max-w-4xl leading-[1.05] [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
           style={{
-            fontSize:        `${fontSize}px`,
+            fontSize:        `clamp(2rem, ${(fontSize / 16).toFixed(2)}vw, ${fontSize}px)`,
             transform:       rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
             transformOrigin: "left center",
           }}
