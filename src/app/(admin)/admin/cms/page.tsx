@@ -11,7 +11,15 @@ export const metadata: Metadata = { title: "CMS | Admin" };
 async function getCmsData() {
   const [pages, settings, contact, announcements, sectionOrder] = await Promise.all([
     prisma.websitePage.findMany({ orderBy: { slug: "asc" }, include: { sections: true } }),
-    prisma.setting.findMany({ where: { group: { in: ["general", "hero"] } } }),
+    prisma.setting.findMany({
+      where: {
+        OR: [
+          { group: { in: ["general", "hero"] } },
+          // Logo settings may have been saved without a group — fetch by key too
+          { key: { in: ["site_logo_url", "site_logo_size", "site_logo_text"] } },
+        ],
+      },
+    }),
     prisma.contactSetting.findFirst(),
     prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
     getHomepageSections(),
