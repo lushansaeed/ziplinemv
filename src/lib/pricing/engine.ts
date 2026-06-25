@@ -29,10 +29,10 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
   const [pkg, addOns, promoRecord, affiliateCoupon] = await Promise.all([
     prisma.package.findUnique({
       where: { id: input.packageId },
-      select: { touristPrice: true, localPrice: true, currency: true, name: true },
+      select: { touristPrice: true, localPrice: true, localPriceMvr: true, currency: true, name: true },
     }),
     input.addOnIds.length > 0
-      ? prisma.addOn.findMany({ where: { id: { in: input.addOnIds } }, select: { id: true, name: true, price: true } })
+      ? prisma.addOn.findMany({ where: { id: { in: input.addOnIds } }, select: { id: true, name: true, price: true, localPriceMvr: true } })
       : Promise.resolve([]),
     input.promoCode
       ? prisma.promoCode.findFirst({
@@ -48,19 +48,25 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
 
   if (!pkg) throw new Error("Package not found");
 
-  const currency = pkg.currency ?? "USD";
-
-  // Determine per-rider price
   // Local pricing: explicit riderType takes priority; fallback to nationality === MV
-  const isLocal = input.riderType === "local" || (input.riderType === undefined && input.nationality?.toUpperCase() === "MV");
-  const unitPrice = (isLocal && pkg.localPrice)
-    ? Number(pkg.localPrice)
+  const isLocal    = input.riderType === "local" || (input.riderType === undefined && input.nationality?.toUpperCase() === "MV");
+  const currency   = isLocal ? "MVR" : (pkg.currency ?? "USD");
+
+  // Package unit price
+  const unitPrice = isLocal && pkg.localPriceMvr
+    ? Number(pkg.localPriceMvr)
+    : isLocal && pkg.localPrice
+    ? Number(pkg.localPrice)       // legacy fallback
     : Number(pkg.touristPrice);
 
   const basePrice  = unitPrice * input.numRiders;
   const addOnsTotal = addOns.reduce((sum, a) => {
     const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
-    return sum + Number(a.price) * qty;
+    // Use MVR add-on price for locals if available, otherwise USD
+    const addonPrice = isLocal && (a as any).localPriceMvr
+      ? Number((a as any).localPriceMvr)
+      : Number(a.price);
+    return sum + addonPrice * qty;
   }, 0);
   const subtotal    = basePrice + addOnsTotal;
 

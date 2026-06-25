@@ -4,6 +4,7 @@ import { Camera, Video, Tv2, Minus, Plus, Star } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
 import { StepShell } from "../step-shell";
 import { formatCurrency } from "@/lib/utils";
+import { formatBookingPrice } from "@/lib/booking/currency";
 import { cn } from "@/lib/utils";
 import type { AddOn } from "@prisma/client";
 
@@ -11,7 +12,8 @@ const ICONS = [Camera, Video, Tv2];
 const RECOMMENDED_INDEX = 1; // 360° video
 
 export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
-  const { addOnQuantities, numRiders, setAddOnQty, addOnNames, addOnPrices, nextStep } = useBookingStore();
+  const { addOnQuantities, numRiders, riderType, setAddOnQty, addOnNames, addOnPrices, nextStep } = useBookingStore();
+  const isLocal = riderType === "local";
 
   const totalAddOnCost = addOns.reduce((sum, a) => {
     const qty = addOnQuantities[a.id] ?? 0;
@@ -29,10 +31,12 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
     >
       <div className="space-y-4">
         {addOns.map((addon, i) => {
-          const qty          = addOnQuantities[addon.id] ?? 0;
+          const qty           = addOnQuantities[addon.id] ?? 0;
           const isRecommended = i === RECOMMENDED_INDEX;
           const Icon          = ICONS[i] ?? Camera;
-          const unitPrice     = Number(addon.price);
+          const unitPrice     = isLocal && (addon as any).localPriceMvr
+            ? Number((addon as any).localPriceMvr)
+            : Number(addon.price);
           const lineTotal     = unitPrice * qty;
 
           return (
@@ -76,10 +80,14 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                   <div className="text-right">
                     <p className="text-white font-bold text-sm">
-                      {qty > 0 ? `+${formatCurrency(lineTotal)}` : formatCurrency(unitPrice)}
+                      {qty > 0
+                        ? `+${formatBookingPrice(lineTotal, riderType)}`
+                        : formatBookingPrice(unitPrice, riderType)}
                     </p>
                     <p className="text-white/30 text-[10px]">
-                      {qty > 0 ? `${formatCurrency(unitPrice)} × ${qty}` : "per person"}
+                      {qty > 0
+                        ? `${formatBookingPrice(unitPrice, riderType)} × ${qty}`
+                        : isLocal ? "per person · MVR" : "per person · USD"}
                     </p>
                   </div>
 
@@ -179,7 +187,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
                 .map((a) => `${addOnQuantities[a.id]}× ${a.name}`).join(" · ")}
             </p>
           </div>
-          <p className="text-brand-citrus font-bold text-lg">+{formatCurrency(totalAddOnCost)}</p>
+          <p className="text-brand-citrus font-bold text-lg">+{formatBookingPrice(totalAddOnCost, riderType)}</p>
         </div>
       )}
 

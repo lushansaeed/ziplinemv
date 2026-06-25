@@ -7,10 +7,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { touristPrice, localPrice } = await req.json();
+  const { touristPrice, localPrice, localPriceMvr } = await req.json();
   await prisma.package.update({
     where: { id: params.id },
-    data:  { touristPrice, localPrice: localPrice ?? null },
+    data:  { touristPrice, localPrice: localPrice ?? null, localPriceMvr: localPriceMvr ?? null },
   });
   return NextResponse.json({ success: true });
 }

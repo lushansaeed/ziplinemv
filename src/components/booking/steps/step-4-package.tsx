@@ -4,6 +4,7 @@ import { Check } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
 import { StepShell } from "../step-shell";
 import { formatCurrency } from "@/lib/utils";
+import { formatBookingPrice } from "@/lib/booking/currency";
 import { cn } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 
@@ -29,9 +30,16 @@ export function Step4Package({ packages }: { packages: Package[] }) {
         {packages.map((pkg) => {
           const isSelected  = packageId === pkg.id;
           const isLocal     = riderType === "local";
-          const unitPrice   = (isLocal && pkg.localPrice) ? Number(pkg.localPrice) : Number(pkg.touristPrice);
+          // MVR for locals, USD for tourists
+          const unitPrice   = isLocal && (pkg as any).localPriceMvr
+            ? Number((pkg as any).localPriceMvr)
+            : isLocal && pkg.localPrice
+            ? Number(pkg.localPrice)
+            : Number(pkg.touristPrice);
           const total       = unitPrice * numRiders;
-          const savedAmount = isLocal && pkg.localPrice ? (Number(pkg.touristPrice) - Number(pkg.localPrice)) * numRiders : 0;
+          const usdTotal    = Number(pkg.touristPrice) * numRiders;
+          // Only show savings if MVR price is set and we can compare
+          const savedAmount = 0; // savings shown via MVR vs USD label
 
           return (
             <button
@@ -69,20 +77,17 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="font-display font-bold text-xl text-white">
-                      {formatCurrency(total)}
+                      {formatBookingPrice(total, riderType)}
                     </p>
                     <p className="text-white/35 text-xs">
-                      {formatCurrency(unitPrice)} × {numRiders}
+                      {formatBookingPrice(unitPrice, riderType)} × {numRiders}
                     </p>
-                    {isLocal && pkg.localPrice && (
+                    {isLocal ? (
                       <span className="text-[10px] font-bold text-brand-lime bg-brand-lime/10 px-1.5 py-0.5 rounded mt-1 inline-block">
-                        Local price
+                        MVR · Local price
                       </span>
-                    )}
-                    {savedAmount > 0 && (
-                      <p className="text-brand-lime text-[10px] mt-0.5">
-                        Save {formatCurrency(savedAmount)}
-                      </p>
+                    ) : (
+                      <span className="text-[10px] text-white/30 mt-0.5 inline-block">USD</span>
                     )}
                   </div>
                 </div>

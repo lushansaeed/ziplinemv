@@ -2,11 +2,13 @@
 
 import { useBookingStore } from "@/lib/booking/store";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatBookingPrice } from "@/lib/booking/currency";
 import { Calendar, Clock, Package, Users } from "lucide-react";
 import { parseISO } from "date-fns";
 
 export function BookingOrderSummary() {
-  const store = useBookingStore();
+  const store     = useBookingStore();
+  const riderType = store.riderType ?? "tourist";
 
   // Use per-addon quantities (not numRiders for all)
   const addOnTotal = store.addOnIds.reduce(
@@ -56,7 +58,7 @@ export function BookingOrderSummary() {
       <div className="border-t border-white/6 pt-4 space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-white/60">{store.packageName} × {store.numRiders}</span>
-          <span className="text-white">{formatCurrency(store.packagePrice * store.numRiders)}</span>
+          <span className="text-white">{formatBookingPrice(store.packagePrice * store.numRiders, riderType)}</span>
         </div>
 
         {store.addOnIds.map((id) => {
@@ -70,7 +72,7 @@ export function BookingOrderSummary() {
                   <span className="text-white/30 text-xs ml-1">(not all riders)</span>
                 )}
               </span>
-              <span className="text-white">{formatCurrency((store.addOnPrices[id] ?? 0) * qty)}</span>
+              <span className="text-white">{formatBookingPrice((store.addOnPrices[id] ?? 0) * qty, riderType)}</span>
             </div>
           );
         })}
@@ -84,7 +86,7 @@ export function BookingOrderSummary() {
 
         <div className="flex justify-between text-base font-bold border-t border-white/8 pt-2 mt-2">
           <span className="text-white">Total</span>
-          <span className="text-brand-citrus text-lg">{formatCurrency(total)}</span>
+          <span className="text-brand-citrus text-lg">{formatBookingPrice(total, riderType)}</span>
         </div>
       </div>
     </div>

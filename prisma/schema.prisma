@@ -487,7 +487,8 @@ model Package {
   slug                      String   @unique
   description               String?
   touristPrice              Decimal  @map("tourist_price") @db.Decimal(10, 2)
-  localPrice                Decimal? @map("local_price") @db.Decimal(10, 2)
+  localPrice                Decimal? @map("local_price") @db.Decimal(10, 2)      // legacy USD local price
+  localPriceMvr             Decimal? @map("local_price_mvr") @db.Decimal(10, 2) // MVR price for Maldivian residents
   childPrice                Decimal? @map("child_price") @db.Decimal(10, 2)
   currency                  String   @default("USD")
   included                  String[]
@@ -516,9 +517,10 @@ model AddOn {
   activity     Activity @relation(fields: [activityId], references: [id])
   name         String
   description  String?
-  price        Decimal  @db.Decimal(10, 2)
-  currency     String   @default("USD")
-  mediaUrl     String?  @map("media_url")
+  price         Decimal  @db.Decimal(10, 2)              // USD price for tourists
+  localPriceMvr Decimal? @map("local_price_mvr") @db.Decimal(10, 2) // MVR price for locals
+  currency      String   @default("USD")
+  mediaUrl      String?  @map("media_url")
   bestFor      String?  @map("best_for")
   rules        String?
   displayOrder Int      @default(0) @map("display_order")

@@ -67,12 +67,16 @@ export function PricingWorkspace({ packages, addOns, promoCodes, settings }: Pri
     });
   }
 
-  async function updatePackagePrice(pkgId: string, touristPrice: string, localPrice: string) {
+  async function updatePackagePrice(pkgId: string, touristPrice: string, localPrice: string, localPriceMvr: string) {
     startTransition(async () => {
       const res = await fetch(`/api/admin/packages/${pkgId}/price`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ touristPrice: parseFloat(touristPrice), localPrice: localPrice ? parseFloat(localPrice) : null }),
+        body: JSON.stringify({
+          touristPrice:  parseFloat(touristPrice),
+          localPrice:    localPrice    ? parseFloat(localPrice)    : null,
+          localPriceMvr: localPriceMvr ? parseFloat(localPriceMvr) : null,
+        }),
       });
       if (res.ok) toast.success("Price updated");
       else toast.error("Failed to update price");
@@ -99,7 +103,7 @@ export function PricingWorkspace({ packages, addOns, promoCodes, settings }: Pri
           <div className="admin-card p-0 overflow-hidden">
             <table className="admin-table">
               <thead>
-                <tr><th>Package</th><th>Visitor / Tourist (USD)</th><th>Local / Work Permit (USD)</th><th>Status</th><th></th></tr>
+                <tr><th>Package</th><th>Tourist price (USD)</th><th>Local price (MVR)</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
                 {packages.map((pkg) => (
@@ -117,7 +121,7 @@ export function PricingWorkspace({ packages, addOns, promoCodes, settings }: Pri
           <p className="text-sm text-muted-foreground">Add-on prices are per person per booking.</p>
           <div className="admin-card p-0 overflow-hidden">
             <table className="admin-table">
-              <thead><tr><th>Add-on</th><th>Price (USD)</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Add-on</th><th>Tourist price (USD)</th><th>Local price (MVR)</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {addOns.map((addon) => (
                   <AddOnPriceRow key={addon.id} addon={addon} />
@@ -228,12 +232,13 @@ export function PricingWorkspace({ packages, addOns, promoCodes, settings }: Pri
   );
 }
 
-function PackagePriceRow({ pkg, onSave }: { pkg: Package; onSave: (id: string, t: string, l: string) => void }) {
+function PackagePriceRow({ pkg, onSave }: { pkg: Package; onSave: (id: string, t: string, l: string, mvr: string) => void }) {
   const [tourist, setTourist] = useState(String(Number(pkg.touristPrice)));
   const [local, setLocal]     = useState(pkg.localPrice ? String(Number(pkg.localPrice)) : "");
+  const [mvr, setMvr]         = useState((pkg as any).localPriceMvr ? String(Number((pkg as any).localPriceMvr)) : "");
   const [dirty, setDirty]     = useState(false);
 
-  const inputCls = "w-28 px-2 py-1.5 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring";
+  const inputCls = "w-24 px-2 py-1.5 text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring";
 
   return (
     <tr className="table-row-hover">
@@ -242,12 +247,18 @@ function PackagePriceRow({ pkg, onSave }: { pkg: Package; onSave: (id: string, t
         {pkg.featured && <span className="text-[10px] text-brand-citrus">Featured</span>}
       </td>
       <td>
-        <input value={tourist} onChange={(e) => { setTourist(e.target.value); setDirty(true); }}
-          className={inputCls} type="number" min={0} step={0.01} />
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">$</span>
+          <input value={tourist} onChange={(e) => { setTourist(e.target.value); setDirty(true); }}
+            className={inputCls} type="number" min={0} step={0.01} />
+        </div>
       </td>
       <td>
-        <input value={local} onChange={(e) => { setLocal(e.target.value); setDirty(true); }}
-          placeholder="—" className={inputCls} type="number" min={0} step={0.01} />
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-brand-lime">MVR</span>
+          <input value={mvr} onChange={(e) => { setMvr(e.target.value); setDirty(true); }}
+            placeholder="—" className={inputCls} type="number" min={0} step={0.01} />
+        </div>
       </td>
       <td>
         <span className={cn("status-badge", pkg.active ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground")}>
@@ -256,7 +267,7 @@ function PackagePriceRow({ pkg, onSave }: { pkg: Package; onSave: (id: string, t
       </td>
       <td>
         {dirty && (
-          <button onClick={() => { onSave(pkg.id, tourist, local); setDirty(false); }}
+          <button onClick={() => { onSave(pkg.id, tourist, local, mvr); setDirty(false); }}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors">
             <Save className="w-3 h-3" /> Save
           </button>
@@ -268,6 +279,7 @@ function PackagePriceRow({ pkg, onSave }: { pkg: Package; onSave: (id: string, t
 
 function AddOnPriceRow({ addon }: { addon: AddOn }) {
   const [price, setPrice] = useState(String(Number(addon.price)));
+  const [mvrPrice, setMvrPrice] = useState((addon as any).localPriceMvr ? String(Number((addon as any).localPriceMvr)) : "");
   const [dirty, setDirty] = useState(false);
   const [isPending, startTransition] = useTransition();
 
@@ -276,7 +288,7 @@ function AddOnPriceRow({ addon }: { addon: AddOn }) {
       const res = await fetch(`/api/admin/add-ons/${addon.id}/price`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ price: parseFloat(price) }),
+        body: JSON.stringify({ price: parseFloat(price), localPriceMvr: mvrPrice ? parseFloat(mvrPrice) : null }),
       });
       if (res.ok) { toast.success("Price updated"); setDirty(false); }
       else toast.error("Failed");
@@ -289,8 +301,18 @@ function AddOnPriceRow({ addon }: { addon: AddOn }) {
     <tr className="table-row-hover">
       <td><p className="font-medium text-sm">{addon.name}</p></td>
       <td>
-        <input value={price} onChange={(e) => { setPrice(e.target.value); setDirty(true); }}
-          className={inputCls} type="number" min={0} step={0.01} />
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">$</span>
+          <input value={price} onChange={(e) => { setPrice(e.target.value); setDirty(true); }}
+            className={inputCls} type="number" min={0} step={0.01} />
+        </div>
+      </td>
+      <td>
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-brand-lime">MVR</span>
+          <input value={mvrPrice} onChange={(e) => { setMvrPrice(e.target.value); setDirty(true); }}
+            placeholder="—" className={inputCls} type="number" min={0} step={0.01} />
+        </div>
       </td>
       <td>
         <span className={cn("status-badge", addon.active ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted text-muted-foreground")}>
