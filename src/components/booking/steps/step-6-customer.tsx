@@ -364,37 +364,40 @@ export function Step6Customer() {
           </div>
         </div>
 
-        {/* Nationality */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-white/50">Nationality *</label>
-          <CountrySelector
-            value={customerNationalityIso}
-            onChange={(c) => {
-              setField("customerNationality",    c.nationality);
-              setField("customerNationalityIso", c.iso);
-              setErrors((p) => { const n = { ...p }; delete n.nationality; return n; });
-            }}
-            mode="nationality"
-            placeholder="Select your nationality"
-            error={errors.nationality}
-          />
-          <p className="text-white/25 text-[11px]">Maldivian residents may qualify for local pricing.</p>
-        </div>
+        {/* Nationality + Hotel in same row */}
+        <div className="grid sm:grid-cols-2 gap-4">
+          {/* Nationality */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50">Nationality *</label>
+            <CountrySelector
+              value={customerNationalityIso}
+              onChange={(c) => {
+                setField("customerNationality",    c.nationality);
+                setField("customerNationalityIso", c.iso);
+                setErrors((p) => { const n = { ...p }; delete n.nationality; return n; });
+              }}
+              mode="nationality"
+              placeholder="Select nationality"
+              error={errors.nationality}
+            />
+            <p className="text-white/25 text-[11px]">Maldivians may qualify for local pricing.</p>
+          </div>
 
-        {/* Hotel */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-white/50">Hotel / guesthouse *</label>
-          <input
-            value={customerHotel}
-            onChange={(e) => setField("customerHotel", e.target.value)}
-            onBlur={() => {
-              if (!customerHotel.trim()) setErrors((p) => ({ ...p, hotel: "Hotel or guesthouse name is required." }));
-              else setErrors((p) => { const n = { ...p }; delete n.hotel; return n; });
-            }}
-            placeholder="Where you're staying in Maafushi"
-            className={cn(inputCls, errors.hotel && "border-red-500/50")}
-          />
-          {errors.hotel && <p className="text-red-400 text-xs">{errors.hotel}</p>}
+          {/* Hotel */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-white/50">Hotel / guesthouse *</label>
+            <input
+              value={customerHotel}
+              onChange={(e) => setField("customerHotel", e.target.value)}
+              onBlur={() => {
+                if (!customerHotel.trim()) setErrors((p) => ({ ...p, hotel: "Hotel or guesthouse is required." }));
+                else setErrors((p) => { const n = { ...p }; delete n.hotel; return n; });
+              }}
+              placeholder="Where you're staying"
+              className={cn(inputCls, errors.hotel && "border-red-500/50")}
+            />
+            {errors.hotel && <p className="text-red-400 text-xs">{errors.hotel}</p>}
+          </div>
         </div>
       </div>
     </StepShell>
