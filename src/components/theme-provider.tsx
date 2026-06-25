@@ -131,16 +131,9 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-      {logoUrl ? (
-        <>
-          {/* Use uploaded logo as favicon — overrides the default icon.tsx */}
-          <link rel="icon"             href={logoUrl} />
-          <link rel="shortcut icon"    href={logoUrl} />
-          <link rel="apple-touch-icon" href={logoUrl} />
-          {/* Also preload it for the header */}
-          <link rel="preload"          href={logoUrl} as="image" />
-        </>
-      ) : null}
+      {/* Favicon is set via generateMetadata in layout.tsx — don't add <link rel=icon> here */}
+      {/* Preload logo image for the header so it's ready before first paint */}
+      {logoUrl && <link rel="preload" href={logoUrl} as="image" />}
       {children}
     </>
   );

@@ -5,9 +5,9 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { prisma } from "@/lib/prisma/client";
+import { unstable_noStore as noStore } from "next/cache";
 
-// Brand font: Agrandir (commercial) → Plus Jakarta Sans as open-source equivalent
-// Modern geometric sans — used for all UI, body copy, navigation
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
@@ -17,48 +17,62 @@ const jakarta = Plus_Jakarta_Sans({
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
 
-export const metadata: Metadata = {
-  metadataBase: new URL(BASE),
-  title: {
-    template: "%s | Zipline Maldives",
-    default:  "Zipline Maldives — Maldives' First Island-to-Island Zipline",
-  },
-  description:
-    "Drop in by zipline. Leave with a story. 428 metres of ocean, adrenaline, and unforgettable views from Maafushi to Vahmāfushi. Book your island-to-island zipline experience today.",
-  keywords: [
-    "zipline maldives", "maafushi zipline", "vahmaafushi", "maldives adventure",
-    "island zipline", "maafushi activities", "maldives experiences",
-    "island hopping maldives", "adventure maldives",
-  ],
-  authors:  [{ name: "Zipline Maldives" }],
-  creator:  "Zipline Maldives",
-  publisher:"Zipline Maldives",
-  openGraph: {
-    type:      "website",
-    locale:    "en_US",
-    url:       BASE,
-    siteName:  "Zipline Maldives",
-    title:     "Zipline Maldives — Maldives' First Island-to-Island Zipline",
-    description: "Drop in by zipline. Leave with a story. 428 metres of ocean, adrenaline, and unforgettable views.",
-    images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Zipline Maldives" }],
-  },
-  twitter: {
-    card:        "summary_large_image",
-    site:        "@ziplinemaldives",
-    creator:     "@ziplinemaldives",
-    title:       "Zipline Maldives",
-    description: "Drop in by zipline. Leave with a story.",
-    images:      ["/og-image.jpg"],
-  },
-  robots: {
-    index:            true,
-    follow:           true,
-    googleBot: { index: true, follow: true },
-  },
-  verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION,
-  },
-};
+async function getLogoUrl(): Promise<string | null> {
+  noStore();
+  try {
+    const s = await prisma.setting.findUnique({ where: { key: "site_logo_url" } });
+    const v = s?.value as string | undefined;
+    return v && v.length > 10 ? v : null;
+  } catch { return null; }
+}
+
+// generateMetadata is the CORRECT Next.js API for dynamic favicons.
+// Unlike <link> tags rendered in components (which get removed during
+// client-side navigation reconciliation), metadata icons persist across
+// all navigations because Next.js manages them outside React's tree.
+export async function generateMetadata(): Promise<Metadata> {
+  const logoUrl = await getLogoUrl();
+  const icon    = logoUrl ?? "/favicon.ico";
+
+  return {
+    metadataBase: new URL(BASE),
+    title: {
+      template: "%s | Zipline Maldives",
+      default:  "Zipline Maldives — Maldives' First Island-to-Island Zipline",
+    },
+    description:
+      "Drop in by zipline. Leave with a story. 428 metres of ocean, adrenaline, and unforgettable views from Maafushi to Vahmāfushi.",
+    keywords: [
+      "zipline maldives", "maafushi zipline", "vahmaafushi", "maldives adventure",
+      "island zipline", "maafushi activities", "maldives experiences",
+    ],
+    authors:   [{ name: "Zipline Maldives" }],
+    creator:   "Zipline Maldives",
+    publisher: "Zipline Maldives",
+    icons: {
+      icon:             [{ url: icon }],
+      shortcut:         [{ url: icon }],
+      apple:            [{ url: icon }],
+    },
+    openGraph: {
+      type:      "website",
+      locale:    "en_US",
+      url:       BASE,
+      siteName:  "Zipline Maldives",
+      title:     "Zipline Maldives — Maldives' First Island-to-Island Zipline",
+      description: "Drop in by zipline. Leave with a story. 428 metres of ocean, adrenaline, and unforgettable views.",
+      images: [{ url: "/og-image.jpg", width: 1200, height: 630, alt: "Zipline Maldives" }],
+    },
+    twitter: {
+      card:        "summary_large_image",
+      site:        "@ziplinemaldives",
+      title:       "Zipline Maldives",
+      description: "Drop in by zipline. Leave with a story.",
+      images:      ["/og-image.jpg"],
+    },
+    robots: { index: true, follow: true, googleBot: { index: true, follow: true } },
+  };
+}
 
 export default function RootLayout({
   children,
@@ -66,7 +80,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Preload Kindness Matters before first paint to prevent FOUT */}
         <link
           rel="preload"
           href="/fonts/Kindness-Matters.woff2"
