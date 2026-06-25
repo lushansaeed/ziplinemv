@@ -10,6 +10,7 @@ import { AddOnsPreview } from "@/components/public/home/addons-preview";
 import { GalleryWall } from "@/components/public/home/gallery-wall";
 import { StoryTeaser } from "@/components/public/home/story-teaser";
 import { PartnersCTA } from "@/components/public/home/partners-cta";
+import { getPageTypography } from "@/lib/public/typography";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 async function getHomeData() {
-  const [packages, addOns, heroMedia, galleryMedia, settings] = await Promise.all([
+  const [packages, addOns, heroMedia, galleryMedia, settings, typography] = await Promise.all([
     prisma.package.findMany({
       where: { active: true },
       orderBy: { displayOrder: "asc" },
@@ -41,19 +42,20 @@ async function getHomeData() {
     prisma.setting.findMany({
       where: { key: { in: ["site_tagline", "zipline_length_m", "experience_duration_min", "full_journey_min", "min_rider_weight_kg", "max_rider_weight_kg", "min_rider_age"] } },
     }),
+    getPageTypography("home"),
   ]);
 
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
-  return { packages, addOns, heroMedia, galleryMedia, settingsMap };
+  return { packages, addOns, heroMedia, galleryMedia, settingsMap, typography };
 }
 
 export default async function HomePage() {
-  const { packages, addOns, heroMedia, galleryMedia, settingsMap } = await getHomeData();
+  const { packages, addOns, heroMedia, galleryMedia, settingsMap, typography } = await getHomeData();
 
   return (
     <>
       <PageBackground pageKey="home" />
-      <HeroSection heroMedia={heroMedia} />
+      <HeroSection heroMedia={heroMedia} typography={typography} />
       <TrustBar settings={settingsMap} />
       <RouteSection />
       <PackagesPreview packages={packages} />

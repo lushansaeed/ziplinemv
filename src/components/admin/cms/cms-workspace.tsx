@@ -11,8 +11,19 @@ interface Announcement {
   id: string; text: string; ctaLabel: string | null; ctaUrl: string | null; active: boolean;
 }
 
+const PAGES = [
+  { key: "home",      label: "Home",      defaultH: "Fly from Maafushi. Land in a story.", defaultSize: 82 },
+  { key: "packages",  label: "Packages",  defaultH: "The ride.\nChoose yours.",             defaultSize: 64 },
+  { key: "add-ons",   label: "Add-ons",   defaultH: "Add the shot.\nKeep the memory.",      defaultSize: 64 },
+  { key: "gallery",   label: "Gallery",   defaultH: "428 metres of\nstories told.",          defaultSize: 64 },
+  { key: "our-story", label: "Our Story", defaultH: "Born from the\nocean.",                 defaultSize: 64 },
+  { key: "faq",       label: "FAQ",       defaultH: "Everything you\nneed to know.",         defaultSize: 64 },
+  { key: "contact",   label: "Contact",   defaultH: "Come find us.",                         defaultSize: 64 },
+  { key: "book",      label: "Booking",   defaultH: "Book your flight.",                     defaultSize: 64 },
+];
+
 export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements }: any) {
-  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "hero">("general");
+  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "hero" | "pages">("general");
   const [isPending, startTransition] = useTransition();
 
   // General
@@ -24,9 +35,46 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   const [tagline, setTagline]     = useState(getS("site_tagline", "Drop in by zipline. Leave with a story."));
   const [logoUrl, setLogoUrl]     = useState(getS("site_logo_url", ""));
 
-  // Hero typography
-  const [heroFontSize, setHeroFontSize]   = useState(getS("hero_font_size", "82"));
-  const [heroRotation, setHeroRotation]   = useState(getS("hero_rotation", "0"));
+  // Legacy global hero controls (kept for backwards compat)
+  const [heroFontSize, setHeroFontSize] = useState(getS("hero_font_size", "82"));
+  const [heroRotation, setHeroRotation] = useState(getS("hero_rotation", "0"));
+
+  // Per-page typography
+  const [pageTypo, setPageTypo] = useState<Record<string, { heading: string; subheading: string; fontSize: string; rotation: string }>>(() => {
+    const result: Record<string, any> = {};
+    for (const page of PAGES) {
+      result[page.key] = {
+        heading:    getS(`page_${page.key}_heading`,    page.defaultH),
+        subheading: getS(`page_${page.key}_subheading`, ""),
+        fontSize:   getS(`page_${page.key}_font_size`,  String(page.defaultSize)),
+        rotation:   getS(`page_${page.key}_rotation`,   "0"),
+      };
+    }
+    return result;
+  });
+  const [expandedPage, setExpandedPage] = useState<string | null>("home");
+
+  function updatePageTypo(pageKey: string, field: string, value: string) {
+    setPageTypo((p) => ({ ...p, [pageKey]: { ...p[pageKey], [field]: value } }));
+  }
+
+  async function savePageTypo(pageKey: string) {
+    const t = pageTypo[pageKey];
+    if (!t) return;
+    startTransition(async () => {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [`page_${pageKey}_heading`]:    t.heading,
+          [`page_${pageKey}_subheading`]: t.subheading,
+          [`page_${pageKey}_font_size`]:  t.fontSize,
+          [`page_${pageKey}_rotation`]:   t.rotation,
+        }),
+      });
+      if (res.ok) toast.success(`${PAGES.find(p => p.key === pageKey)?.label} typography saved`);
+      else toast.error("Failed to save");
+    });
+  }
   const [logoSize, setLogoSize]   = useState(getS("site_logo_size", "md"));
   const [logoText, setLogoText]   = useState(getS("site_logo_text", "Zipline Maldives"));
   const [uploading, setUploading] = useState(false);
@@ -137,9 +185,9 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   const TABS = [
-    { key: "general",       label: "General",           icon: Globe },
-    { key: "hero",          label: "Hero typography",   icon: Type },
-    { key: "contact",       label: "Contact & social",  icon: Phone },
+    { key: "general",       label: "General",            icon: Globe },
+    { key: "pages",         label: "Page typography",    icon: Type },
+    { key: "contact",       label: "Contact & social",   icon: Phone },
     { key: "announcements", label: "Announcement banner", icon: Megaphone },
   ];
 
@@ -283,107 +331,147 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
         </div>
       )}
 
-      {/* Hero Typography */}
-      {currentTab === "hero" && (
-        <div className="space-y-6 max-w-xl">
-          <div className="admin-card space-y-5">
-            <p className="font-semibold text-sm">Hero heading typography</p>
-            <p className="text-xs text-muted-foreground">
-              Controls the size and rotation of the main heading on the homepage hero section
-              (e.g. "Fly from Maafushi. Land in a story.").
-            </p>
+      {/* Page Typography */}
+      {currentTab === "pages" && (
+        <div className="space-y-3 max-w-2xl">
+          <p className="text-sm text-muted-foreground">
+            Customise the heading text, font size, and rotation for each public page.
+            Use <code className="bg-muted px-1 rounded text-xs">\n</code> in the heading to create line breaks.
+          </p>
 
-            {/* Font size */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Font size</label>
-                <span className="text-sm font-bold text-primary">{heroFontSize}px</span>
-              </div>
-              <input
-                type="range"
-                min={24}
-                max={160}
-                step={2}
-                value={heroFontSize}
-                onChange={(e) => setHeroFontSize(e.target.value)}
-                className="w-full"
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>24px (small)</span>
-                <span>82px (default)</span>
-                <span>160px (huge)</span>
-              </div>
-              <input
-                type="number"
-                min={24}
-                max={160}
-                value={heroFontSize}
-                onChange={(e) => setHeroFontSize(e.target.value)}
-                className={cn(inputCls, "w-28 text-center")}
-              />
-            </div>
+          {PAGES.map((page) => {
+            const t = pageTypo[page.key] ?? { heading: page.defaultH, subheading: "", fontSize: String(page.defaultSize), rotation: "0" };
+            const isOpen = expandedPage === page.key;
 
-            {/* Rotation */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="text-sm font-medium">Text rotation / angle</label>
-                <span className="text-sm font-bold text-primary">{heroRotation}°</span>
-              </div>
-              <input
-                type="range"
-                min={-45}
-                max={45}
-                step={1}
-                value={heroRotation}
-                onChange={(e) => setHeroRotation(e.target.value)}
-                className="w-full"
-              />
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>-45°</span>
-                <span>0° (default)</span>
-                <span>+45°</span>
-              </div>
-              <input
-                type="number"
-                min={-45}
-                max={45}
-                value={heroRotation}
-                onChange={(e) => setHeroRotation(e.target.value)}
-                className={cn(inputCls, "w-28 text-center")}
-              />
-            </div>
+            return (
+              <div key={page.key} className="admin-card p-0 overflow-hidden">
+                {/* Accordion header */}
+                <button
+                  onClick={() => setExpandedPage(isOpen ? null : page.key)}
+                  className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-left">
+                      <p className="font-semibold text-sm">{page.label}</p>
+                      <p className="text-xs text-muted-foreground truncate max-w-[280px]">
+                        {t.heading.replace(/\n/g, " · ")} · {t.fontSize}px · {t.rotation}°
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-muted-foreground text-xs">{isOpen ? "▲" : "▼"}</span>
+                </button>
 
-            {/* Live preview */}
-            <div className="rounded-xl bg-[#0A0F1A] p-6 overflow-hidden">
-              <p className="text-[10px] text-white/30 mb-4 uppercase tracking-wider">Preview</p>
-              <div
-                style={{
-                  fontSize: `${Math.min(Number(heroFontSize), 48)}px`,
-                  transform: `rotate(${heroRotation}deg)`,
-                  transformOrigin: "left center",
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                  color: "#ffffff",
-                  fontFamily: "'Kindness Matters', cursive",
-                  transition: "all 0.2s",
-                }}
-              >
-                Fly from Maafushi.{" "}
-                <span style={{ background: "linear-gradient(135deg, #F5A623, #FF7B2E)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  Land in a story.
-                </span>
-              </div>
-            </div>
+                {isOpen && (
+                  <div className="border-t border-border p-4 space-y-4">
+                    {/* Heading text */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Heading text (use \n for line break)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={t.heading}
+                        onChange={(e) => updatePageTypo(page.key, "heading", e.target.value)}
+                        className={cn(inputCls, "resize-none font-display")}
+                        placeholder={page.defaultH}
+                      />
+                    </div>
 
-            <button
-              onClick={saveHero}
-              disabled={isPending}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
-              {isPending ? "Saving…" : "Save hero typography"}
-            </button>
-          </div>
+                    {/* Subheading */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        Subheading (optional, \n for line break)
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={t.subheading}
+                        onChange={(e) => updatePageTypo(page.key, "subheading", e.target.value)}
+                        className={cn(inputCls, "resize-none")}
+                        placeholder="Short description text..."
+                      />
+                    </div>
+
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {/* Font size */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-muted-foreground">Font size</label>
+                          <span className="text-xs font-bold text-primary">{t.fontSize}px</span>
+                        </div>
+                        <input
+                          type="range" min={16} max={140} step={2}
+                          value={t.fontSize}
+                          onChange={(e) => updatePageTypo(page.key, "fontSize", e.target.value)}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>16px</span><span>80px</span><span>140px</span>
+                        </div>
+                      </div>
+
+                      {/* Rotation */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-muted-foreground">Rotation</label>
+                          <span className="text-xs font-bold text-primary">{t.rotation}°</span>
+                        </div>
+                        <input
+                          type="range" min={-45} max={45} step={1}
+                          value={t.rotation}
+                          onChange={(e) => updatePageTypo(page.key, "rotation", e.target.value)}
+                          className="w-full"
+                        />
+                        <div className="flex justify-between text-[10px] text-muted-foreground">
+                          <span>-45°</span><span>0°</span><span>+45°</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live preview */}
+                    <div className="rounded-xl bg-[#0A0F1A] p-5 overflow-hidden">
+                      <p className="text-[10px] text-white/30 mb-3 uppercase tracking-wider">Preview</p>
+                      <div
+                        style={{
+                          fontSize: `${Math.min(Number(t.fontSize), 48)}px`,
+                          transform: `rotate(${t.rotation}deg)`,
+                          transformOrigin: "left center",
+                          fontWeight: 700,
+                          lineHeight: 1.05,
+                          color: "#ffffff",
+                          fontFamily: "'Kindness Matters', cursive",
+                          transition: "all 0.15s",
+                        }}
+                      >
+                        {t.heading.split("\n").map((line, i, arr) => (
+                          <span key={i}>
+                            {i === 1
+                              ? <span style={{ background: "linear-gradient(135deg,#F5A623,#FF7B2E)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{line}</span>
+                              : line
+                            }
+                            {i < arr.length - 1 && <br />}
+                          </span>
+                        ))}
+                      </div>
+                      {t.subheading && (
+                        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", marginTop: "8px", lineHeight: 1.5 }}>
+                          {t.subheading.split("\n")[0]}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => savePageTypo(page.key)}
+                      disabled={isPending}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {isPending ? "Saving…" : `Save ${page.label} typography`}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

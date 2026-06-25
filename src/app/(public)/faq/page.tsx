@@ -1,3 +1,4 @@
+import { getPageTypography } from "@/lib/public/typography";
 import { PageBackground } from "@/components/public/page-background-server";
 export const dynamic = "force-dynamic";
 

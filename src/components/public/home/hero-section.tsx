@@ -12,13 +12,24 @@ interface HeroSectionProps {
     title?: string | null;
     caption?: string | null;
   } | null;
+  typography?: {
+    heading: string;
+    subheading: string;
+    fontSize: number;
+    rotation: number;
+  };
 }
 
 // Fallback gradient hero while no media is uploaded
 // Transparent fallback — allows page background (set via admin theme) to show through
 const FALLBACK_BG = "bg-transparent";
 
-export function HeroSection({ heroMedia }: HeroSectionProps) {
+export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
+  const heading    = typography?.heading    ?? "Fly from Maafushi. Land in a story.";
+  const subheading = typography?.subheading ?? "428 metres of ocean, adrenaline, and unforgettable views.\nYour barefoot adventure starts in the sky.";
+  const fontSize   = typography?.fontSize   ?? 82;
+  const rotation   = typography?.rotation   ?? 0;
+  const headingLines = heading.split("\n");
   const videoRef   = useRef<HTMLVideoElement>(null);
   const [ready, setReady] = useState(false);
 
@@ -80,26 +91,31 @@ export function HeroSection({ heroMedia }: HeroSectionProps) {
           </span>
         </div>
 
-        {/* Headline — size and rotation controlled from Admin → CMS → Hero typography */}
+        {/* Headline — controlled from Admin → CMS → Page typography → Home */}
         <h1
-          className="font-display font-bold text-white text-balance max-w-4xl leading-[1.05]
-            [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
+          className="font-display font-bold text-white text-balance max-w-4xl leading-[1.05] [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
           style={{
-            fontSize:        "var(--hero-font-size, clamp(2.5rem, 8vw, 82px))",
-            transform:       "rotate(var(--hero-rotation, 0deg))",
+            fontSize:        `${fontSize}px`,
+            transform:       rotation !== 0 ? `rotate(${rotation}deg)` : undefined,
             transformOrigin: "left center",
           }}
         >
-          Fly from Maafushi.{" "}
-          <span className="text-brand-gradient">Land in a story.</span>
+          {headingLines.map((line, i) => (
+            <span key={i}>
+              {i === 1 ? <span className="text-brand-gradient">{line}</span> : line}
+              {i < headingLines.length - 1 && <br />}
+            </span>
+          ))}
         </h1>
 
-        {/* Sub */}
-        <p className="mt-6 text-white/60 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed">
-          428 metres of ocean, adrenaline, and unforgettable views.
-          <br className="hidden sm:block" />
-          Your barefoot adventure starts in the sky.
-        </p>
+        {/* Subheading */}
+        {subheading && (
+          <p className="mt-6 text-white/60 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed">
+            {subheading.split("\n").map((line, i, arr) => (
+              <span key={i}>{line}{i < arr.length - 1 && <br className="hidden sm:block" />}</span>
+            ))}
+          </p>
+        )}
 
         {/* CTAs */}
         <div className="mt-10 flex flex-col sm:flex-row items-center gap-4">
