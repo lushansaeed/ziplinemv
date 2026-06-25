@@ -1,107 +1,101 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 
 interface BackgroundApplierProps {
   bgValue:    string | null;
   isGradient: boolean;
-  imageProps?: {
-    url:      string;
-    position: string;
-    size:     string;
-    repeat:   string;
-  } | null;
-  videoProps?: {
-    url:            string;
-    overlayColor:   string;
-    overlayOpacity: number;
-  } | null;
+  imageUrl?:  string | null;
+  imagePosition?: string;
+  imageSize?:     string;
+  imageRepeat?:   string;
+  videoUrl?:      string | null;
+  overlayColor?:  string;
+  overlayOpacity?: number;
 }
 
-/**
- * Client component — useEffect runs on EVERY client-side navigation.
- * Sets or clears the background on .theme-public when the page changes.
- * Cleans up on unmount so navigating away restores the default.
- */
-export function BackgroundApplier({ bgValue, isGradient, imageProps, videoProps }: BackgroundApplierProps) {
-  const videoElRef = useRef<HTMLVideoElement | null>(null);
+function applyBackground(props: BackgroundApplierProps) {
+  const el = document.querySelector(".theme-public") as HTMLElement | null;
+  if (!el) return;
 
-  useEffect(() => {
-    const el = document.querySelector(".theme-public") as HTMLElement | null;
-    if (!el) return;
+  // Clear previous state
+  el.style.background        = "";
+  el.style.backgroundColor   = "";
+  el.style.backgroundImage   = "";
+  el.style.backgroundSize    = "";
+  el.style.backgroundPosition = "";
+  el.style.backgroundRepeat  = "";
+  el.style.position          = "";
+  document.getElementById("__page-bg-video")?.remove();
+  document.getElementById("__page-bg-overlay")?.remove();
 
-    // Clear all background styles first
-    el.style.background        = "";
-    el.style.backgroundColor   = "";
-    el.style.backgroundImage   = "";
-    el.style.position          = "";
+  if (props.imageUrl) {
+    el.style.backgroundImage    = `url('${props.imageUrl}')`;
+    el.style.backgroundPosition = props.imagePosition ?? "center";
+    el.style.backgroundSize     = props.imageSize     ?? "cover";
+    el.style.backgroundRepeat   = props.imageRepeat   ?? "no-repeat";
+  } else if (props.videoUrl) {
+    el.style.position = "relative";
+    const video = document.createElement("video");
+    video.id           = "__page-bg-video";
+    video.src          = props.videoUrl;
+    video.autoplay     = true;
+    video.muted        = true;
+    video.loop         = true;
+    video.playsInline  = true;
+    video.setAttribute("playsinline", "");
+    Object.assign(video.style, {
+      position: "fixed", inset: "0",
+      width: "100%", height: "100%",
+      objectFit: "cover", zIndex: "-2", pointerEvents: "none",
+    });
+    document.body.appendChild(video);
+    video.play().catch(() => {});
 
-    // Remove any previous video element we injected
-    const prevVideo = document.getElementById("__page-bg-video");
-    if (prevVideo) prevVideo.remove();
-
-    if (imageProps) {
-      el.style.backgroundImage    = `url('${imageProps.url}')`;
-      el.style.backgroundPosition = imageProps.position;
-      el.style.backgroundSize     = imageProps.size;
-      el.style.backgroundRepeat   = imageProps.repeat;
-    } else if (videoProps) {
-      // Inject a fixed fullscreen video element
-      el.style.position = "relative";
-      const video = document.createElement("video");
-      video.id              = "__page-bg-video";
-      video.src             = videoProps.url;
-      video.autoplay        = true;
-      video.muted           = true;
-      video.loop            = true;
-      video.playsInline     = true;
-      video.setAttribute("playsinline", "");
-      Object.assign(video.style, {
-        position:    "fixed",
-        inset:       "0",
-        width:       "100%",
-        height:      "100%",
-        objectFit:   "cover",
-        zIndex:      "-2",
-        pointerEvents: "none",
-      });
-      document.body.appendChild(video);
-      videoElRef.current = video;
-      video.play().catch(() => {});
-
-      // Overlay
+    if (props.overlayColor) {
       const overlay = document.createElement("div");
       overlay.id = "__page-bg-overlay";
       Object.assign(overlay.style, {
-        position:        "fixed",
-        inset:           "0",
-        backgroundColor: videoProps.overlayColor,
-        opacity:         String(videoProps.overlayOpacity),
-        zIndex:          "-1",
-        pointerEvents:   "none",
+        position: "fixed", inset: "0",
+        backgroundColor: props.overlayColor,
+        opacity: String(props.overlayOpacity ?? 0.4),
+        zIndex: "-1", pointerEvents: "none",
       });
       document.body.appendChild(overlay);
-    } else if (bgValue) {
-      if (isGradient) {
-        el.style.background = bgValue;
-      } else {
-        el.style.backgroundColor = bgValue;
-      }
     }
+  } else if (props.bgValue) {
+    if (props.isGradient) {
+      el.style.background = props.bgValue;
+    } else {
+      el.style.backgroundColor = props.bgValue;
+    }
+  }
+}
 
-    return () => {
-      // Cleanup on page navigation
-      const same = document.querySelector(".theme-public") as HTMLElement | null;
-      if (same) {
-        same.style.background        = "";
-        same.style.backgroundColor   = "";
-        same.style.backgroundImage   = "";
-        same.style.position          = "";
-      }
-      document.getElementById("__page-bg-video")?.remove();
-      document.getElementById("__page-bg-overlay")?.remove();
-    };
-  }, [bgValue, isGradient, imageProps, videoProps]);
+function clearBackground() {
+  const el = document.querySelector(".theme-public") as HTMLElement | null;
+  if (el) {
+    el.style.background        = "";
+    el.style.backgroundColor   = "";
+    el.style.backgroundImage   = "";
+    el.style.backgroundSize    = "";
+    el.style.backgroundPosition = "";
+    el.style.backgroundRepeat  = "";
+    el.style.position          = "";
+  }
+  document.getElementById("__page-bg-video")?.remove();
+  document.getElementById("__page-bg-overlay")?.remove();
+}
+
+export function BackgroundApplier(props: BackgroundApplierProps) {
+  // Stable key = the actual URL or color value — only re-run when the value changes
+  const key = props.imageUrl ?? props.videoUrl ?? props.bgValue ?? "none";
+
+  useEffect(() => {
+    applyBackground(props);
+    return clearBackground;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   return null;
 }

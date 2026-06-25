@@ -14,9 +14,7 @@ async function getBackground(pageKey: string) {
 export async function PageBackground({ pageKey }: { pageKey: string }) {
   const bg = await getBackground(pageKey);
 
-  if (!bg) {
-    return <BackgroundApplier bgValue={null} isGradient={false} />;
-  }
+  if (!bg) return <BackgroundApplier bgValue={null} isGradient={false} />;
 
   const type = bg.backgroundType ?? "solid";
 
@@ -40,12 +38,10 @@ export async function PageBackground({ pageKey }: { pageKey: string }) {
       <BackgroundApplier
         bgValue={null}
         isGradient={false}
-        imageProps={{
-          url:      bg.imageUrl,
-          position: bg.bgPosition ?? "center",
-          size:     bg.bgSize     ?? "cover",
-          repeat:   bg.bgRepeat   ?? "no-repeat",
-        }}
+        imageUrl={bg.imageUrl}
+        imagePosition={bg.bgPosition ?? "center"}
+        imageSize={bg.bgSize ?? "cover"}
+        imageRepeat={bg.bgRepeat ?? "no-repeat"}
       />
     );
   }
@@ -55,15 +51,12 @@ export async function PageBackground({ pageKey }: { pageKey: string }) {
       <BackgroundApplier
         bgValue={null}
         isGradient={false}
-        videoProps={{
-          url:            (bg as any).videoUrl,
-          overlayColor:   bg.overlayColor ?? "#000000",
-          overlayOpacity: bg.overlayOpacity ?? 0.4,
-        }}
+        videoUrl={(bg as any).videoUrl}
+        overlayColor={bg.overlayColor ?? "#000000"}
+        overlayOpacity={bg.overlayOpacity ?? 0.4}
       />
     );
   }
 
-  // No valid background — clear whatever was set
   return <BackgroundApplier bgValue={null} isGradient={false} />;
 }
