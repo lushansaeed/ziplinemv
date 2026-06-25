@@ -149,7 +149,16 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Customer</p>
         <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
           <Row icon={User}     label="Name"        value={booking.customer.name} />
-          <Row label="Phone"   value={booking.customer.phone} />
+          <Row label="WhatsApp" value={
+            <a
+              href={`https://wa.me/${booking.customer.phone.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#25D366] hover:underline font-medium"
+            >
+              {booking.customer.phone}
+            </a>
+          } />
           {booking.customer.email && <Row label="Email" value={booking.customer.email} />}
           {booking.customer.nationality && <Row label="Nationality" value={booking.customer.nationality} />}
           {booking.customer.hotel && <Row label="Hotel / guesthouse" value={booking.customer.hotel} />}

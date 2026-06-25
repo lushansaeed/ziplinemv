@@ -25,12 +25,15 @@ export interface BookingState {
   addOnPrices: Record<string, number>;
   addOnQuantities: Record<string, number>; // addOnId → qty (0..numRiders)
   // Step 6 — customer
-  customerName: string;
-  customerPhone: string;
-  customerPhoneCountry: string;
-  customerEmail: string;
-  customerNationality: string;
-  customerHotel: string;
+  customerName:            string;
+  customerPhone:           string;   // local digits only e.g. "7777777"
+  customerPhoneCountry:    string;   // ISO e.g. "MV"
+  customerPhoneDialCode:   string;   // e.g. "+960"
+  customerPhoneFull:       string;   // full number e.g. "+9607777777"
+  customerEmail:           string;
+  customerNationality:     string;   // "Maldivian"
+  customerNationalityIso:  string;   // "MV"
+  customerHotel:           string;
   // Step 7 — riders
   riders: RiderInput[];
   // Step 8 — waiver (individual per rider + global policies)
@@ -65,7 +68,8 @@ const INITIAL: BookingState = {
   packageId: "", packageName: "", packagePrice: 0,
   addOnIds: [], addOnNames: {}, addOnPrices: {}, addOnQuantities: {},
   customerName: "", customerPhone: "", customerPhoneCountry: "MV",
-  customerEmail: "", customerNationality: "", customerHotel: "",
+  customerPhoneDialCode: "+960", customerPhoneFull: "",
+  customerEmail: "", customerNationality: "", customerNationalityIso: "", customerHotel: "",
   riders: [{ name: "", age: "", weight: "" }],
   riderWaivers: [], waiverAccepted: false, termsAccepted: false, refundAccepted: false, safetyAccepted: false,
   paymentMethod: "", promoCode: "", promoDiscount: 0,
