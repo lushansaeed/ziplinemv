@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import type { WebsiteMedia } from "@prisma/client";
+import type { SectionContent } from "@/lib/public/sections";
 import { cn } from "@/lib/utils";
 import { useLightbox, type LightboxItem } from "@/components/public/lightbox";
 
-interface GalleryWallProps {
-  items: WebsiteMedia[];
-}
+interface GalleryWallProps { items: WebsiteMedia[]; content?: SectionContent; }
 
 const SPAN_MAP = [
   "col-span-2 row-span-2",
@@ -34,15 +33,16 @@ const PLACEHOLDER_COLORS = [
   "from-brand-mango/20 to-transparent",
 ];
 
-export function GalleryWall({ items }: GalleryWallProps) {
+export function GalleryWall({ items, content }: GalleryWallProps) {
   const displayItems = (items.length > 0 ? items : Array(9).fill(null)).slice(0, 9);
+  const badge = content?.badge || "Gallery";
 
   const lbItems: LightboxItem[] = items
     .filter((m) => !!m.url)
     .map((m) => ({
       id:      m.id,
       url:     m.url!,
-      alt:     m.altText ?? m.title ?? "Gallery",
+      alt:     m.altText ?? m.title ?? badge,
       caption: m.caption ?? undefined,
       type:    m.type as "IMAGE" | "VIDEO",
     }));
@@ -60,8 +60,7 @@ export function GalleryWall({ items }: GalleryWallProps) {
               <span className="text-brand-turquoise text-xs font-semibold tracking-wider uppercase">Gallery</span>
             </div>
             <h2 className="font-display font-bold text-4xl text-white leading-tight">
-              428 metres of<br />
-              <span className="text-brand-citrus">stories told.</span>
+              {(content?.heading || "428 metres of\nstories told.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
             </h2>
           </div>
           <Link href="/gallery" className="hidden sm:inline-flex items-center gap-2 text-white/50 hover:text-brand-citrus font-medium text-sm transition-colors group">
@@ -100,7 +99,7 @@ export function GalleryWall({ items }: GalleryWallProps) {
                   ) : (
                     <img
                       src={(item as any).url}
-                      alt={(item as any).altText ?? (item as any).title ?? "Gallery"}
+                      alt={(item as any).altText ?? (item as any).title ?? badge}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                       loading="lazy"
                     />

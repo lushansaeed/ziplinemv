@@ -2,8 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
+import type { SectionContent } from "@/lib/public/sections";
 
-export function RouteSection() {
+const DEFAULTS = { badge:'The route', heading:'The Maldives,\nfrom a whole\nnew angle.', description:'Launch from Maafushi Island and fly 428 metres across open ocean to Vahmāfushi — Maldives\' first island-to-island zipline experience. Your return by speedboat is included.' };
+
+export function RouteSection({ content }: { content?: SectionContent }) {
+  const badge = content?.badge || DEFAULTS.badge;
+  const headingLines = (content?.heading || DEFAULTS.heading).split('\n');
+  const description = content?.description || DEFAULTS.description;
   const ref   = useRef<HTMLDivElement>(null);
   const [vis, setVis] = useState(false);
 
@@ -29,13 +35,10 @@ export function RouteSection() {
               <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">The route</span>
             </div>
             <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-              The Maldives,<br />
-              <span className="text-brand-citrus">from a whole</span><br />
-              new angle.
+              {headingLines.map((line, i) => (<span key={i}>{i===1?<span className="text-brand-citrus">{line}</span>:line}{i<headingLines.length-1&&<br/>}</span>))}
             </h2>
             <p className="text-white/55 text-lg leading-relaxed">
-              Launch from Maafushi Island and fly 428 metres across open ocean to Vahmāfushi —
-              Maldives' first island-to-island zipline experience. Your return by speedboat is included.
+              {description}
             </p>
             <div className="grid grid-cols-2 gap-4 pt-2">
               {[

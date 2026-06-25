@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon, Type } from "lucide-react";
+import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon, Type, Layout } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -22,8 +22,16 @@ const PAGES = [
   { key: "book",      label: "Booking",   defaultH: "Book your flight.",                     defaultSize: 64 },
 ];
 
+const HOMEPAGE_SECTIONS = [
+  { key: "route",    label: "Route section",    badge: "The route",    defaultH: "The Maldives,\nfrom a whole\nnew angle." },
+  { key: "packages", label: "Packages section", badge: "Packages",     defaultH: "Book the ride.\nChoose your vibe." },
+  { key: "addons",   label: "Add-ons section",  badge: "Media add-ons",defaultH: "Add the shot.\nKeep the memory." },
+  { key: "gallery",  label: "Gallery section",  badge: "Gallery",      defaultH: "428 metres of\nstories told." },
+  { key: "story",    label: "Story section",    badge: "Our story",    defaultH: "Vahmāfushi is the island\nof elevated experiences." },
+];
+
 export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements }: any) {
-  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "hero" | "pages">("general");
+  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "pages" | "sections">("general");
   const [isPending, startTransition] = useTransition();
 
   // General
@@ -52,7 +60,44 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
     }
     return result;
   });
-  const [expandedPage, setExpandedPage] = useState<string | null>("home");
+  const [expandedPage, setExpandedPage]       = useState<string | null>("home");
+  const [expandedSection, setExpandedSection] = useState<string | null>("route");
+
+  // Homepage section content
+  const [sectionContent, setSectionContent] = useState<Record<string, { badge: string; heading: string; description: string; mediaUrl: string }>>(() => {
+    const result: Record<string, any> = {};
+    for (const s of HOMEPAGE_SECTIONS) {
+      result[s.key] = {
+        badge:       getS(`section_${s.key}_badge`,       s.badge),
+        heading:     getS(`section_${s.key}_heading`,     s.defaultH),
+        description: getS(`section_${s.key}_description`, ""),
+        mediaUrl:    getS(`section_${s.key}_media_url`,   ""),
+      };
+    }
+    return result;
+  });
+
+  function updateSection(key: string, field: string, value: string) {
+    setSectionContent((p) => ({ ...p, [key]: { ...p[key], [field]: value } }));
+  }
+
+  async function saveSection(key: string) {
+    const s = sectionContent[key];
+    if (!s) return;
+    startTransition(async () => {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [`section_${key}_badge`]:       s.badge,
+          [`section_${key}_heading`]:     s.heading,
+          [`section_${key}_description`]: s.description,
+          [`section_${key}_media_url`]:   s.mediaUrl,
+        }),
+      });
+      if (res.ok) toast.success(`${HOMEPAGE_SECTIONS.find(x=>x.key===key)?.label} saved`);
+      else toast.error("Failed to save");
+    });
+  }
 
   function updatePageTypo(pageKey: string, field: string, value: string) {
     setPageTypo((p) => ({ ...p, [pageKey]: { ...p[pageKey], [field]: value } }));
@@ -185,9 +230,10 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   const TABS = [
-    { key: "general",       label: "General",            icon: Globe },
-    { key: "pages",         label: "Page typography",    icon: Type },
-    { key: "contact",       label: "Contact & social",   icon: Phone },
+    { key: "general",       label: "General",             icon: Globe },
+    { key: "sections",      label: "Homepage sections",   icon: Layout },
+    { key: "pages",         label: "Page typography",     icon: Type },
+    { key: "contact",       label: "Contact & social",    icon: Phone },
     { key: "announcements", label: "Announcement banner", icon: Megaphone },
   ];
 
@@ -328,6 +374,136 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
           <button onClick={saveGeneral} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> Save all
           </button>
+        </div>
+      )}
+
+      {/* Homepage Sections */}
+      {currentTab === "sections" && (
+        <div className="space-y-3 max-w-2xl">
+          <p className="text-sm text-muted-foreground">
+            Edit the badge label, heading, description, and media for each homepage section.
+            Use <code className="bg-muted px-1 rounded text-xs">\n</code> in headings to split into two lines.
+          </p>
+
+          {HOMEPAGE_SECTIONS.map((sec) => {
+            const s = sectionContent[sec.key] ?? { badge: sec.badge, heading: sec.defaultH, description: "", mediaUrl: "" };
+            const isOpen = expandedSection === sec.key;
+
+            return (
+              <div key={sec.key} className="admin-card p-0 overflow-hidden">
+                <button
+                  onClick={() => setExpandedSection(isOpen ? null : sec.key)}
+                  className="flex items-center justify-between w-full px-4 py-3 hover:bg-muted/40 transition-colors"
+                >
+                  <div className="text-left">
+                    <p className="font-semibold text-sm">{sec.label}</p>
+                    <p className="text-xs text-muted-foreground truncate max-w-[320px]">
+                      {s.badge} · {s.heading.replace(/\n/g, " ")}
+                    </p>
+                  </div>
+                  <span className="text-muted-foreground text-xs">{isOpen ? "▲" : "▼"}</span>
+                </button>
+
+                {isOpen && (
+                  <div className="border-t border-border p-4 space-y-4">
+                    {/* Badge label */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Badge label (small pill above heading)</label>
+                      <input
+                        value={s.badge}
+                        onChange={(e) => updateSection(sec.key, "badge", e.target.value)}
+                        placeholder={sec.badge}
+                        className={inputCls}
+                      />
+                    </div>
+
+                    {/* Heading */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Heading (use \n for line break — second line gets accent colour)</label>
+                      <textarea
+                        rows={2}
+                        value={s.heading}
+                        onChange={(e) => updateSection(sec.key, "heading", e.target.value)}
+                        placeholder={sec.defaultH}
+                        className={cn(inputCls, "resize-none font-display")}
+                      />
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Description / body text</label>
+                      <textarea
+                        rows={3}
+                        value={s.description}
+                        onChange={(e) => updateSection(sec.key, "description", e.target.value)}
+                        placeholder="Section description or supporting text..."
+                        className={cn(inputCls, "resize-none")}
+                      />
+                    </div>
+
+                    {/* Media URL */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Section media URL (image or video — optional)</label>
+                      <div className="flex gap-2">
+                        <input
+                          value={s.mediaUrl}
+                          onChange={(e) => updateSection(sec.key, "mediaUrl", e.target.value)}
+                          placeholder="https://... or upload via Website Media"
+                          className={cn(inputCls, "flex-1")}
+                        />
+                        {s.mediaUrl && (
+                          <button
+                            onClick={() => updateSection(sec.key, "mediaUrl", "")}
+                            className="px-3 py-2 rounded-lg border border-destructive/30 text-destructive text-xs hover:bg-destructive/10 transition-colors flex-shrink-0"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                      {s.mediaUrl && (
+                        <div className="mt-2 rounded-xl overflow-hidden h-24 bg-muted">
+                          <img src={s.mediaUrl} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Preview */}
+                    <div className="rounded-xl bg-[#0A0F1A] p-5 overflow-hidden space-y-2">
+                      <p className="text-[10px] text-white/30 uppercase tracking-wider">Preview</p>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
+                        <span className="text-brand-citrus text-[10px] font-semibold uppercase tracking-wider">{s.badge || sec.badge}</span>
+                      </div>
+                      <div style={{ fontFamily: "'Kindness Matters', cursive", fontWeight: 700, fontSize: "22px", lineHeight: 1.1, color: "#fff" }}>
+                        {(s.heading || sec.defaultH).split("\n").map((line, i, arr) => (
+                          <span key={i}>
+                            {i === 1
+                              ? <span style={{ background: "linear-gradient(135deg,#F5A623,#FF7B2E)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{line}</span>
+                              : line
+                            }
+                            {i < arr.length - 1 && <br />}
+                          </span>
+                        ))}
+                      </div>
+                      {s.description && (
+                        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "12px", lineHeight: 1.5 }}>
+                          {s.description.slice(0, 120)}{s.description.length > 120 ? "…" : ""}
+                        </p>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => saveSection(sec.key)}
+                      disabled={isPending}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      {isPending ? "Saving…" : `Save ${sec.label}`}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

@@ -11,6 +11,7 @@ import { GalleryWall } from "@/components/public/home/gallery-wall";
 import { StoryTeaser } from "@/components/public/home/story-teaser";
 import { PartnersCTA } from "@/components/public/home/partners-cta";
 import { getPageTypography } from "@/lib/public/typography";
+import { getAllSectionContent } from "@/lib/public/sections";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -19,7 +20,7 @@ export const metadata: Metadata = {
 };
 
 async function getHomeData() {
-  const [packages, addOns, heroMedia, galleryMedia, settings, typography] = await Promise.all([
+  const [packages, addOns, heroMedia, galleryMedia, settings, typography, sections] = await Promise.all([
     prisma.package.findMany({
       where: { active: true },
       orderBy: { displayOrder: "asc" },
@@ -43,26 +44,26 @@ async function getHomeData() {
       where: { key: { in: ["site_tagline", "zipline_length_m", "experience_duration_min", "full_journey_min", "min_rider_weight_kg", "max_rider_weight_kg", "min_rider_age"] } },
     }),
     getPageTypography("home"),
+    getAllSectionContent(),
   ]);
 
   const settingsMap = Object.fromEntries(settings.map((s) => [s.key, s.value]));
-  return { packages, addOns, heroMedia, galleryMedia, settingsMap, typography };
+  return { packages, addOns, heroMedia, galleryMedia, settingsMap, typography, sections };
 }
 
 export default async function HomePage() {
-  const { packages, addOns, heroMedia, galleryMedia, settingsMap, typography } = await getHomeData();
+  const { packages, addOns, heroMedia, galleryMedia, settingsMap, typography, sections } = await getHomeData();
 
   return (
     <>
       <PageBackground pageKey="home" />
       <HeroSection heroMedia={heroMedia} typography={typography} />
       <TrustBar settings={settingsMap} />
-      <RouteSection />
-      <PackagesPreview packages={packages} />
-      <AddOnsPreview addOns={addOns} />
-      <GalleryWall items={galleryMedia} />
-      <StoryTeaser />
-      <PartnersCTA />
+      <RouteSection content={sections.route} />
+      <PackagesPreview packages={packages} content={sections.packages} />
+      <AddOnsPreview addOns={addOns} content={sections.addons} />
+      <GalleryWall items={galleryMedia} content={sections.gallery} />
+      <StoryTeaser content={sections.story} />
     </>
   );
 }

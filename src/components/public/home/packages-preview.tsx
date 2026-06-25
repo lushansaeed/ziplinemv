@@ -1,3 +1,4 @@
+import type { SectionContent } from "@/lib/public/sections";
 import Link from "next/link";
 import { Check, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
@@ -8,7 +9,7 @@ interface PackagesPreviewProps {
   packages: Package[];
 }
 
-export function PackagesPreview({ packages }: PackagesPreviewProps) {
+export function PackagesPreview({ packages, content }: { packages: any[]; content?: SectionContent }) {
   return (
     <section className="section-y bg-[#050a10]">
       <div className="container-brand">
@@ -18,11 +19,10 @@ export function PackagesPreview({ packages }: PackagesPreviewProps) {
             <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">Packages</span>
           </div>
           <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-            Book the ride.<br />
-            <span className="text-brand-citrus">Choose your vibe.</span>
+            {(content?.heading || "Book the ride.\nChoose your vibe.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
           <p className="text-white/50 text-lg max-w-md mx-auto">
-            Every package includes the full zipline experience and speedboat return.
+            {content?.description || "Every package includes the full zipline experience and speedboat return."}
           </p>
         </div>
 

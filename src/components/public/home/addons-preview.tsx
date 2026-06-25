@@ -1,3 +1,4 @@
+import type { SectionContent } from "@/lib/public/sections";
 import Link from "next/link";
 import { Camera, Video, Tv2, ArrowRight, Star } from "lucide-react";
 import type { AddOn } from "@prisma/client";
@@ -15,7 +16,7 @@ const ADDON_COLORS = [
   { bg: "from-brand-ocean/15 to-transparent",  accent: "text-brand-ocean",  border: "border-brand-ocean/20" },
 ];
 
-export function AddOnsPreview({ addOns }: AddOnsPreviewProps) {
+export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: SectionContent }) {
   const items = addOns.length > 0 ? addOns : [
     { id: "1", name: "Photography",  description: "High-res photos delivered within 24h. Every expression, captured perfectly.", price: 45, bestFor: "Couples & families", currency: "USD" },
     { id: "2", name: "360° Video",   description: "Immersive 360° footage puts you right back on the zipline. Perfect for social.", price: 65, bestFor: "Content creators", currency: "USD" },
@@ -30,11 +31,10 @@ export function AddOnsPreview({ addOns }: AddOnsPreviewProps) {
             <span className="text-brand-mango text-xs font-semibold tracking-wider uppercase">Add-ons</span>
           </div>
           <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-            Add the shot.<br />
-            <span className="text-brand-citrus">Keep the memory.</span>
+            {(content?.heading || "Add the shot.\nKeep the memory.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
           <p className="text-white/50 text-lg max-w-md mx-auto">
-            No phones allowed on the ride. Our team captures every second instead.
+            {content?.description || "No phones allowed on the ride. Our team captures every second instead."}
           </p>
         </div>
 
