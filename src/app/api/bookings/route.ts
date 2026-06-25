@@ -8,6 +8,7 @@ const schema = z.object({
   packageId:            z.string(),
   addOnIds:             z.array(z.string()).default([]),
   addOnQuantities:      z.record(z.string(), z.number()).optional(),
+  riderType:            z.enum(["tourist", "local"]).optional(),
   date:                 z.string(),
   numRiders:            z.number().min(1).max(20),
   customerName:         z.string().min(2),

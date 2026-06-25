@@ -6,7 +6,8 @@ export interface PriceInput {
   addOnQuantities?: Record<string, number>; // addOnId → qty; defaults to numRiders if not set
   numRiders:        number;
   date:             string;
-  nationality?:     string;
+  riderType?:       "tourist" | "local";   // explicit — takes priority over nationality
+  nationality?:     string;               // fallback: "MV" → local price
   agentId?:         string;
   promoCode?:       string;
   affiliateCouponCode?: string;
@@ -50,8 +51,9 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
   const currency = pkg.currency ?? "USD";
 
   // Determine per-rider price
-  const isMaldivian = input.nationality?.toUpperCase() === "MV";
-  const unitPrice = (isMaldivian && pkg.localPrice)
+  // Local pricing: explicit riderType takes priority; fallback to nationality === MV
+  const isLocal = input.riderType === "local" || (input.riderType === undefined && input.nationality?.toUpperCase() === "MV");
+  const unitPrice = (isLocal && pkg.localPrice)
     ? Number(pkg.localPrice)
     : Number(pkg.touristPrice);
 

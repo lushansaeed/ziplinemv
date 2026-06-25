@@ -13,6 +13,7 @@ export interface CreateBookingInput {
   packageId:       string;
   addOnIds:        string[];
   addOnQuantities?: Record<string, number>; // addOnId → qty
+  riderType?:      "tourist" | "local";
   date:            string;
   numRiders: number;
   // Customer
@@ -78,8 +79,10 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
     const priceResult = await calculatePrice({
       packageId:           input.packageId,
       addOnIds:            input.addOnIds,
+      addOnQuantities:     input.addOnQuantities,
       numRiders:           input.numRiders,
       date:                input.date,
+      riderType:           input.riderType,       // explicit local/tourist
       nationality:         input.customerNationality,
       promoCode:           input.promoCode,
       affiliateCouponCode: input.affiliateCoupon,

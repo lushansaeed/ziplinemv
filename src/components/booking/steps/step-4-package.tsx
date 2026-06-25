@@ -8,12 +8,14 @@ import { cn } from "@/lib/utils";
 import type { Package } from "@prisma/client";
 
 export function Step4Package({ packages }: { packages: Package[] }) {
-  const { packageId, numRiders, setField, nextStep } = useBookingStore();
+  const { packageId, numRiders, riderType, setField, nextStep } = useBookingStore();
 
   function select(pkg: Package) {
+    const isLocal   = riderType === "local";
+    const unitPrice = (isLocal && pkg.localPrice) ? Number(pkg.localPrice) : Number(pkg.touristPrice);
     setField("packageId",    pkg.id);
     setField("packageName",  pkg.name);
-    setField("packagePrice", Number(pkg.touristPrice));
+    setField("packagePrice", unitPrice);
   }
 
   return (
@@ -25,9 +27,11 @@ export function Step4Package({ packages }: { packages: Package[] }) {
     >
       <div className="space-y-3">
         {packages.map((pkg) => {
-          const isSelected = packageId === pkg.id;
-          const unitPrice  = Number(pkg.touristPrice);
-          const total      = unitPrice * numRiders;
+          const isSelected  = packageId === pkg.id;
+          const isLocal     = riderType === "local";
+          const unitPrice   = (isLocal && pkg.localPrice) ? Number(pkg.localPrice) : Number(pkg.touristPrice);
+          const total       = unitPrice * numRiders;
+          const savedAmount = isLocal && pkg.localPrice ? (Number(pkg.touristPrice) - Number(pkg.localPrice)) * numRiders : 0;
 
           return (
             <button
@@ -70,6 +74,16 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                     <p className="text-white/35 text-xs">
                       {formatCurrency(unitPrice)} × {numRiders}
                     </p>
+                    {isLocal && pkg.localPrice && (
+                      <span className="text-[10px] font-bold text-brand-lime bg-brand-lime/10 px-1.5 py-0.5 rounded mt-1 inline-block">
+                        Local price
+                      </span>
+                    )}
+                    {savedAmount > 0 && (
+                      <p className="text-brand-lime text-[10px] mt-0.5">
+                        Save {formatCurrency(savedAmount)}
+                      </p>
+                    )}
                   </div>
                 </div>
 

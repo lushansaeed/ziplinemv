@@ -15,6 +15,7 @@ export interface BookingState {
   slotTime: string;
   // Step 3
   numRiders: number;
+  riderType: "tourist" | "local";
   // Step 4
   packageId: string;
   packageName: string;
@@ -64,7 +65,7 @@ export interface BookingState {
 }
 
 const INITIAL: BookingState = {
-  date: "", slotId: "", slotTime: "", numRiders: 1,
+  date: "", slotId: "", slotTime: "", numRiders: 1, riderType: "tourist",
   packageId: "", packageName: "", packagePrice: 0,
   addOnIds: [], addOnNames: {}, addOnPrices: {}, addOnQuantities: {},
   customerName: "", customerPhone: "", customerPhoneCountry: "MV",

@@ -99,7 +99,7 @@ export function PricingWorkspace({ packages, addOns, promoCodes, settings }: Pri
           <div className="admin-card p-0 overflow-hidden">
             <table className="admin-table">
               <thead>
-                <tr><th>Package</th><th>Tourist price (USD)</th><th>Local price (USD)</th><th>Status</th><th></th></tr>
+                <tr><th>Package</th><th>Visitor / Tourist (USD)</th><th>Local / Work Permit (USD)</th><th>Status</th><th></th></tr>
               </thead>
               <tbody>
                 {packages.map((pkg) => (
