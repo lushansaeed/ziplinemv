@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma/client";
 import { SlotStatus } from "@prisma/client";
 import { addDays, format, getDay, parseISO } from "date-fns";
+import { generateSlots } from "./generate-slots";
 
 export async function getAvailableDates(
   activitySlug: string,
@@ -11,28 +12,25 @@ export async function getAvailableDates(
   if (!activity) return [];
 
   const templates = await prisma.slotTemplate.findMany({
-    where: { activityId: activity.id, active: true },
+    where: { activityId: activity.id, isActive: true },
   });
   const activeDays = new Set(templates.map((t) => t.dayOfWeek));
 
   const available: string[] = [];
   for (let i = 0; i < days; i++) {
     const d = addDays(fromDate, i);
-    if (!activeDays.has(getDay(d))) continue;
+    const dow = getDay(d);
+    if (!activeDays.has(dow)) continue;
 
-    // Check if any slot exists and isn't fully blocked
     const dateStr = format(d, "yyyy-MM-dd");
-    const blocked = await prisma.timeSlot.count({
-      where: {
-        activityId: activity.id,
-        date:       parseISO(dateStr),
-        status:     { in: [SlotStatus.WEATHER_CLOSED, SlotStatus.EVENT_CLOSED] },
-      },
-    });
 
-    // If the entire day isn't blocked, mark as available
-    const totalTemplateSlots = templates.filter((t) => t.dayOfWeek === getDay(d)).length;
-    if (blocked < totalTemplateSlots) available.push(dateStr);
+    // Check for closed override
+    const override = await prisma.dateSlotOverride.findFirst({
+      where: { activityId: activity.id, date: parseISO(dateStr), isClosed: true, isActive: true },
+    });
+    if (override) continue;
+
+    available.push(dateStr);
   }
   return available;
 }
@@ -46,55 +44,92 @@ export async function getSlotsForDate(
   if (!activity) return [];
 
   const date = parseISO(dateStr);
+  const dayOfWeek = getDay(date);
 
-  // Get or generate slots for this date
-  let slots = await prisma.timeSlot.findMany({
-    where: { activityId: activity.id, date },
+  // Check date override
+  const override = await prisma.dateSlotOverride.findFirst({
+    where: { activityId: activity.id, date, isActive: true },
+  });
+
+  if (override?.isClosed) return [];
+
+  // Get template
+  const template = await prisma.slotTemplate.findFirst({
+    where: { activityId: activity.id, dayOfWeek, isActive: true },
+  });
+  if (!template) return [];
+
+  // Merge override
+  const config = {
+    startTime:       override?.startTime       ?? template.startTime,
+    endTime:         override?.endTime         ?? template.endTime,
+    breakStartTime:  override?.breakStartTime  ?? template.breakStartTime  ?? undefined,
+    breakEndTime:    override?.breakEndTime    ?? template.breakEndTime    ?? undefined,
+    intervalMinutes: override?.slotIntervalMinutes ?? template.slotIntervalMinutes,
+    capacityPerSlot: override?.capacityPerSlot ?? template.capacity,
+  };
+
+  // Generate slots
+  const generated = generateSlots({
+    startTime:       config.startTime,
+    endTime:         config.endTime,
+    breakStartTime:  config.breakStartTime ?? undefined,
+    breakEndTime:    config.breakEndTime   ?? undefined,
+    intervalMinutes: config.intervalMinutes,
+  });
+
+  if (generated.length === 0) return [];
+
+  // Auto-create TimeSlot records if missing
+  await prisma.timeSlot.createMany({
+    data: generated.map((g) => ({
+      activityId:  activity.id,
+      date,
+      startTime:   g.startTime,
+      endTime:     g.endTime,
+      capacity:    config.capacityPerSlot,
+      bookedCount: 0,
+      status:      SlotStatus.AVAILABLE,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Fetch with booked counts
+  const slots = await prisma.timeSlot.findMany({
+    where:   { activityId: activity.id, date },
     orderBy: { startTime: "asc" },
   });
 
-  if (slots.length === 0) {
-    // Auto-generate from templates
-    const dayOfWeek = getDay(date);
-    const templates = await prisma.slotTemplate.findMany({
-      where: { activityId: activity.id, dayOfWeek, active: true },
-      orderBy: { startTime: "asc" },
-    });
+  // Get blocked slots
+  const blocked = await prisma.blockedSlot.findMany({
+    where: { activityId: activity.id, date, isActive: true },
+  });
+  const blockedSet = new Set(blocked.map((b) => `${b.slotStartTime}-${b.slotEndTime}`));
 
-    if (templates.length > 0) {
-      await prisma.timeSlot.createMany({
-        data: templates.map((t) => ({
-          activityId: activity.id,
-          date,
-          startTime:  t.startTime,
-          endTime:    t.endTime,
-          capacity:   t.capacity,
-          bookedCount: 0,
-          status:     SlotStatus.AVAILABLE,
-        })),
-        skipDuplicates: true,
-      });
-
-      slots = await prisma.timeSlot.findMany({
-        where: { activityId: activity.id, date },
-        orderBy: { startTime: "asc" },
-      });
-    }
-  }
+  // Filter to only generated slots (in case old slots exist)
+  const generatedKeys = new Set(generated.map((g) => `${g.startTime}-${g.endTime}`));
+  const generatedMap  = Object.fromEntries(generated.map((g) => [`${g.startTime}-${g.endTime}`, g]));
 
   return slots
-    .filter((s) => s.status !== SlotStatus.BLOCKED &&
-                   s.status !== SlotStatus.WEATHER_CLOSED &&
-                   s.status !== SlotStatus.EVENT_CLOSED)
-    .map((s) => ({
-      id:          s.id,
-      startTime:   s.startTime,
-      endTime:     s.endTime,
-      capacity:    s.capacity,
-      bookedCount: s.bookedCount,
-      available:   s.capacity - s.bookedCount,
-      canBook:     s.capacity - s.bookedCount >= numRiders,
-      status:      s.status,
-      priceOverride: s.priceOverride ? Number(s.priceOverride) : null,
-    }));
+    .filter((s) => generatedKeys.has(`${s.startTime}-${s.endTime}`))
+    .filter((s) => s.status !== SlotStatus.WEATHER_CLOSED && s.status !== SlotStatus.EVENT_CLOSED)
+    .map((s) => {
+      const key       = `${s.startTime}-${s.endTime}`;
+      const isBlocked = blockedSet.has(key) || s.status === SlotStatus.BLOCKED;
+      const available = s.capacity - s.bookedCount;
+      const label     = generatedMap[key]?.label ?? `${s.startTime} to ${s.endTime}`;
+
+      return {
+        id:          s.id,
+        startTime:   s.startTime,
+        endTime:     s.endTime,
+        label,
+        capacity:    s.capacity,
+        bookedCount: s.bookedCount,
+        available,
+        canBook:     !isBlocked && available >= numRiders,
+        status:      isBlocked ? "blocked" : available <= 0 ? "full" : "available",
+        priceOverride: s.priceOverride ? Number(s.priceOverride) : null,
+      };
+    });
 }

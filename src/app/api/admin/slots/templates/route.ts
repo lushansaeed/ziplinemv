@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   }
 
   const template = await prisma.slotTemplate.create({
-    data: { activityId, dayOfWeek, startTime, endTime, capacity: capacity ?? 8, active: true },
+    data: { activityId, dayOfWeek, startTime, endTime, capacity: capacity ?? 8, isActive: true },
   });
 
   return NextResponse.json(template, { status: 201 });

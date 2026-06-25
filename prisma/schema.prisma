@@ -577,16 +577,57 @@ model PromoCode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model SlotTemplate {
-  id         String   @id @default(cuid())
-  activityId String   @map("activity_id")
-  activity   Activity @relation(fields: [activityId], references: [id])
-  dayOfWeek  Int      @map("day_of_week") // 0=Sun..6=Sat
-  startTime  String   @map("start_time")  // "09:00"
-  endTime    String   @map("end_time")    // "09:30"
-  capacity   Int      @default(8)
-  active     Boolean  @default(true)
+  id                  String   @id @default(cuid())
+  activityId          String   @map("activity_id")
+  activity            Activity @relation(fields: [activityId], references: [id])
+  dayOfWeek           Int      @map("day_of_week")          // 0=Sun..6=Sat
+  isActive            Boolean  @default(true) @map("is_active")
+  startTime           String   @map("start_time")           // "09:00"
+  endTime             String   @map("end_time")             // "18:00"
+  breakStartTime      String?  @map("break_start_time")     // "12:30"
+  breakEndTime        String?  @map("break_end_time")       // "13:30"
+  slotIntervalMinutes Int      @default(30) @map("slot_interval_minutes") // 15|30|45|60
+  capacity            Int      @default(8)
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
 
+  @@unique([activityId, dayOfWeek])
   @@map("slot_templates")
+}
+
+model DateSlotOverride {
+  id                  String   @id @default(cuid())
+  activityId          String   @map("activity_id")
+  date                DateTime @db.Date
+  overrideType        String   @map("override_type")        // closed|custom_hours|custom_break|custom_interval|custom_capacity
+  isClosed            Boolean  @default(false) @map("is_closed")
+  startTime           String?  @map("start_time")
+  endTime             String?  @map("end_time")
+  breakStartTime      String?  @map("break_start_time")
+  breakEndTime        String?  @map("break_end_time")
+  slotIntervalMinutes Int?     @map("slot_interval_minutes")
+  capacityPerSlot     Int?     @map("capacity_per_slot")
+  notes               String?
+  isActive            Boolean  @default(true) @map("is_active")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@unique([activityId, date])
+  @@map("date_slot_overrides")
+}
+
+model BlockedSlot {
+  id            String   @id @default(cuid())
+  activityId    String   @map("activity_id")
+  date          DateTime @db.Date
+  slotStartTime String   @map("slot_start_time")
+  slotEndTime   String   @map("slot_end_time")
+  reason        String?
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([activityId, date])
+  @@map("blocked_slots")
 }
 
 model TimeSlot {
@@ -631,6 +672,7 @@ model Booking {
   package         Package       @relation(fields: [packageId], references: [id])
   slotId          String        @map("slot_id")
   slot            TimeSlot      @relation(fields: [slotId], references: [id])
+  slotLabel       String?       @map("slot_label")  // "09:00 to 09:30" — stored for display
   bookingDate     DateTime      @map("booking_date") @db.Date
   numRiders       Int           @map("num_riders")
   source          BookingSource @default(DIRECT)

@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
   const dayOfWeek  = getDay(parsedDate);
 
   const templates = await prisma.slotTemplate.findMany({
-    where: { activityId, dayOfWeek, active: true },
+    where: { activityId, dayOfWeek, isActive: true },
     orderBy: { startTime: "asc" },
   });
 

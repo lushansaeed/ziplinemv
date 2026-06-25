@@ -3,48 +3,41 @@ import { prisma } from "@/lib/prisma/client";
 import { requireRole } from "@/lib/auth/actions";
 import { OPERATIONS_AND_ABOVE } from "@/lib/auth/roles";
 import { PageHeader } from "@/components/shared/page-header";
-import { SlotsWorkspace } from "@/components/admin/slots/slots-workspace";
-import { addDays, format, startOfDay } from "date-fns";
+import { SlotTemplateManager } from "@/components/admin/slots/slot-template-manager";
 
 export const metadata: Metadata = { title: "Time Slots | Admin" };
 
-async function getSlotsData(dateStr?: string) {
-  const activity = await prisma.activity.findUnique({ where: { slug: "zipline" } });
-  if (!activity) return { activity: null, templates: [], slots: [], date: dateStr ?? format(new Date(), "yyyy-MM-dd") };
-
-  const date = dateStr ? new Date(dateStr) : new Date();
-  const from = startOfDay(date);
-  const to   = addDays(from, 14); // show 2 weeks
-
-  const [templates, slots] = await Promise.all([
-    prisma.slotTemplate.findMany({
-      where:   { activityId: activity.id },
-      orderBy: [{ dayOfWeek: "asc" }, { startTime: "asc" }],
-    }),
-    prisma.timeSlot.findMany({
-      where:   { activityId: activity.id, date: { gte: from, lt: to } },
-      orderBy: [{ date: "asc" }, { startTime: "asc" }],
-      include: { _count: { select: { bookings: true } } },
-    }),
-  ]);
-
-  return { activity, templates, slots, date: format(from, "yyyy-MM-dd") };
-}
-
-export default async function SlotsPage({
-  searchParams,
-}: {
-  searchParams: { date?: string };
-}) {
+export default async function SlotsPage() {
   await requireRole(OPERATIONS_AND_ABOVE as any);
-  const data = await getSlotsData(searchParams.date);
+
+  const activity = await prisma.activity.findUnique({ where: { slug: "zipline" } });
+  if (!activity) return <div className="p-6 text-muted-foreground">Activity not found.</div>;
+
+  const templates = await prisma.slotTemplate.findMany({
+    where:   { activityId: activity.id },
+    orderBy: { dayOfWeek: "asc" },
+  });
+
   return (
     <div>
       <PageHeader
         title="Time Slots"
-        description="Manage operating templates, block individual slots, and set capacity."
+        description="Configure slot templates for each day of the week. Slots are generated dynamically from these templates."
       />
-      <SlotsWorkspace {...(data as any)} />
+      <SlotTemplateManager
+        activityId={activity.id}
+        templates={templates.map((t) => ({
+          id:                  t.id,
+          dayOfWeek:           t.dayOfWeek,
+          isActive:            t.isActive,
+          startTime:           t.startTime,
+          endTime:             t.endTime,
+          breakStartTime:      t.breakStartTime ?? "",
+          breakEndTime:        t.breakEndTime   ?? "",
+          slotIntervalMinutes: t.slotIntervalMinutes,
+          capacity:            t.capacity,
+        }))}
+      />
     </div>
   );
 }
