@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef, useCallback } from "react";
-import { Upload, Trash2, ChevronDown, ChevronUp, Wand2, Check } from "lucide-react";
+import { Upload, Trash2, ChevronDown, ChevronUp, Wand2, Check, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SUPABASE_URL } from "@/lib/supabase/config";
@@ -501,10 +501,34 @@ export function BackgroundEditor({ pageKey, label, initialBg }: BackgroundEditor
             </div>
           )}
 
-          <button onClick={save} disabled={isPending}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
-            <span>{isPending ? "Saving…" : `Save ${label} background`}</span>
-          </button>
+          <div className="flex gap-2">
+            <button onClick={save} disabled={isPending}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              <span>{isPending ? "Saving…" : `Save ${label}`}</span>
+            </button>
+            <button
+              onClick={async () => {
+                startTransition(async () => {
+                  const res = await fetch("/api/admin/theme/backgrounds/reset", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ pageKey }),
+                  });
+                  if (res.ok) {
+                    setBg((p) => ({ ...p, backgroundType: "solid", solidColor: "#0A0F1A", imageUrl: "", videoUrl: "" }));
+                    setRecommendations(null);
+                    toast.success(`${label} background reset to default`);
+                  } else toast.error("Failed to reset");
+                });
+              }}
+              disabled={isPending}
+              title="Reset to default background"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted disabled:opacity-50 transition-colors text-muted-foreground"
+            >
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </button>
+          </div>
         </div>
       )}
     </div>
