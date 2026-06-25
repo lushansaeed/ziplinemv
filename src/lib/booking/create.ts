@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma/client";
 import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
-import { BookingSource, BookingStatus, PaymentStatus, WaiverStatus } from "@prisma/client";
+import { BookingSource, BookingStatus, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
 export interface CreateBookingInput {
@@ -106,26 +106,38 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       affiliateId = affiliateCouponRecord.affiliateId;
     }
 
-    // 6. Create customer record
-    const newCustomer = await prisma.customer.create({
-      data: {
-        name:         input.customerName,
-        phone:        input.customerPhone,
-        phoneCountry: input.customerPhoneCountry,
-        email:        input.customerEmail,
-        nationality:  input.customerNationality,
-        hotel:        input.customerHotel,
-        source,
-        agentId:      input.agentId ?? null,
-        affiliateId,
-      },
-    });
-
-    // 7. Generate reference
+    // 6. Generate reference
     const reference = await generateUniqueBookingRef();
 
-    // 8. Create booking in transaction
+    // 7. Create booking in transaction
     const booking = await prisma.$transaction(async (tx) => {
+      const claimedSlots = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+        UPDATE "time_slots"
+        SET "booked_count" = "booked_count" + ${input.numRiders}
+        WHERE "id" = ${input.slotId}
+          AND "status" = 'AVAILABLE'
+          AND ("capacity" - "booked_count") >= ${input.numRiders}
+        RETURNING "id"
+      `);
+
+      if (claimedSlots.length === 0) {
+        throw new Error("This slot is no longer available.");
+      }
+
+      const newCustomer = await tx.customer.create({
+        data: {
+          name:         input.customerName,
+          phone:        input.customerPhone,
+          phoneCountry: input.customerPhoneCountry,
+          email:        input.customerEmail,
+          nationality:  input.customerNationality,
+          hotel:        input.customerHotel,
+          source,
+          agentId:      input.agentId ?? null,
+          affiliateId,
+        },
+      });
+
       // Create booking
       const b = await tx.booking.create({
         data: {
@@ -197,12 +209,6 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           data:  { mediaStatus: "PENDING" },
         });
       }
-
-      // Increment slot booked count
-      await tx.timeSlot.update({
-        where: { id: input.slotId },
-        data:  { bookedCount: { increment: input.numRiders } },
-      });
 
       // Increment promo usage
       if (promoRecord) {

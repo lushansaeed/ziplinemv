@@ -13,7 +13,7 @@ export default async function AgentLayout({
 
   if (!user) redirect("/auth/login?redirect=/agents/dashboard");
 
-  if (user.role !== UserRole.AGENT) {
+  if (user.status !== "ACTIVE" || user.role !== UserRole.AGENT) {
     redirect("/auth/login?error=Agent+access+only.");
   }
 

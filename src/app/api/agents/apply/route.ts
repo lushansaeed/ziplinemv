@@ -45,7 +45,8 @@ export async function POST(req: NextRequest) {
       email: data.email,
       password,
       email_confirm: true,
-      user_metadata: { name: data.contactPerson, role: UserRole.AGENT },
+      user_metadata: { name: data.contactPerson },
+      app_metadata:  { role: UserRole.AGENT },
     });
 
     if (authError) {

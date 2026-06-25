@@ -16,7 +16,7 @@ export default async function AdminLayout({
 
   if (!user) redirect("/auth/login");
 
-  if (!ADMIN_ROLES.includes(user.role as any)) {
+  if (user.status !== "ACTIVE" || !ADMIN_ROLES.includes(user.role as any)) {
     redirect("/auth/login?error=You+don't+have+access+to+the+admin+portal.");
   }
 

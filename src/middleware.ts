@@ -9,18 +9,6 @@ const DOMAIN_MAP: Record<string, string> = {
   "affiliate.zipline.mv": "/affiliate",
 };
 
-// ─── Role → allowed route prefixes ──────────────────────────────────────────
-const ROLE_ROUTES: Record<string, string[]> = {
-  SUPER_ADMIN:         ["/admin", "/agents", "/affiliate"],
-  ADMIN:               ["/admin"],
-  OPERATIONS_MANAGER:  ["/admin"],
-  BOOKING_STAFF:       ["/admin"],
-  MEDIA_STAFF:         ["/admin"],
-  FINANCE:             ["/admin"],
-  AGENT:               ["/agents"],
-  AFFILIATE:           ["/affiliate"],
-};
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.headers.get("host") ?? "";
@@ -74,16 +62,6 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
-  }
-
-  // ── Role-based access control ─────────────────────────────────────────────
-  const userRole = (user.user_metadata?.role as string) ?? "";
-  const allowedPrefixes = ROLE_ROUTES[userRole] ?? [];
-
-  if (!allowedPrefixes.some((p) => rewrittenPath.startsWith(p))) {
-    // Redirect to the correct portal home for their role
-    const defaultPath = allowedPrefixes[0] ?? "/";
-    return NextResponse.redirect(new URL(defaultPath, request.url));
   }
 
   // ── Rewrite to portal route group ─────────────────────────────────────────

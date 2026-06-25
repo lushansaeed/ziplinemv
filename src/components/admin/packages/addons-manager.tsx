@@ -8,12 +8,13 @@ import { formatCurrency, cn } from "@/lib/utils";
 
 interface AddOn {
   id: string; name: string; description: string | null;
-  price: number; currency: string; bestFor: string | null;
-  rules: string | null; displayOrder: number; active: boolean;
+  price: number; localPriceMvr?: number | null; currency: string;
+  bestFor: string | null; rules: string | null;
+  displayOrder: number; active: boolean;
 }
 
 const BLANK: Omit<AddOn, "id"> = {
-  name: "", description: "", price: 0, currency: "USD",
+  name: "", description: "", price: 0, localPriceMvr: null, currency: "USD",
   bestFor: "", rules: "", displayOrder: 0, active: true,
 };
 
@@ -81,7 +82,7 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
       <div className="admin-card p-0 overflow-hidden">
         <table className="admin-table">
           <thead>
-            <tr><th>Add-on</th><th>Price</th><th>Best for</th><th>Order</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Add-on</th><th>Tourist (USD)</th><th>Local (MVR)</th><th>Best for</th><th>Order</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {addOns.length === 0 ? (
@@ -93,6 +94,9 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
                   <p className="text-xs text-muted-foreground line-clamp-1">{addon.description}</p>
                 </td>
                 <td className="font-semibold text-sm">{formatCurrency(Number(addon.price))}</td>
+                <td className="text-sm font-semibold text-brand-lime">
+                  {addon.localPriceMvr ? `MVR ${Number(addon.localPriceMvr).toLocaleString()}` : <span className="text-muted-foreground font-normal">—</span>}
+                </td>
                 <td className="text-sm text-muted-foreground">{addon.bestFor ?? "—"}</td>
                 <td className="text-sm">{addon.displayOrder}</td>
                 <td>

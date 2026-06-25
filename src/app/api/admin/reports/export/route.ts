@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { format } from "date-fns";
+import { requireApiRole } from "@/lib/auth/api";
+import { FINANCE_ACCESS } from "@/lib/auth/roles";
 
 function toCSV(rows: Record<string, any>[]): string {
   if (rows.length === 0) return "";
@@ -21,9 +22,8 @@ function toCSV(rows: Record<string, any>[]): string {
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const auth = await requireApiRole(FINANCE_ACCESS);
+  if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type") ?? "bookings";

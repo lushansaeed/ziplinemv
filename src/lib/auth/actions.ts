@@ -34,7 +34,7 @@ export async function signIn(formData: FormData) {
   let dbUser = data.user
     ? await prisma.user.findUnique({
         where: { supabaseUid: data.user.id },
-        select: { role: true },
+        select: { role: true, status: true },
       })
     : null;
 
@@ -42,7 +42,7 @@ export async function signIn(formData: FormData) {
     // User exists by email but supabase_uid not yet linked — link it now
     const byEmail = await prisma.user.findUnique({
       where: { email: data.user.email },
-      select: { role: true },
+      select: { role: true, status: true },
     });
     if (byEmail) {
       await prisma.user.update({
@@ -53,7 +53,16 @@ export async function signIn(formData: FormData) {
     }
   }
 
-  const role = dbUser?.role ?? UserRole.SUPER_ADMIN;
+  if (!dbUser) {
+    await supabase.auth.signOut();
+    return { error: "This account is not registered in the booking system." };
+  }
+  if (dbUser.status !== "ACTIVE") {
+    await supabase.auth.signOut();
+    return { error: "This account is not active yet." };
+  }
+
+  const role = dbUser.role;
 
   const ROLE_HOME: Record<string, string> = {
     SUPER_ADMIN:        "/admin/dashboard",
@@ -146,7 +155,7 @@ export async function getCurrentUser() {
         email:       user.email,
         name:        user.user_metadata?.name ?? user.email.split("@")[0],
         role:        UserRole.BOOKING_STAFF,
-        status:      "ACTIVE",
+        status:      "PENDING",
       },
       select: {
         id: true,
@@ -169,7 +178,7 @@ export async function requireRole(allowedRoles: UserRole[]) {
 
   if (!user) redirect("/auth/login");
 
-  if (!allowedRoles.includes(user.role)) {
+  if (user.status !== "ACTIVE" || !allowedRoles.includes(user.role)) {
     redirect("/auth/login?error=Unauthorized");
   }
 

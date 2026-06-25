@@ -25,12 +25,18 @@ export async function POST(req: NextRequest) {
         const bookingId = pi.metadata?.bookingId;
         if (!bookingId) break;
 
-        await prisma.$transaction([
-          prisma.booking.update({
+        const paymentCreated = await prisma.$transaction(async (tx) => {
+          const existingPayment = await tx.payment.findFirst({
+            where: { gatewayRef: pi.id },
+            select: { id: true },
+          });
+          if (existingPayment) return false;
+
+          await tx.booking.update({
             where: { id: bookingId },
             data:  { paymentStatus: PaymentStatus.PAID, bookingStatus: BookingStatus.CONFIRMED },
-          }),
-          prisma.payment.create({
+          });
+          await tx.payment.create({
             data: {
               bookingId,
               amount:     pi.amount / 100,
@@ -39,18 +45,20 @@ export async function POST(req: NextRequest) {
               gatewayRef: pi.id,
               status:     PaymentStatus.PAID,
             },
-          }),
-          prisma.auditLog.create({
+          });
+          await tx.auditLog.create({
             data: {
               action:   "PAYMENT_RECEIVED",
               module:   "bookings",
               recordId: bookingId,
               newValue: { gateway: "stripe", amount: pi.amount / 100, currency: pi.currency },
             },
-          }),
-        ]);
+          });
 
-        sendBookingConfirmation(bookingId).catch(console.error);
+          return true;
+        });
+
+        if (paymentCreated) sendBookingConfirmation(bookingId).catch(console.error);
         break;
       }
 

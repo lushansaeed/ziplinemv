@@ -13,7 +13,7 @@ export default async function AffiliateLayout({
 
   if (!user) redirect("/auth/login?redirect=/affiliate/dashboard");
 
-  if (user.role !== UserRole.AFFILIATE) {
+  if (user.status !== "ACTIVE" || user.role !== UserRole.AFFILIATE) {
     redirect("/auth/login?error=Affiliate+access+only.");
   }
 

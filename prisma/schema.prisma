@@ -767,7 +767,7 @@ model Payment {
   currency     String        @default("USD")
   method       PaymentMethod
   reference    String?
-  gatewayRef   String?       @map("gateway_ref")
+  gatewayRef   String?       @unique @map("gateway_ref")
   status       PaymentStatus
   metadata     Json?
   createdAt    DateTime      @default(now()) @map("created_at")

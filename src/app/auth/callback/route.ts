@@ -42,22 +42,23 @@ export async function GET(request: NextRequest) {
       });
 
       if (!dbUser) {
-        // First login — create user record with default role
+        // First login — park unknown accounts until an admin assigns access.
         dbUser = await prisma.user.create({
           data: {
             supabaseUid: uid,
             email:       data.user.email ?? "",
             name:        data.user.user_metadata?.name ?? data.user.email ?? "User",
             role:        UserRole.BOOKING_STAFF,
+            status:      "PENDING",
           },
           select: { role: true, status: true },
         });
       }
 
-      if (dbUser.status === "SUSPENDED") {
+      if (dbUser.status !== "ACTIVE") {
         await supabase.auth.signOut();
         return NextResponse.redirect(
-          `${origin}/auth/login?error=Your+account+has+been+suspended.`
+          `${origin}/auth/login?error=Your+account+is+not+active+yet.`
         );
       }
 
