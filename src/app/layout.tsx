@@ -5,9 +5,6 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
-import { prisma } from "@/lib/prisma/client";
-import { unstable_noStore as noStore } from "next/cache";
-
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body",
@@ -17,22 +14,15 @@ const jakarta = Plus_Jakarta_Sans({
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
 
-async function getLogoUrl(): Promise<string | null> {
-  noStore();
-  try {
-    const s = await prisma.setting.findUnique({ where: { key: "site_logo_url" } });
-    const v = s?.value as string | undefined;
-    return v && v.length > 10 ? v : null;
-  } catch { return null; }
-}
-
 // generateMetadata is the CORRECT Next.js API for dynamic favicons.
 // Unlike <link> tags rendered in components (which get removed during
 // client-side navigation reconciliation), metadata icons persist across
 // all navigations because Next.js manages them outside React's tree.
 export async function generateMetadata(): Promise<Metadata> {
-  const logoUrl = await getLogoUrl();
-  const icon    = logoUrl ?? "/favicon.ico";
+  // /api/favicon proxies the logo from our domain — avoids Cloudflare
+  // cross-domain cookie rejection when using Supabase URLs directly.
+  // Cache-busted with timestamp so new uploads show immediately.
+  const icon = "/api/favicon";
 
   return {
     metadataBase: new URL(BASE),
