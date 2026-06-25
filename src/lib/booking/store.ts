@@ -154,12 +154,13 @@ export const useBookingStore = create<BookingState & BookingActions>()(
     }),
     {
       name: "zipline-booking",
+      version: 3, // bump when store shape changes to clear stale persisted state
       partialize: (state) => ({
-        // Only persist non-sensitive fields across page refreshes
         date: state.date, slotId: state.slotId, slotTime: state.slotTime,
         numRiders: state.numRiders, packageId: state.packageId,
         packageName: state.packageName, packagePrice: state.packagePrice,
-        addOnIds: state.addOnIds, addOnNames: state.addOnNames, addOnPrices: state.addOnPrices, addOnQuantities: state.addOnQuantities,
+        addOnIds: state.addOnIds, addOnNames: state.addOnNames,
+        addOnPrices: state.addOnPrices, addOnQuantities: state.addOnQuantities,
         affiliateCoupon: state.affiliateCoupon, affiliateLinkId: state.affiliateLinkId,
         currentStep: state.currentStep,
       }),

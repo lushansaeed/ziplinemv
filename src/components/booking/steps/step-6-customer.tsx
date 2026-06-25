@@ -236,7 +236,7 @@ export function Step6Customer() {
   const [errors, setErrors]         = useState<Record<string, string>>({});
   const [phoneTouched, setPhoneTouched] = useState(false);
 
-  const selectedCountry = COUNTRIES.find((c) => c.iso === customerPhoneCountry) ?? DEFAULT_COUNTRY;
+  const selectedCountry = COUNTRIES.find((c) => c.iso === customerPhoneCountry) ?? DEFAULT_COUNTRY ?? COUNTRIES[0];
 
   function setCountry(c: Country) {
     setField("customerPhoneCountry",  c.iso);
