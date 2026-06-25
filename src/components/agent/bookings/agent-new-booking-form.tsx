@@ -94,16 +94,26 @@ export function AgentNewBookingForm({ packages, addOns, agentId, agentBusinessNa
 
     startTransition(async () => {
       try {
+        // Ensure riders array has required fields even if empty
+        const ridersPayload = riders.map((r) => ({
+          name:   r.name   || "",
+          age:    r.age    || "",
+          weight: r.weight || "",
+        }));
+
         const res = await fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             slotId, packageId, addOnIds: selectedAddOns,
             date, numRiders,
-            customerName, customerPhone,
+            customerName,
+            customerPhone: customerPhone.replace(/\s/g, ""),
             customerPhoneCountry: "MV",
-            customerEmail, customerNationality, customerHotel,
-            riders, paymentMethod, notes,
+            customerEmail:       customerEmail || "",
+            customerNationality, customerHotel,
+            riders: ridersPayload,
+            paymentMethod, notes,
             source:  "AGENT",
             agentId,
           }),

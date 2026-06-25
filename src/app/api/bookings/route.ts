@@ -12,16 +12,28 @@ const schema = z.object({
   date:                 z.string(),
   numRiders:            z.number().min(1).max(20),
   customerName:         z.string().min(2),
-  customerPhone:        z.string().min(7),
+  // Phone: accept any string with at least 5 chars (incl. dial code prefix)
+  customerPhone:        z.string().min(5),
   customerPhoneCountry: z.string().default("MV"),
-  customerEmail:        z.string().email().or(z.literal("")),
+  // Email: valid email OR empty string (optional in some portals)
+  customerEmail:        z.string().email().or(z.literal("")).optional().default(""),
   customerNationality:  z.string().default(""),
   customerHotel:        z.string().default(""),
-  riders:               z.array(z.object({ name: z.string(), age: z.string(), weight: z.string() })),
+  // Riders: optional — agent portal may not always send detailed rider info
+  riders:               z.array(z.object({
+    name:   z.string().default(""),
+    age:    z.string().default(""),
+    weight: z.string().default(""),
+  })).default([]),
   promoCode:            z.string().optional(),
   affiliateCoupon:      z.string().optional(),
   affiliateLinkId:      z.string().optional(),
   paymentMethod:        z.string().optional(),
+  // Agent/affiliate portal fields (passed through, not validated)
+  source:               z.string().optional(),
+  agentId:              z.string().optional(),
+  affiliateId:          z.string().optional(),
+  notes:                z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -30,10 +42,14 @@ export async function POST(req: NextRequest) {
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request", details: parsed.error.flatten() }, { status: 400 });
+      console.error("[POST /api/bookings] Validation error:", parsed.error.flatten());
+      return NextResponse.json({
+        error:   "Invalid request",
+        details: parsed.error.flatten(),
+      }, { status: 400 });
     }
 
-    const result = await createBooking(parsed.data);
+    const result = await createBooking(parsed.data as any);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 422 });
