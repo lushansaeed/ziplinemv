@@ -50,6 +50,20 @@ export async function PageBackground({ pageKey }: { pageKey: string }) {
     );
   }
 
+  if (type === "video" && (bg as any).videoUrl) {
+    return (
+      <BackgroundApplier
+        bgValue={null}
+        isGradient={false}
+        videoProps={{
+          url:            (bg as any).videoUrl,
+          overlayColor:   bg.overlayColor ?? "#000000",
+          overlayOpacity: bg.overlayOpacity ?? 0.4,
+        }}
+      />
+    );
+  }
+
   // No valid background — clear whatever was set
   return <BackgroundApplier bgValue={null} isGradient={false} />;
 }
