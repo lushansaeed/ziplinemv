@@ -325,7 +325,7 @@ export function Step6Customer() {
           <label className="text-xs font-medium text-white/50">WhatsApp number *</label>
           <div className="flex gap-2">
             {/* Country code picker */}
-            <div className="w-32 flex-shrink-0">
+            <div className="w-36 flex-shrink-0">
               <CountrySelector
                 value={customerPhoneCountry}
                 onChange={setCountry}

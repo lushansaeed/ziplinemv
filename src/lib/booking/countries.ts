@@ -160,10 +160,19 @@ export const COUNTRIES: Country[] = [
 export const COUNTRY_BY_ISO = Object.fromEntries(COUNTRIES.map((c) => [c.iso, c]));
 export const DEFAULT_COUNTRY = COUNTRIES.find((c) => c.iso === "MV") ?? COUNTRIES[0];
 
+// Alphabetically sorted — Maldives pinned first
+const _sorted = [...COUNTRIES].sort((a, b) => a.name.localeCompare(b.name));
+const _mv = COUNTRIES.find((c) => c.iso === "MV")!;
+export const COUNTRIES_SORTED: Country[] = [_mv, ..._sorted.filter((c) => c.iso !== "MV")];
+export const NATIONALITIES_SORTED: Country[] = [
+  _mv,
+  ...[...COUNTRIES].filter((c) => c.iso !== "MV").sort((a, b) => a.nationality.localeCompare(b.nationality)),
+];
+
 export function searchCountries(query: string): Country[] {
-  if (!query.trim()) return COUNTRIES;
+  if (!query.trim()) return COUNTRIES_SORTED;
   const q = query.toLowerCase().trim().replace(/^\+/, "");
-  return COUNTRIES.filter(
+  return COUNTRIES_SORTED.filter(
     (c) =>
       c.name.toLowerCase().includes(q) ||
       c.nationality.toLowerCase().includes(q) ||
@@ -173,9 +182,9 @@ export function searchCountries(query: string): Country[] {
 }
 
 export function searchNationalities(query: string): Country[] {
-  if (!query.trim()) return COUNTRIES;
+  if (!query.trim()) return NATIONALITIES_SORTED;
   const q = query.toLowerCase().trim();
-  return COUNTRIES.filter(
+  return NATIONALITIES_SORTED.filter(
     (c) =>
       c.nationality.toLowerCase().includes(q) ||
       c.name.toLowerCase().includes(q) ||
