@@ -80,10 +80,15 @@ export function HeroSection({ heroMedia }: HeroSectionProps) {
           </span>
         </div>
 
-        {/* Headline */}
-        <h1 className="font-display font-bold text-white text-balance max-w-4xl leading-[1.05]
-          text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-[82px]
-          [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
+        {/* Headline — size and rotation controlled from Admin → CMS → Hero typography */}
+        <h1
+          className="font-display font-bold text-white text-balance max-w-4xl leading-[1.05]
+            [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
+          style={{
+            fontSize:        "var(--hero-font-size, clamp(2.5rem, 8vw, 82px))",
+            transform:       "rotate(var(--hero-rotation, 0deg))",
+            transformOrigin: "left center",
+          }}
         >
           Fly from Maafushi.{" "}
           <span className="text-brand-gradient">Land in a story.</span>

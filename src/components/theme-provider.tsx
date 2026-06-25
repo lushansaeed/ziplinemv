@@ -26,7 +26,10 @@ async function getActiveTheme() {
   try {
     const [theme, settings] = await Promise.all([
       prisma.websiteTheme.findFirst({ where: { isActive: true } }),
-      prisma.setting.findMany({ where: { key: { startsWith: "theme_" } } }),
+      prisma.setting.findMany({ where: { key: { in: [
+        ...["theme_primary","theme_secondary","theme_accent","theme_success","theme_danger"],
+        "hero_font_size", "hero_rotation",
+      ] } } }),
     ]);
     const overrides: Record<string, string> = {};
     for (const s of settings) {
@@ -108,6 +111,10 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       /* ── shadcn/ui primary override ── */
       --primary: ${hexToHsl(colors.primaryColor)};
       --ring:    ${hexToHsl(colors.primaryColor)};
+
+      /* ── Hero typography ── */
+      --hero-font-size: ${(colors as any).hero_font_size ?? "82"}px;
+      --hero-rotation:  ${(colors as any).hero_rotation ?? "0"}deg;
     }
 
     /* Apply global site theme — per-page backgrounds handled by PageBackground component */

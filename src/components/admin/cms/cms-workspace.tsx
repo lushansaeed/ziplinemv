@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useRef } from "react";
-import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon } from "lucide-react";
+import { Save, Globe, Phone, Megaphone, Plus, Trash2, Eye, EyeOff, Upload, Image as ImageIcon, Type } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ interface Announcement {
 }
 
 export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements }: any) {
-  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements">("general");
+  const [currentTab, setCurrentTab] = useState<"general" | "contact" | "announcements" | "hero">("general");
   const [isPending, startTransition] = useTransition();
 
   // General
@@ -23,6 +23,10 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   const [siteName, setSiteName]   = useState(getS("site_name", "Zipline Maldives"));
   const [tagline, setTagline]     = useState(getS("site_tagline", "Drop in by zipline. Leave with a story."));
   const [logoUrl, setLogoUrl]     = useState(getS("site_logo_url", ""));
+
+  // Hero typography
+  const [heroFontSize, setHeroFontSize]   = useState(getS("hero_font_size", "82"));
+  const [heroRotation, setHeroRotation]   = useState(getS("hero_rotation", "0"));
   const [logoSize, setLogoSize]   = useState(getS("site_logo_size", "md"));
   const [logoText, setLogoText]   = useState(getS("site_logo_text", "Zipline Maldives"));
   const [uploading, setUploading] = useState(false);
@@ -122,8 +126,19 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
     });
   }
 
+  async function saveHero() {
+    startTransition(async () => {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hero_font_size: heroFontSize, hero_rotation: heroRotation }),
+      });
+      if (res.ok) toast.success("Hero typography saved"); else toast.error("Failed to save");
+    });
+  }
+
   const TABS = [
     { key: "general",       label: "General",           icon: Globe },
+    { key: "hero",          label: "Hero typography",   icon: Type },
     { key: "contact",       label: "Contact & social",  icon: Phone },
     { key: "announcements", label: "Announcement banner", icon: Megaphone },
   ];
@@ -265,6 +280,110 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
           <button onClick={saveGeneral} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> Save all
           </button>
+        </div>
+      )}
+
+      {/* Hero Typography */}
+      {currentTab === "hero" && (
+        <div className="space-y-6 max-w-xl">
+          <div className="admin-card space-y-5">
+            <p className="font-semibold text-sm">Hero heading typography</p>
+            <p className="text-xs text-muted-foreground">
+              Controls the size and rotation of the main heading on the homepage hero section
+              (e.g. "Fly from Maafushi. Land in a story.").
+            </p>
+
+            {/* Font size */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Font size</label>
+                <span className="text-sm font-bold text-primary">{heroFontSize}px</span>
+              </div>
+              <input
+                type="range"
+                min={24}
+                max={160}
+                step={2}
+                value={heroFontSize}
+                onChange={(e) => setHeroFontSize(e.target.value)}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>24px (small)</span>
+                <span>82px (default)</span>
+                <span>160px (huge)</span>
+              </div>
+              <input
+                type="number"
+                min={24}
+                max={160}
+                value={heroFontSize}
+                onChange={(e) => setHeroFontSize(e.target.value)}
+                className={cn(inputCls, "w-28 text-center")}
+              />
+            </div>
+
+            {/* Rotation */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-sm font-medium">Text rotation / angle</label>
+                <span className="text-sm font-bold text-primary">{heroRotation}°</span>
+              </div>
+              <input
+                type="range"
+                min={-45}
+                max={45}
+                step={1}
+                value={heroRotation}
+                onChange={(e) => setHeroRotation(e.target.value)}
+                className="w-full"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>-45°</span>
+                <span>0° (default)</span>
+                <span>+45°</span>
+              </div>
+              <input
+                type="number"
+                min={-45}
+                max={45}
+                value={heroRotation}
+                onChange={(e) => setHeroRotation(e.target.value)}
+                className={cn(inputCls, "w-28 text-center")}
+              />
+            </div>
+
+            {/* Live preview */}
+            <div className="rounded-xl bg-[#0A0F1A] p-6 overflow-hidden">
+              <p className="text-[10px] text-white/30 mb-4 uppercase tracking-wider">Preview</p>
+              <div
+                style={{
+                  fontSize: `${Math.min(Number(heroFontSize), 48)}px`,
+                  transform: `rotate(${heroRotation}deg)`,
+                  transformOrigin: "left center",
+                  fontWeight: 700,
+                  lineHeight: 1.1,
+                  color: "#ffffff",
+                  fontFamily: "'Kindness Matters', cursive",
+                  transition: "all 0.2s",
+                }}
+              >
+                Fly from Maafushi.{" "}
+                <span style={{ background: "linear-gradient(135deg, #F5A623, #FF7B2E)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                  Land in a story.
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={saveHero}
+              disabled={isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
+            >
+              <Save className="w-4 h-4" />
+              {isPending ? "Saving…" : "Save hero typography"}
+            </button>
+          </div>
         </div>
       )}
 
