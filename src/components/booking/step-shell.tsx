@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ArrowLeft } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
 import { cn } from "@/lib/utils";
@@ -23,14 +23,22 @@ export function StepShell({
 }: StepShellProps) {
   const { currentStep, prevStep, registerStepContinue } = useBookingStore();
 
-  // Register this step's continue fn + disabled state in the store
-  // so the sidebar and mobile sticky bar can mirror it
+  // Keep a stable ref to onNext so the stored fn doesn't change reference
+  // on every render (which would cause an infinite update loop).
+  const onNextRef = useRef(onNext);
+  onNextRef.current = onNext;
+
   useEffect(() => {
     if (!hideNext && onNext) {
-      registerStepContinue(!!nextDisabled || !!isLoading, onNext, nextLabel);
+      // Wrap in a stable function that always calls the current ref value
+      registerStepContinue(
+        !!nextDisabled || !!isLoading,
+        () => onNextRef.current?.(),
+        nextLabel
+      );
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nextDisabled, isLoading, nextLabel, onNext, hideNext]);
+  }, [nextDisabled, isLoading, nextLabel, hideNext]); // onNext intentionally excluded
 
   return (
     <div className="space-y-4">
