@@ -36,12 +36,15 @@ export function Step2Slot() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date, numRiders]);
 
-  const selected = slots.find((s) => `${s.startTime}-${s.endTime}` === slotId);
+  // Match by DB id OR by time key (graceful fallback)
+  const selected = slots.find((s) =>
+    (s as any).id === slotId || `${s.startTime}-${s.endTime}` === slotId
+  );
 
   function selectSlot(slot: SlotAvailability) {
     if (!slot.selectable) return;
-    const key = `${slot.startTime}-${slot.endTime}`;
-    setField("slotId",   key);
+    // Store DB slot ID (required by booking creation) + display key for matching
+    setField("slotId",   (slot as any).id ?? `${slot.startTime}-${slot.endTime}`);
     setField("slotTime", slot.label);
   }
 
@@ -76,7 +79,7 @@ export function Step2Slot() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
             {slots.map((slot) => {
               const key        = `${slot.startTime}-${slot.endTime}`;
-              const isSelected = slotId === key;
+              const isSelected = slotId === (slot as any).id || slotId === key;
               const isFull     = slot.status === "full";
               const isBlocked  = slot.status === "blocked" || slot.status === "closed";
               const isDisabled = !slot.selectable;
