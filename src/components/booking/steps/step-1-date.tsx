@@ -52,8 +52,8 @@ export function Step1Date() {
       nextDisabled={!date}
     >
       {/* Calendar — compact, max-width constrained */}
-      {/* Compact calendar — max-w-sm on mobile, natural width on desktop */}
-      <div className="max-w-sm lg:max-w-xs mx-auto lg:mx-0">
+      {/* Calendar — full width on left column, centered content */}
+      <div className="w-full max-w-md mx-auto">
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
 
           {/* Month navigation */}
@@ -78,18 +78,18 @@ export function Step1Date() {
             </button>
           </div>
 
-          <div className="p-3">
+          <div className="p-4">
             {/* Weekday headers */}
-            <div className="grid grid-cols-7 mb-1">
+            <div className="grid grid-cols-7 mb-2">
               {DAY_LABELS.map((d) => (
-                <div key={d} className="text-center text-[11px] font-semibold text-white/40 py-1.5">
+                <div key={d} className="text-center text-xs font-semibold text-white/40 py-2">
                   {d}
                 </div>
               ))}
             </div>
 
             {/* Day grid */}
-            <div className="grid grid-cols-7 gap-0.5">
+            <div className="grid grid-cols-7 gap-1">
               {/* Empty cells */}
               {Array.from({ length: firstDow }).map((_, i) => (
                 <div key={`e-${i}`} />
@@ -107,7 +107,7 @@ export function Step1Date() {
                     onClick={() => select(d)}
                     disabled={!selectable}
                     className={cn(
-                      "relative h-9 w-full rounded-lg text-sm font-medium transition-all duration-150 flex items-center justify-center",
+                      "relative h-11 w-full rounded-xl text-sm font-medium transition-all duration-150 flex items-center justify-center",
                       isSelected
                         ? "bg-[var(--theme-primary,#F5A623)] text-[#0A0F1A] font-bold"
                         : isTodayD && selectable

@@ -101,12 +101,12 @@ export function Step2Slot() {
                     isBlocked && "border-white/5 bg-white/1 text-white/15 cursor-not-allowed line-through",
                   )}
                 >
-                  {/* Time range */}
-                  <span className={cn("font-semibold leading-tight", isSelected ? "text-brand-deep" : "")}>
+                  {/* Time range — both bold white */}
+                  <span className={cn("font-bold text-sm leading-tight", isSelected ? "text-brand-deep" : "text-white")}>
                     {slot.startTime}
                   </span>
-                  <span className={cn("text-[10px] mt-0.5 leading-tight", isSelected ? "text-brand-deep/70" : "text-white/40")}>
-                    to {slot.endTime}
+                  <span className={cn("font-bold text-xs leading-tight", isSelected ? "text-brand-deep" : "text-white")}>
+                    {slot.endTime}
                   </span>
 
                   {/* Status indicators — only when relevant */}
