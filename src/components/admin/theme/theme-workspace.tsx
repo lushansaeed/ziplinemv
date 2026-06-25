@@ -19,6 +19,7 @@ const BRAND_DEFAULTS = {
   accentColor:      "#06B6D4",
   backgroundColor:  "#0A0F1A",
   textColor:        "#FFFFFF",
+  textMutedColor:   "#8B9CB3",
   buttonColor:      "#F5A623",
   buttonTextColor:  "#0A0F1A",
   headerBgColor:    "#0A0F1A",
@@ -32,6 +33,7 @@ const COLOR_FIELDS = [
   { key: "accentColor",     label: "Accent",           desc: "Tags, badges, special elements" },
   { key: "backgroundColor", label: "Page background",  desc: "Main site background" },
   { key: "textColor",       label: "Body text",        desc: "Primary text colour" },
+  { key: "textMutedColor",  label: "Secondary text",   desc: "Subtitles, captions, helper text — the greyish text colour" },
   { key: "buttonColor",     label: "Button fill",      desc: "Default button background" },
   { key: "buttonTextColor", label: "Button text",      desc: "Text inside buttons" },
   { key: "headerBgColor",   label: "Header background",desc: "Navigation bar background" },
@@ -73,8 +75,9 @@ function getContrastRatio(hex1: string, hex2: string): number {
 
 interface ThemeData {
   primaryColor: string; secondaryColor: string; accentColor: string;
-  backgroundColor: string; textColor: string; buttonColor: string;
-  buttonTextColor: string; headerBgColor: string; footerBgColor: string;
+  backgroundColor: string; textColor: string; textMutedColor: string;
+  buttonColor: string; buttonTextColor: string;
+  headerBgColor: string; footerBgColor: string;
   buttonRadius: string;
 }
 
@@ -91,6 +94,7 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
     accentColor:      initialTheme?.accentColor      ?? BRAND_DEFAULTS.accentColor,
     backgroundColor:  initialTheme?.backgroundColor  ?? BRAND_DEFAULTS.backgroundColor,
     textColor:        initialTheme?.textColor        ?? BRAND_DEFAULTS.textColor,
+    textMutedColor:   (initialTheme as any)?.textMutedColor  ?? BRAND_DEFAULTS.textMutedColor,
     buttonColor:      initialTheme?.buttonColor      ?? BRAND_DEFAULTS.buttonColor,
     buttonTextColor:  initialTheme?.buttonTextColor  ?? BRAND_DEFAULTS.buttonTextColor,
     headerBgColor:    initialTheme?.headerBgColor    ?? BRAND_DEFAULTS.headerBgColor,

@@ -20,7 +20,7 @@ export function StoryTeaser({ content }: { content?: SectionContent }) {
             {(content?.heading || "Vahmāfushi is the island\nof elevated experiences.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
 
-          <p className="text-white/55 text-lg leading-relaxed max-w-2xl mx-auto">
+          <p className="text-white/55 text-lg leading-relaxed max-w-2xl mx-auto site-text-muted">
             {content?.description || "Just a zipline away from Maafushi, Vahmāfushi was built to be different. An island where adventure, freedom, and the pure joy of movement come together — above the Indian Ocean."}
           </p>
 

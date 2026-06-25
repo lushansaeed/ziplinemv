@@ -15,7 +15,7 @@ export function PartnersCTA() {
               </div>
               <div>
                 <h3 className="font-display font-bold text-2xl text-white">Become an agent</h3>
-                <p className="text-white/50 text-sm mt-2 leading-relaxed">
+                <p className="text-white/50 text-sm mt-2 leading-relaxed site-text-muted">
                   Partner with us and earn commission on every booking you send our way.
                   Perfect for guesthouses, tour operators, and travel agents.
                 </p>
@@ -39,7 +39,7 @@ export function PartnersCTA() {
               </div>
               <div>
                 <h3 className="font-display font-bold text-2xl text-white">Become an affiliate</h3>
-                <p className="text-white/50 text-sm mt-2 leading-relaxed">
+                <p className="text-white/50 text-sm mt-2 leading-relaxed site-text-muted">
                   Share your link. Earn when people book. Great for content creators,
                   bloggers, and influencers who reach adventure travellers.
                 </p>
@@ -62,7 +62,7 @@ export function PartnersCTA() {
               <h3 className="font-display font-bold text-3xl text-white">
                 Ready to fly?
               </h3>
-              <p className="text-white/50 mt-1">
+              <p className="text-white/50 mt-1 site-text-muted">
                 Book your slot today. Maafushi → Vahmāfushi. It's 60 seconds you'll never forget.
               </p>
             </div>

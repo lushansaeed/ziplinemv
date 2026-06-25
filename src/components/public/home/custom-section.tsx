@@ -35,7 +35,7 @@ export function CustomSection({ sectionKey, content }: CustomSectionProps) {
           )}
 
           {content.description && (
-            <p className="text-white/60 text-lg leading-relaxed">
+            <p className="text-white/60 text-lg leading-relaxed site-text-muted">
               {content.description.split("\n").map((line, i, arr) => (
                 <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
               ))}

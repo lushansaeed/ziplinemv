@@ -33,7 +33,7 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
           <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
             {(content?.heading || "Add the shot.\nKeep the memory.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
-          <p className="text-white/50 text-lg max-w-md mx-auto">
+          <p className="text-white/50 text-lg max-w-md mx-auto site-text-muted">
             {content?.description || "No phones allowed on the ride. Our team captures every second instead."}
           </p>
         </div>
@@ -70,7 +70,7 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
 
                 <div className="flex-1 space-y-2">
                   <h3 className="font-display font-bold text-xl text-white">{addon.name}</h3>
-                  <p className="text-white/55 text-sm leading-relaxed">{addon.description}</p>
+                  <p className="text-white/55 text-sm leading-relaxed site-text-muted">{addon.description}</p>
                   {addon.bestFor && (
                     <p className="text-xs text-white/30 italic">Best for: {addon.bestFor}</p>
                   )}

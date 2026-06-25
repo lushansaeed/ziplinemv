@@ -12,6 +12,7 @@ const DEFAULTS = {
   buttonTextColor:  "#0A0F1A",
   headerBgColor:    "#0A0F1A",
   footerBgColor:    "#050A10",
+  textMutedColor:   "#8B9CB3",
   buttonRadius:     "rounded-full",
   // Legacy theme settings keys
   theme_primary:    "#F5A623",
@@ -80,6 +81,7 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       accentColor:     theme.accentColor,
       backgroundColor: theme.backgroundColor,
       textColor:       theme.textColor,
+      textMutedColor:  (theme as any).textMutedColor ?? "#8B9CB3",
       buttonColor:     theme.buttonColor,
       buttonTextColor: theme.buttonTextColor,
       headerBgColor:   theme.headerBgColor,
@@ -96,6 +98,7 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       --site-accent:          ${colors.accentColor};
       --site-bg:              ${colors.backgroundColor};
       --site-text:            ${colors.textColor};
+      --site-text-muted:      ${colors.textMutedColor ?? "#8B9CB3"};
       --site-button:          ${colors.buttonColor};
       --site-button-text:     ${colors.buttonTextColor};
       --site-header-bg:       ${colors.headerBgColor};
@@ -125,6 +128,13 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
     .theme-public {
       background-color: ${colors.backgroundColor};
       color: ${colors.textColor};
+    }
+
+    /* Muted/secondary text — admin-controlled via --site-text-muted */
+    .theme-public .text-muted-site,
+    .theme-public p.subtitle,
+    .theme-public .section-subtitle {
+      color: var(--site-text-muted) !important;
     }
   `;
 

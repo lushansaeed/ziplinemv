@@ -92,6 +92,20 @@
   }
 }
 
+/* ─── Public site muted text — admin-controlled via --site-text-muted ── */
+/* Applied to common subtitle/caption patterns in public pages */
+.theme-public p,
+.theme-public .text-white\/50,
+.theme-public .text-white\/55,
+.theme-public .text-white\/60 {
+  /* Let Tailwind opacity classes still work; this adds a CSS var override */
+  --tw-text-opacity: 1;
+}
+/* Use a dedicated class for admin-changeable muted text */
+.site-text-muted {
+  color: var(--site-text-muted, rgba(255, 255, 255, 0.55)) !important;
+}
+
 /* ─── Base Resets ───────────────────────────────────────────────────── */
 @layer base {
   * {

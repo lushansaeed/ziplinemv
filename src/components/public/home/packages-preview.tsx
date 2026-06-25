@@ -21,7 +21,7 @@ export function PackagesPreview({ packages, content }: { packages: any[]; conten
           <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
             {(content?.heading || "Book the ride.\nChoose your vibe.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
-          <p className="text-white/50 text-lg max-w-md mx-auto">
+          <p className="text-white/50 text-lg max-w-md mx-auto site-text-muted">
             {content?.description || "Every package includes the full zipline experience and speedboat return."}
           </p>
         </div>
@@ -125,7 +125,7 @@ function PackageCard({
         <div>
           <h3 className="font-display font-bold text-xl text-white">{name}</h3>
           {description && (
-            <p className="text-white/50 text-sm mt-1.5 leading-relaxed line-clamp-2">{description}</p>
+            <p className="text-white/50 text-sm mt-1.5 leading-relaxed line-clamp-2 site-text-muted">{description}</p>
           )}
         </div>
 

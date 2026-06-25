@@ -37,7 +37,7 @@ export function RouteSection({ content }: { content?: SectionContent }) {
             <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
               {headingLines.map((line, i) => (<span key={i}>{i===1?<span className="text-brand-citrus">{line}</span>:line}{i<headingLines.length-1&&<br/>}</span>))}
             </h2>
-            <p className="text-white/55 text-lg leading-relaxed">
+            <p className="text-white/55 text-lg leading-relaxed site-text-muted">
               {description}
             </p>
             <div className="grid grid-cols-2 gap-4 pt-2">
