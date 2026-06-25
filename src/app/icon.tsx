@@ -1,9 +1,10 @@
 import { ImageResponse } from "next/og";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { unstable_noStore as noStore } from "next/cache";
 
-export const runtime = "nodejs";
-export const size = { width: 32, height: 32 };
+export const runtime  = "nodejs";
+export const size     = { width: 32, height: 32 };
 export const contentType = "image/png";
 
 async function getLogoUrl(): Promise<string | null> {
@@ -23,27 +24,23 @@ export default async function Icon() {
   const logoUrl = await getLogoUrl();
 
   if (logoUrl) {
-    return new ImageResponse(
-      (
-        <div
-          style={{
-            width: 32, height: 32,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            overflow: "hidden", borderRadius: 6,
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={logoUrl}
-            alt="Logo"
-            width={32}
-            height={32}
-            style={{ objectFit: "contain", width: "100%", height: "100%" }}
-          />
-        </div>
-      ),
-      { ...size }
-    );
+    // Fetch the image and re-serve it directly — avoids ImageResponse
+    // re-rendering issues with external URLs
+    try {
+      const res = await fetch(logoUrl, { next: { revalidate: 3600 } });
+      if (res.ok) {
+        const buffer     = await res.arrayBuffer();
+        const mimeType   = res.headers.get("content-type") ?? "image/png";
+        return new NextResponse(buffer, {
+          headers: {
+            "Content-Type":  mimeType,
+            "Cache-Control": "public, max-age=3600",
+          },
+        });
+      }
+    } catch {
+      // Fall through to default
+    }
   }
 
   // Default brand icon
