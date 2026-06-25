@@ -19,10 +19,9 @@ const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
 // client-side navigation reconciliation), metadata icons persist across
 // all navigations because Next.js manages them outside React's tree.
 export async function generateMetadata(): Promise<Metadata> {
-  // /api/favicon proxies the logo from our domain — avoids Cloudflare
-  // cross-domain cookie rejection when using Supabase URLs directly.
-  // Cache-busted with timestamp so new uploads show immediately.
-  const icon = "/api/favicon";
+  // Use the static ICO file — it has proper 16x16/24x24 square icons.
+  // The CMS logo is wide (389x145) and not suitable as a favicon.
+  const icon = "/favicon.ico";
 
   return {
     metadataBase: new URL(BASE),
