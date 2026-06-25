@@ -117,18 +117,24 @@ export async function getSlotsForDate(
       const key       = `${s.startTime}-${s.endTime}`;
       const isBlocked = blockedSet.has(key) || s.status === SlotStatus.BLOCKED;
       const available = s.capacity - s.bookedCount;
+      const remaining = Math.max(0, available);
+      const canBook   = !isBlocked && remaining >= numRiders;
       const label     = generatedMap[key]?.label ?? `${s.startTime} to ${s.endTime}`;
+      const status: "available" | "full" | "blocked" | "closed" =
+        isBlocked ? "blocked" : remaining <= 0 ? "full" : "available";
 
       return {
-        id:          s.id,
-        startTime:   s.startTime,
-        endTime:     s.endTime,
+        id:           s.id,
+        startTime:    s.startTime,
+        endTime:      s.endTime,
         label,
-        capacity:    s.capacity,
-        bookedCount: s.bookedCount,
+        capacity:     s.capacity,
+        booked:       s.bookedCount,
+        remaining,
         available,
-        canBook:     !isBlocked && available >= numRiders,
-        status:      isBlocked ? "blocked" : available <= 0 ? "full" : "available",
+        canBook,
+        selectable:   canBook,   // ← required by SlotAvailability + used by step-2-slot
+        status,
         priceOverride: s.priceOverride ? Number(s.priceOverride) : null,
       };
     });
