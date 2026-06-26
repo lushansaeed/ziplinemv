@@ -53,6 +53,8 @@ export default async function AgentNewBookingPage() {
             addOnId: c.addOnId,
             type: c.type,
             value: Number(c.value),
+            localType: c.localType,
+            localValue: c.localValue == null ? null : Number(c.localValue),
           })) ?? []}
           canMakeUnpaidBookings={agent.canMakeUnpaidBookings}
         />

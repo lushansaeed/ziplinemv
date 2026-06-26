@@ -276,6 +276,8 @@ model AgentAddOnCommission {
   addOn     AddOn        @relation(fields: [addOnId], references: [id])
   type      DiscountType
   value     Decimal      @db.Decimal(10, 2)
+  localType  DiscountType? @map("local_type")
+  localValue Decimal?     @map("local_value") @db.Decimal(10, 2)
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
 

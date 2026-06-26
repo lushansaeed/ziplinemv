@@ -26,7 +26,7 @@ interface Props {
   localCommissionValue?: number | null;
   addOnCommissionType?: string | null;
   addOnCommissionValue?: number | null;
-  addOnCommissions?: Array<{ addOnId: string; type: string; value: number }>;
+  addOnCommissions?: Array<{ addOnId: string; type: string; value: number; localType?: string | null; localValue?: number | null }>;
   canMakeUnpaidBookings: boolean;
 }
 
@@ -118,7 +118,10 @@ export function AgentNewBookingForm({
     const price = isLocalCustomer && (addon as any).localPriceMvr ? Number((addon as any).localPriceMvr) : Number(addon.price ?? 0);
     const lineTotal = price * numRiders;
     const agentSpecific = addOnCommissions.find((c) => c.addOnId === id);
-    const amount = calcCommission(lineTotal, numRiders, agentSpecific?.type, agentSpecific?.value)
+    const specificAmount = isLocalCustomer && agentSpecific?.localValue != null
+      ? calcCommission(lineTotal, numRiders, agentSpecific.localType, agentSpecific.localValue)
+      : calcCommission(lineTotal, numRiders, agentSpecific?.type, agentSpecific?.value);
+    const amount = specificAmount
       ?? calcCommission(lineTotal, numRiders, addOnCommissionType, addOnCommissionValue)
       ?? calcCommission(lineTotal, numRiders, addon.agentCommissionType, addon.agentCommissionValue == null ? null : Number(addon.agentCommissionValue))
       ?? (commissionBasis === "PACKAGE_AND_ADDONS" ? (lineTotal * commissionRate) / 100 : 0);

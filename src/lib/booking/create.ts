@@ -254,7 +254,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
               addOnCommissionValue: true,
               addOnCommissions: {
                 where: { addOnId: { in: input.addOnIds } },
-                select: { addOnId: true, type: true, value: true },
+                select: { addOnId: true, type: true, value: true, localType: true, localValue: true },
               },
             },
           }),
@@ -298,9 +298,13 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             const lineTotal = addOnPrice * qty;
             const agentSpecificAddOn = agentAddOnCommissionMap.get(addOn.id);
             const amount = agentSpecificAddOn
-              ? agentSpecificAddOn.type === "FIXED"
-                ? Number(agentSpecificAddOn.value) * qty
-                : (lineTotal * Number(agentSpecificAddOn.value)) / 100
+              ? isLocalBooking && agentSpecificAddOn.localValue != null
+                ? agentSpecificAddOn.localType === "FIXED"
+                  ? Number(agentSpecificAddOn.localValue) * qty
+                  : (lineTotal * Number(agentSpecificAddOn.localValue)) / 100
+                : agentSpecificAddOn.type === "FIXED"
+                  ? Number(agentSpecificAddOn.value) * qty
+                  : (lineTotal * Number(agentSpecificAddOn.value)) / 100
               : agent.addOnCommissionValue != null
               ? agent.addOnCommissionType === "FIXED"
                 ? Number(agent.addOnCommissionValue) * qty

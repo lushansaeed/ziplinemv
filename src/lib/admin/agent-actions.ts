@@ -112,6 +112,8 @@ type AgentCommissionInput = {
     addOnId: string;
     type?: string | null;
     value?: number | null;
+    localType?: string | null;
+    localValue?: number | null;
   }>;
 };
 
@@ -145,7 +147,8 @@ export async function updateAgentCommission(agentId: string, input: AgentCommiss
 
     for (const item of input.addOnCommissions ?? []) {
       const normalized = normalizeCommission(item.type, item.value);
-      if (!normalized.value || !normalized.type) {
+      const local = normalizeCommission(item.localType, item.localValue);
+      if (!normalized.value && !local.value) {
         await tx.agentAddOnCommission.deleteMany({
           where: { agentId, addOnId: item.addOnId },
         });
@@ -154,12 +157,19 @@ export async function updateAgentCommission(agentId: string, input: AgentCommiss
 
       await tx.agentAddOnCommission.upsert({
         where: { agentId_addOnId: { agentId, addOnId: item.addOnId } },
-        update: { type: normalized.type as any, value: normalized.value },
+        update: {
+          type:       (normalized.type ?? "FIXED") as any,
+          value:      normalized.value ?? 0,
+          localType:  local.type as any,
+          localValue: local.value,
+        },
         create: {
           agentId,
           addOnId: item.addOnId,
-          type:    normalized.type as any,
-          value:   normalized.value,
+          type:       (normalized.type ?? "FIXED") as any,
+          value:      normalized.value ?? 0,
+          localType:  local.type as any,
+          localValue: local.value,
         },
       });
     }

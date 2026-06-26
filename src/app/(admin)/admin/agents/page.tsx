@@ -8,7 +8,7 @@ import { AgentsWorkspace } from "@/components/admin/agents/agents-workspace";
 export const metadata: Metadata = { title: "Agents | Admin" };
 
 async function getAgentsData() {
-  const [agents, applications, addOns] = await Promise.all([
+  const [agents, applications, packages, addOns] = await Promise.all([
     prisma.agent.findMany({
       orderBy: { createdAt: "desc" },
       include: {
@@ -23,10 +23,15 @@ async function getAgentsData() {
       where:   { status: "PENDING" },
       orderBy: { submittedAt: "desc" },
     }),
+    prisma.package.findMany({
+      where: { active: true, agentCommissionEligible: true },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true, touristPrice: true, localPriceMvr: true },
+    }),
     prisma.addOn.findMany({
       where: { active: true },
       orderBy: { displayOrder: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, price: true, localPriceMvr: true },
     }),
   ]);
 
@@ -50,7 +55,22 @@ async function getAgentsData() {
     salesData.map((s) => [s.agentId!, Number(s._sum.total ?? 0)])
   );
 
-  return { agents, applications, addOns, commissionMap, salesMap };
+  return {
+    agents,
+    applications,
+    packages: packages.map((pkg) => ({
+      ...pkg,
+      touristPrice:  Number(pkg.touristPrice),
+      localPriceMvr: pkg.localPriceMvr == null ? null : Number(pkg.localPriceMvr),
+    })),
+    addOns: addOns.map((addOn) => ({
+      ...addOn,
+      price:         Number(addOn.price),
+      localPriceMvr: addOn.localPriceMvr == null ? null : Number(addOn.localPriceMvr),
+    })),
+    commissionMap,
+    salesMap,
+  };
 }
 
 export default async function AgentsPage() {
