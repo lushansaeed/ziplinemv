@@ -27,7 +27,7 @@ export default async function AgentNewBookingPage() {
     <div>
       <PageHeader
         title="New Booking"
-        description={`Creating as ${agent.businessName} · Commission: ${agent.commissionRate}%`}
+        description={`Creating as ${agent.businessName} · Commission calculated from your agent rules`}
         actions={
           <Link href="/agents/bookings" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -42,6 +42,13 @@ export default async function AgentNewBookingPage() {
           agentId={agent.id}
           agentBusinessName={agent.businessName}
           commissionRate={Number(agent.commissionRate)}
+          commissionBasis={agent.commissionBasis}
+          touristCommissionType={agent.touristCommissionType}
+          touristCommissionValue={agent.touristCommissionValue == null ? null : Number(agent.touristCommissionValue)}
+          localCommissionType={agent.localCommissionType}
+          localCommissionValue={agent.localCommissionValue == null ? null : Number(agent.localCommissionValue)}
+          addOnCommissionType={agent.addOnCommissionType}
+          addOnCommissionValue={agent.addOnCommissionValue == null ? null : Number(agent.addOnCommissionValue)}
           canMakeUnpaidBookings={agent.canMakeUnpaidBookings}
         />
       </div>

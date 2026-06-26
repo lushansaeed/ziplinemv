@@ -246,6 +246,12 @@ model Agent {
   website          String?
   commissionRate   Decimal           @default(10) @map("commission_rate") @db.Decimal(5, 2)
   commissionBasis  CommissionBasis   @default(PACKAGE_ONLY) @map("commission_basis")
+  touristCommissionType  DiscountType? @map("tourist_commission_type")
+  touristCommissionValue Decimal? @map("tourist_commission_value") @db.Decimal(10, 2)
+  localCommissionType    DiscountType? @map("local_commission_type")
+  localCommissionValue   Decimal? @map("local_commission_value") @db.Decimal(10, 2)
+  addOnCommissionType    DiscountType? @map("add_on_commission_type")
+  addOnCommissionValue   Decimal? @map("add_on_commission_value") @db.Decimal(10, 2)
   canMakeUnpaidBookings Boolean      @default(false) @map("can_make_unpaid_bookings")
   specialPricing   Json?             @map("special_pricing")
   status           ApplicationStatus @default(PENDING)

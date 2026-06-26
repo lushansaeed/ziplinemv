@@ -13,6 +13,9 @@ export async function getApprovedAgent() {
       id: true, businessName: true, contactPerson: true,
       email: true, phone: true, island: true,
       commissionRate: true, commissionBasis: true,
+      touristCommissionType: true, touristCommissionValue: true,
+      localCommissionType: true, localCommissionValue: true,
+      addOnCommissionType: true, addOnCommissionValue: true,
       canMakeUnpaidBookings: true, status: true,
     },
   });

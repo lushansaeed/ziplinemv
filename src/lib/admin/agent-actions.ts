@@ -99,16 +99,46 @@ export async function suspendAgent(agentId: string, reason?: string) {
   return { success: true };
 }
 
-export async function updateAgentCommission(agentId: string, rate: number, basis: string) {
+type AgentCommissionInput = {
+  commissionRate: number;
+  commissionBasis: string;
+  touristCommissionType?: string | null;
+  touristCommissionValue?: number | null;
+  localCommissionType?: string | null;
+  localCommissionValue?: number | null;
+  addOnCommissionType?: string | null;
+  addOnCommissionValue?: number | null;
+};
+
+function normalizeCommission(type?: string | null, value?: number | null) {
+  return {
+    type:  value != null && value > 0 ? (type ?? "PERCENTAGE") : null,
+    value: value != null && value > 0 ? value : null,
+  };
+}
+
+export async function updateAgentCommission(agentId: string, input: AgentCommissionInput) {
   const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const tourist = normalizeCommission(input.touristCommissionType, input.touristCommissionValue);
+  const local   = normalizeCommission(input.localCommissionType, input.localCommissionValue);
+  const addOn   = normalizeCommission(input.addOnCommissionType, input.addOnCommissionValue);
 
   await prisma.agent.update({
     where: { id: agentId },
-    data:  { commissionRate: rate, commissionBasis: basis as any },
+    data:  {
+      commissionRate:          input.commissionRate,
+      commissionBasis:         input.commissionBasis as any,
+      touristCommissionType:   tourist.type as any,
+      touristCommissionValue:  tourist.value,
+      localCommissionType:     local.type as any,
+      localCommissionValue:    local.value,
+      addOnCommissionType:     addOn.type as any,
+      addOnCommissionValue:    addOn.value,
+    },
   });
 
   await prisma.auditLog.create({
-    data: { userId: admin.id, action: "AGENT_COMMISSION_UPDATED", module: "agents", recordId: agentId, newValue: { rate, basis } },
+    data: { userId: admin.id, action: "AGENT_COMMISSION_UPDATED", module: "agents", recordId: agentId, newValue: input as any },
   });
 
   revalidatePath("/admin/agents");

@@ -38,7 +38,17 @@ export default async function AgentCommissionPage() {
   return (
     <div>
       <PageHeader title="Commission" description={`Your current rate: ${agent.commissionRate}%`} />
-      <AgentCommissionStatement {...(data as any)} commissionRate={Number(agent.commissionRate)} commissionBasis={agent.commissionBasis} />
+      <AgentCommissionStatement
+        {...(data as any)}
+        commissionRate={Number(agent.commissionRate)}
+        commissionBasis={agent.commissionBasis}
+        touristCommissionType={agent.touristCommissionType}
+        touristCommissionValue={agent.touristCommissionValue == null ? null : Number(agent.touristCommissionValue)}
+        localCommissionType={agent.localCommissionType}
+        localCommissionValue={agent.localCommissionValue == null ? null : Number(agent.localCommissionValue)}
+        addOnCommissionType={agent.addOnCommissionType}
+        addOnCommissionValue={agent.addOnCommissionValue == null ? null : Number(agent.addOnCommissionValue)}
+      />
     </div>
   );
 }

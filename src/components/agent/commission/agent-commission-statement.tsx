@@ -18,6 +18,12 @@ interface Props {
   totals:         Array<{ status: string; _sum: { amount: number | null }; _count: number }>;
   commissionRate: number;
   commissionBasis: string;
+  touristCommissionType?: string | null;
+  touristCommissionValue?: number | null;
+  localCommissionType?: string | null;
+  localCommissionValue?: number | null;
+  addOnCommissionType?: string | null;
+  addOnCommissionValue?: number | null;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -27,7 +33,17 @@ const STATUS_COLOR: Record<string, string> = {
   REJECTED:   "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
 };
 
-export function AgentCommissionStatement({ commissions, totals, commissionRate, commissionBasis }: Props) {
+function formatRule(type?: string | null, value?: number | null, unit = "") {
+  if (value == null || Number(value) <= 0) return "Default";
+  return type === "FIXED" ? `${formatCurrency(Number(value))}${unit}` : `${Number(value)}%`;
+}
+
+export function AgentCommissionStatement({
+  commissions, totals, commissionRate, commissionBasis,
+  touristCommissionType, touristCommissionValue,
+  localCommissionType, localCommissionValue,
+  addOnCommissionType, addOnCommissionValue,
+}: Props) {
   const getTotal = (status: string) => {
     const t = totals.find((x) => x.status === status);
     return Number(t?._sum.amount ?? 0);
@@ -44,19 +60,18 @@ export function AgentCommissionStatement({ commissions, totals, commissionRate, 
         <StatCard title="Total earned"     value={formatCurrency(totalEarned)}  icon={TrendingUp}    iconColor="text-brand-citrus" />
         <StatCard title="Pending payout"   value={formatCurrency(pending)}      icon={Clock}         iconColor="text-yellow-500" subtitle="Awaiting payment" />
         <StatCard title="Paid out"         value={formatCurrency(paid)}         icon={CheckCircle2}  iconColor="text-green-500" />
-        <StatCard title="Your rate"        value={`${commissionRate}%`}         icon={DollarSign}    iconColor="text-brand-ocean" subtitle={commissionBasis.replace("_", " ").toLowerCase()} />
+        <StatCard title="Default rate"     value={`${commissionRate}%`}         icon={DollarSign}    iconColor="text-brand-ocean" subtitle={commissionBasis.replace("_", " ").toLowerCase()} />
       </div>
 
       {/* How commission is calculated */}
       <div className="admin-card bg-primary/5 border-primary/20 space-y-2">
         <p className="font-semibold text-sm text-primary">How your commission is calculated</p>
         <p className="text-sm text-muted-foreground">
-          You earn <strong className="text-foreground">{commissionRate}%</strong> on{" "}
-          {commissionBasis === "PACKAGE_ONLY"
-            ? "the package price (excluding add-ons)"
-            : "the total booking value including add-ons"
-          }{" "}
-          for every confirmed, paid booking you create through this portal.
+          Your commission can differ for tourist packages, local packages, and add-ons. Current rules:
+          <strong className="text-foreground"> tourist {formatRule(touristCommissionType, touristCommissionValue, " / rider")}</strong>,
+          <strong className="text-foreground"> local {formatRule(localCommissionType, localCommissionValue, " / rider")}</strong>,
+          and <strong className="text-foreground">add-ons {formatRule(addOnCommissionType, addOnCommissionValue, " / unit")}</strong>.
+          Any default rule uses your fallback rate of <strong className="text-foreground">{commissionRate}%</strong>.
           Commission is paid out by Zipline Maldives on a regular schedule.
         </p>
       </div>

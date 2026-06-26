@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { Save, Building2, Phone, Mail, Globe, MapPin, DollarSign, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface AgentProfileProps {
   user:  { id: string; name: string; email: string };
@@ -11,11 +11,19 @@ interface AgentProfileProps {
     id: string; businessName: string; contactPerson: string;
     email: string; phone: string; island: string | null;
     commissionRate: any; commissionBasis: string;
+    touristCommissionType?: string | null; touristCommissionValue?: any;
+    localCommissionType?: string | null; localCommissionValue?: any;
+    addOnCommissionType?: string | null; addOnCommissionValue?: any;
     canMakeUnpaidBookings: boolean;
   };
 }
 
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
+
+function formatCommissionRule(type?: string | null, value?: any, unit = "") {
+  if (value == null || Number(value) <= 0) return "Default";
+  return type === "FIXED" ? `${formatCurrency(Number(value))}${unit}` : `${Number(value)}%`;
+}
 
 export function AgentProfile({ user, agent }: AgentProfileProps) {
   const [isPending, startTransition] = useTransition();
@@ -66,7 +74,7 @@ export function AgentProfile({ user, agent }: AgentProfileProps) {
         </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <p className="text-xs text-muted-foreground mb-1">Commission rate</p>
+            <p className="text-xs text-muted-foreground mb-1">Default rate</p>
             <p className="text-2xl font-display font-bold text-primary">{agent.commissionRate}%</p>
           </div>
           <div>
@@ -76,6 +84,18 @@ export function AgentProfile({ user, agent }: AgentProfileProps) {
                 ? "Package price only"
                 : "Package + add-ons"}
             </p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Tourist package</p>
+            <p className="text-sm font-medium">{formatCommissionRule(agent.touristCommissionType, agent.touristCommissionValue, " / rider")}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Local package</p>
+            <p className="text-sm font-medium">{formatCommissionRule(agent.localCommissionType, agent.localCommissionValue, " / rider")}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Add-ons</p>
+            <p className="text-sm font-medium">{formatCommissionRule(agent.addOnCommissionType, agent.addOnCommissionValue, " / unit")}</p>
           </div>
           <div className="sm:col-span-2">
             <p className="text-xs text-muted-foreground mb-1">Unpaid bookings</p>

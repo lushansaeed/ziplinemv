@@ -14,15 +14,28 @@ import type { Package as PkgType, AddOn } from "@prisma/client";
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
 
 interface Props {
-  packages:           PkgType[];
-  addOns:             AddOn[];
+  packages:           Array<PkgType & { agentCommissionType?: string | null; agentCommissionValue?: any }>;
+  addOns:             Array<AddOn & { agentCommissionType?: string | null; agentCommissionValue?: any; agentCommissionEligible?: boolean }>;
   agentId:            string;
   agentBusinessName:  string;
   commissionRate:     number;
+  commissionBasis:    string;
+  touristCommissionType?: string | null;
+  touristCommissionValue?: number | null;
+  localCommissionType?: string | null;
+  localCommissionValue?: number | null;
+  addOnCommissionType?: string | null;
+  addOnCommissionValue?: number | null;
   canMakeUnpaidBookings: boolean;
 }
 
-export function AgentNewBookingForm({ packages, addOns, agentId, agentBusinessName, commissionRate, canMakeUnpaidBookings }: Props) {
+export function AgentNewBookingForm({
+  packages, addOns, agentId, agentBusinessName, commissionRate, commissionBasis,
+  touristCommissionType, touristCommissionValue,
+  localCommissionType, localCommissionValue,
+  addOnCommissionType, addOnCommissionValue,
+  canMakeUnpaidBookings,
+}: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult]          = useState<{ reference: string; qrCode?: string; commission: number } | null>(null);
@@ -78,13 +91,37 @@ export function AgentNewBookingForm({ packages, addOns, agentId, agentBusinessNa
 
   // Price calculation preview
   const selectedPkg    = packages.find((p) => p.id === packageId);
-  const pkgPrice       = Number(selectedPkg?.touristPrice ?? 0);
+  const isLocalCustomer = customerNationality.trim().toUpperCase() === "MV";
+  const pkgPrice       = isLocalCustomer && (selectedPkg as any)?.localPriceMvr
+    ? Number((selectedPkg as any).localPriceMvr)
+    : Number(selectedPkg?.touristPrice ?? 0);
   const addOnTotal     = selectedAddOns.reduce((sum, id) => {
     const a = addOns.find((x) => x.id === id);
-    return sum + (Number(a?.price ?? 0) * numRiders);
+    const price = isLocalCustomer && (a as any)?.localPriceMvr ? Number((a as any).localPriceMvr) : Number(a?.price ?? 0);
+    return sum + (price * numRiders);
   }, 0);
   const subtotal       = pkgPrice * numRiders + addOnTotal;
-  const commissionAmt  = (subtotal * commissionRate) / 100;
+  const calcCommission = (base: number, qty: number, type?: string | null, value?: number | null) => {
+    if (value == null || value <= 0) return null;
+    return type === "FIXED" ? value * qty : (base * value) / 100;
+  };
+  const packageAgentType = isLocalCustomer ? localCommissionType : touristCommissionType;
+  const packageAgentValue = isLocalCustomer ? localCommissionValue : touristCommissionValue;
+  const packageBase = pkgPrice * numRiders;
+  const packageCommission = calcCommission(packageBase, numRiders, packageAgentType, packageAgentValue)
+    ?? calcCommission(packageBase, numRiders, selectedPkg?.agentCommissionType, selectedPkg?.agentCommissionValue == null ? null : Number(selectedPkg.agentCommissionValue))
+    ?? (packageBase * commissionRate) / 100;
+  const addOnCommission = selectedAddOns.reduce((sum, id) => {
+    const addon = addOns.find((x) => x.id === id);
+    if (!addon || addon.agentCommissionEligible === false) return sum;
+    const price = isLocalCustomer && (addon as any).localPriceMvr ? Number((addon as any).localPriceMvr) : Number(addon.price ?? 0);
+    const lineTotal = price * numRiders;
+    const amount = calcCommission(lineTotal, numRiders, addOnCommissionType, addOnCommissionValue)
+      ?? calcCommission(lineTotal, numRiders, addon.agentCommissionType, addon.agentCommissionValue == null ? null : Number(addon.agentCommissionValue))
+      ?? (commissionBasis === "PACKAGE_AND_ADDONS" ? (lineTotal * commissionRate) / 100 : 0);
+    return sum + amount;
+  }, 0);
+  const commissionAmt  = packageCommission + addOnCommission;
 
   async function handleSubmit() {
     setError(null);
@@ -151,7 +188,7 @@ export function AgentNewBookingForm({ packages, addOns, agentId, agentBusinessNa
         <div className="bg-muted/40 rounded-xl p-4 text-sm max-w-xs mx-auto space-y-2">
           <p className="text-muted-foreground">Your commission on this booking</p>
           <p className="font-display font-bold text-xl text-primary">{formatCurrency(result.commission)}</p>
-          <p className="text-xs text-muted-foreground">({commissionRate}% · pending payout)</p>
+          <p className="text-xs text-muted-foreground">(pending payout)</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <a
@@ -351,9 +388,9 @@ export function AgentNewBookingForm({ packages, addOns, agentId, agentBusinessNa
 
           {/* Commission preview */}
           <div className="admin-card bg-primary/5 border-primary/20 space-y-1">
-            <p className="text-xs text-muted-foreground font-medium">Commission preview ({commissionRate}%)</p>
+            <p className="text-xs text-muted-foreground font-medium">Commission preview</p>
             <p className="font-display font-bold text-xl text-primary">{formatCurrency(commissionAmt)}</p>
-            <p className="text-xs text-muted-foreground">on subtotal of {formatCurrency(subtotal)}</p>
+            <p className="text-xs text-muted-foreground">based on your package and add-on rules</p>
           </div>
 
           <div className="flex gap-3 justify-between">

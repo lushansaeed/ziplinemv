@@ -146,7 +146,7 @@ export default async function AgentDashboardPage() {
           <p className="font-semibold text-sm text-sky-900 dark:text-sky-400">Agent portal tips</p>
           <div className="grid sm:grid-cols-3 gap-4 text-sm text-sky-800 dark:text-sky-300">
             {[
-              { icon: Plus,          text: `Create bookings for your customers — your commission of ${agent.commissionRate}% is calculated automatically.` },
+              { icon: Plus,          text: "Create bookings for your customers — your commission is calculated automatically from your agent rules." },
               { icon: Users,         text: "All bookings you create are linked to your account. Customers are tracked as yours." },
               { icon: CalendarCheck, text: "Share the booking confirmation link or QR code with your customers before their ride day." },
             ].map((tip, i) => {
