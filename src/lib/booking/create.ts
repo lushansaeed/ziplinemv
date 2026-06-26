@@ -224,6 +224,38 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
         });
       }
 
+      // Create agent commission record
+      if (input.agentId) {
+        const [agent, pkg] = await Promise.all([
+          tx.agent.findUnique({
+            where: { id: input.agentId },
+            select: { commissionRate: true, commissionBasis: true, status: true },
+          }),
+          tx.package.findUnique({
+            where: { id: input.packageId },
+            select: { agentCommissionEligible: true },
+          }),
+        ]);
+
+        if (agent?.status === "APPROVED" && pkg?.agentCommissionEligible) {
+          const commissionBase = agent.commissionBasis === "PACKAGE_ONLY"
+            ? priceResult.basePrice
+            : priceResult.total;
+          const commissionAmount = (commissionBase * Number(agent.commissionRate)) / 100;
+
+          await tx.agentCommission.create({
+            data: {
+              bookingId: b.id,
+              agentId:   input.agentId,
+              amount:    commissionAmount,
+              rate:      Number(agent.commissionRate),
+              basis:     agent.commissionBasis,
+              status:    "PENDING",
+            },
+          });
+        }
+      }
+
       // Create affiliate commission record
       if (affiliateId && affiliateCouponRecord) {
         const affiliate = await tx.affiliate.findUnique({
