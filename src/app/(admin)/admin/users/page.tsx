@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ensureDefaultStaffRoles, requirePermission } from "@/lib/auth/permissions";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { UsersTable } from "@/components/admin/users/users-table";
 
@@ -9,7 +8,6 @@ export const metadata: Metadata = { title: "Users & Roles | Admin" };
 
 export default async function UsersPage() {
   await requirePermission("staff", "view");
-  await ensureDefaultStaffRoles();
 
   const [users, staffRoles] = await Promise.all([
     prisma.user.findMany({

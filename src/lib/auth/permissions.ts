@@ -171,35 +171,69 @@ export async function logAudit(input: {
 }
 
 export async function ensureDefaultStaffRoles() {
-  for (const [name, modulePermissions] of Object.entries(DEFAULT_ROLE_PERMISSIONS)) {
-    const role = await prisma.staffRole.upsert({
-      where: { name },
-      update: name === "Admin" ? { isSystem: true, isAdmin: true, active: true } : {},
-      create: {
-        name,
-        isSystem: name === "Admin",
-        isAdmin: name === "Admin",
-        active: true,
-      },
+  const defaultRoleNames = Object.keys(DEFAULT_ROLE_PERMISSIONS);
+  const expectedPermissionRows = defaultRoleNames.length * PERMISSION_MODULES.reduce((sum, module) => sum + module.actions.length, 0);
+  let roles = await prisma.staffRole.findMany({
+    where: { name: { in: defaultRoleNames } },
+    select: { id: true, name: true },
+  });
+  const existingNames = new Set(roles.map((role) => role.name));
+  const existingPermissionRows = roles.length
+    ? await prisma.rolePermission.count({ where: { roleId: { in: roles.map((role) => role.id) } } })
+    : 0;
+
+  if (roles.length < defaultRoleNames.length || existingPermissionRows < expectedPermissionRows) {
+    await prisma.staffRole.createMany({
+      data: defaultRoleNames
+        .filter((name) => !existingNames.has(name))
+        .map((name) => ({
+          name,
+          isSystem: name === "Admin",
+          isAdmin: name === "Admin",
+          active: true,
+        })),
+      skipDuplicates: true,
     });
 
-    for (const permissionModule of PERMISSION_MODULES) {
-      for (const action of permissionModule.actions) {
-        const allowed = Boolean(modulePermissions[permissionModule.key]?.includes(action as PermissionAction));
-        await prisma.rolePermission.upsert({
-          where: { roleId_module_action: { roleId: role.id, module: permissionModule.key, action } },
-          update: { allowed },
-          create: { roleId: role.id, module: permissionModule.key, action, allowed },
-        });
-      }
+    roles = await prisma.staffRole.findMany({
+      where: { name: { in: defaultRoleNames } },
+      select: { id: true, name: true },
+    });
+
+    await prisma.rolePermission.createMany({
+      data: roles.flatMap((role) => {
+        const modulePermissions = DEFAULT_ROLE_PERMISSIONS[role.name] ?? {};
+        return PERMISSION_MODULES.flatMap((permissionModule) =>
+          permissionModule.actions.map((action) => ({
+            roleId: role.id,
+            module: permissionModule.key,
+            action,
+            allowed: Boolean(modulePermissions[permissionModule.key]?.includes(action as PermissionAction)),
+          }))
+        );
+      }),
+      skipDuplicates: true,
+    });
+
+    const adminRole = roles.find((role) => role.name === "Admin");
+    if (adminRole) {
+      await prisma.staffRole.update({
+        where: { id: adminRole.id },
+        data: { isSystem: true, isAdmin: true, active: true },
+      });
+      await prisma.rolePermission.updateMany({
+        where: { roleId: adminRole.id },
+        data: { allowed: true },
+      });
     }
   }
 
-  const adminRole = await prisma.staffRole.findUnique({ where: { name: "Admin" } });
-  if (adminRole) {
+  const roleByName = new Map(roles.map((role) => [role.name, role.id]));
+  const adminRoleId = roleByName.get("Admin");
+  if (adminRoleId) {
     await prisma.user.updateMany({
       where: { role: { in: [UserRole.SUPER_ADMIN, UserRole.ADMIN] }, staffRoleId: null },
-      data: { staffRoleId: adminRole.id },
+      data: { staffRoleId: adminRoleId },
     });
   }
 
@@ -211,11 +245,11 @@ export async function ensureDefaultStaffRoles() {
   ];
 
   for (const [userRole, staffRoleName] of roleMap) {
-    const staffRole = await prisma.staffRole.findUnique({ where: { name: staffRoleName } });
-    if (!staffRole) continue;
+    const staffRoleId = roleByName.get(staffRoleName);
+    if (!staffRoleId) continue;
     await prisma.user.updateMany({
       where: { role: userRole, staffRoleId: null },
-      data: { staffRoleId: staffRole.id },
+      data: { staffRoleId },
     });
   }
 }

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { ensureDefaultStaffRoles, logAudit, PERMISSION_MODULES, requireApiPermission } from "@/lib/auth/permissions";
+import { logAudit, PERMISSION_MODULES, requireApiPermission } from "@/lib/auth/permissions";
 
 function normalizedPermissions(input: any) {
   const allowed = new Set<string>(
@@ -19,7 +19,6 @@ export async function GET() {
   const auth = await requireApiPermission("roles", "view");
   if (!auth.ok) return auth.response;
 
-  await ensureDefaultStaffRoles();
   const roles = await prisma.staffRole.findMany({
     orderBy: [{ isAdmin: "desc" }, { name: "asc" }],
     include: {
