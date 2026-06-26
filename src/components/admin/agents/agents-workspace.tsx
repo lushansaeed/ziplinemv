@@ -19,6 +19,12 @@ interface AgentRow {
   localCommissionValue: number | null;
   addOnCommissionType: "PERCENTAGE" | "FIXED" | null;
   addOnCommissionValue: number | null;
+  addOnCommissions: Array<{
+    addOnId: string;
+    type: "PERCENTAGE" | "FIXED";
+    value: number;
+    addOn: { id: string; name: string };
+  }>;
   createdAt: Date;
   user: { email: string; lastLoginAt: Date | null };
   _count: { bookings: number };
@@ -33,11 +39,12 @@ interface ApplicationRow {
 interface AgentsWorkspaceProps {
   agents:        AgentRow[];
   applications:  ApplicationRow[];
+  addOns:        Array<{ id: string; name: string }>;
   commissionMap: Record<string, number>;
   salesMap:      Record<string, number>;
 }
 
-export function AgentsWorkspace({ agents, applications, commissionMap, salesMap }: AgentsWorkspaceProps) {
+export function AgentsWorkspace({ agents, applications, addOns, commissionMap, salesMap }: AgentsWorkspaceProps) {
   const [activeTab, setActiveTab]   = useState<"agents" | "applications">("applications" in {} ? "agents" : "agents");
   const [isPending, startTransition] = useTransition();
   const [confirmSuspend, setConfirmSuspend] = useState<string | null>(null);
@@ -51,6 +58,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
     localCommissionValue: "",
     addOnCommissionType: "PERCENTAGE" as "PERCENTAGE" | "FIXED",
     addOnCommissionValue: "",
+    addOnCommissions: {} as Record<string, { type: "PERCENTAGE" | "FIXED"; value: string }>,
   });
 
   const tab = applications.length > 0 ? "applications" : "agents";
@@ -82,6 +90,9 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
   }
 
   function openCommissionEditor(agent: AgentRow) {
+    const addOnCommissionMap = Object.fromEntries(
+      agent.addOnCommissions.map((c) => [c.addOnId, { type: c.type, value: String(c.value) }])
+    );
     setEditCommission(agent.id);
     setCommissionForm({
       commissionRate: String(agent.commissionRate),
@@ -92,11 +103,25 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
       localCommissionValue: agent.localCommissionValue == null ? "" : String(agent.localCommissionValue),
       addOnCommissionType: agent.addOnCommissionType ?? "PERCENTAGE",
       addOnCommissionValue: agent.addOnCommissionValue == null ? "" : String(agent.addOnCommissionValue),
+      addOnCommissions: addOnCommissionMap,
     });
   }
 
-  function updateCommissionForm(key: keyof typeof commissionForm, value: string) {
+  function updateCommissionForm(key: keyof Omit<typeof commissionForm, "addOnCommissions">, value: string) {
     setCommissionForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function updateAddOnCommission(addOnId: string, key: "type" | "value", value: string) {
+    setCommissionForm((prev) => ({
+      ...prev,
+      addOnCommissions: {
+        ...prev.addOnCommissions,
+        [addOnId]: {
+          type: key === "type" ? value as "PERCENTAGE" | "FIXED" : prev.addOnCommissions[addOnId]?.type ?? "PERCENTAGE",
+          value: key === "value" ? value : prev.addOnCommissions[addOnId]?.value ?? "",
+        },
+      },
+    }));
   }
 
   function doUpdateCommission(agentId: string) {
@@ -114,6 +139,11 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
         localCommissionValue: numberOrNull(commissionForm.localCommissionValue),
         addOnCommissionType: commissionForm.addOnCommissionType,
         addOnCommissionValue: numberOrNull(commissionForm.addOnCommissionValue),
+        addOnCommissions: addOns.map((addOn) => ({
+          addOnId: addOn.id,
+          type: commissionForm.addOnCommissions[addOn.id]?.type,
+          value: numberOrNull(commissionForm.addOnCommissions[addOn.id]?.value ?? ""),
+        })),
       });
       if (r.success) { toast.success("Commission updated"); setEditCommission(null); }
       else toast.error((r as any).error ?? "Action failed");
@@ -236,7 +266,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
                     <td><StatusBadge value={agent.status} type="application" /></td>
                     <td>
                       {editCommission === agent.id ? (
-                        <div className="min-w-[360px] space-y-3 rounded-lg border border-border bg-background p-3">
+                        <div className="min-w-[440px] space-y-3 rounded-lg border border-border bg-background p-3">
                           <div className="grid grid-cols-[88px_1fr_96px] gap-2 items-end">
                             <p className="text-xs text-muted-foreground pb-2">Default</p>
                             <select
@@ -259,13 +289,13 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
                           {[
                             ["Tourist", "touristCommissionType", "touristCommissionValue", "/ rider"],
                             ["Local", "localCommissionType", "localCommissionValue", "/ rider"],
-                            ["Add-ons", "addOnCommissionType", "addOnCommissionValue", "/ unit"],
+                            ["Add-ons fallback", "addOnCommissionType", "addOnCommissionValue", "/ unit"],
                           ].map(([label, typeKey, valueKey, unit]) => (
                             <div key={label} className="grid grid-cols-[88px_1fr_96px] gap-2 items-center">
                               <p className="text-xs font-medium">{label}</p>
                               <select
                                 value={(commissionForm as any)[typeKey]}
-                                onChange={(e) => updateCommissionForm(typeKey as keyof typeof commissionForm, e.target.value)}
+                                onChange={(e) => updateCommissionForm(typeKey as keyof Omit<typeof commissionForm, "addOnCommissions">, e.target.value)}
                                 className="px-2 py-1.5 text-xs rounded border border-border bg-background"
                               >
                                 <option value="PERCENTAGE">Percentage</option>
@@ -276,12 +306,39 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
                                 min={0}
                                 step={0.01}
                                 value={(commissionForm as any)[valueKey]}
-                                onChange={(e) => updateCommissionForm(valueKey as keyof typeof commissionForm, e.target.value)}
+                                onChange={(e) => updateCommissionForm(valueKey as keyof Omit<typeof commissionForm, "addOnCommissions">, e.target.value)}
                                 className="px-2 py-1.5 text-xs rounded border border-border bg-background"
                                 placeholder="Default"
                               />
                             </div>
                           ))}
+                          {addOns.length > 0 && (
+                            <div className="space-y-2 border-t border-border pt-3">
+                              <p className="text-xs font-semibold text-muted-foreground">Specific add-on rates</p>
+                              {addOns.map((addOn) => (
+                                <div key={addOn.id} className="grid grid-cols-[128px_1fr_96px] gap-2 items-center">
+                                  <p className="truncate text-xs font-medium">{addOn.name}</p>
+                                  <select
+                                    value={commissionForm.addOnCommissions[addOn.id]?.type ?? "PERCENTAGE"}
+                                    onChange={(e) => updateAddOnCommission(addOn.id, "type", e.target.value)}
+                                    className="px-2 py-1.5 text-xs rounded border border-border bg-background"
+                                  >
+                                    <option value="PERCENTAGE">Percentage</option>
+                                    <option value="FIXED">Fixed / unit</option>
+                                  </select>
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    step={0.01}
+                                    value={commissionForm.addOnCommissions[addOn.id]?.value ?? ""}
+                                    onChange={(e) => updateAddOnCommission(addOn.id, "value", e.target.value)}
+                                    className="px-2 py-1.5 text-xs rounded border border-border bg-background"
+                                    placeholder="Fallback"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex justify-end gap-2">
                             <button onClick={() => setEditCommission(null)} className="p-1.5 rounded hover:bg-muted">
                               <X className="w-3.5 h-3.5" />
@@ -302,7 +359,7 @@ export function AgentsWorkspace({ agents, applications, commissionMap, salesMap 
                           <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
                             <p>Tourist: {formatCommission(agent.touristCommissionType, agent.touristCommissionValue, "/ rider")}</p>
                             <p>Local: {formatCommission(agent.localCommissionType, agent.localCommissionValue, "/ rider")}</p>
-                            <p>Add-ons: {formatCommission(agent.addOnCommissionType, agent.addOnCommissionValue, "/ unit")}</p>
+                            <p>Add-ons: {agent.addOnCommissions.length} specific, fallback {formatCommission(agent.addOnCommissionType, agent.addOnCommissionValue, "/ unit")}</p>
                           </div>
                         </button>
                       )}

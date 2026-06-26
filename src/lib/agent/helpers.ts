@@ -16,6 +16,9 @@ export async function getApprovedAgent() {
       touristCommissionType: true, touristCommissionValue: true,
       localCommissionType: true, localCommissionValue: true,
       addOnCommissionType: true, addOnCommissionValue: true,
+      addOnCommissions: {
+        select: { addOnId: true, type: true, value: true },
+      },
       canMakeUnpaidBookings: true, status: true,
     },
   });

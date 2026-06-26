@@ -263,8 +263,26 @@ model Agent {
   bookings    Booking[]
   customers   Customer[]
   commissions AgentCommission[]
+  addOnCommissions AgentAddOnCommission[]
 
   @@map("agents")
+}
+
+model AgentAddOnCommission {
+  id        String       @id @default(cuid())
+  agentId   String       @map("agent_id")
+  agent     Agent        @relation(fields: [agentId], references: [id])
+  addOnId   String       @map("add_on_id")
+  addOn     AddOn        @relation(fields: [addOnId], references: [id])
+  type      DiscountType
+  value     Decimal      @db.Decimal(10, 2)
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  @@unique([agentId, addOnId])
+  @@index([agentId])
+  @@index([addOnId])
+  @@map("agent_add_on_commissions")
 }
 
 model AgentCommission {
@@ -540,6 +558,7 @@ model AddOn {
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   bookingAddOns BookingAddOn[]
+  agentCommissions AgentAddOnCommission[]
 
   @@map("add_ons")
 }

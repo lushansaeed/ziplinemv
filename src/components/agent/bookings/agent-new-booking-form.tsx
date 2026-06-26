@@ -26,6 +26,7 @@ interface Props {
   localCommissionValue?: number | null;
   addOnCommissionType?: string | null;
   addOnCommissionValue?: number | null;
+  addOnCommissions?: Array<{ addOnId: string; type: string; value: number }>;
   canMakeUnpaidBookings: boolean;
 }
 
@@ -33,7 +34,7 @@ export function AgentNewBookingForm({
   packages, addOns, agentId, agentBusinessName, commissionRate, commissionBasis,
   touristCommissionType, touristCommissionValue,
   localCommissionType, localCommissionValue,
-  addOnCommissionType, addOnCommissionValue,
+  addOnCommissionType, addOnCommissionValue, addOnCommissions = [],
   canMakeUnpaidBookings,
 }: Props) {
   const router = useRouter();
@@ -116,7 +117,9 @@ export function AgentNewBookingForm({
     if (!addon || addon.agentCommissionEligible === false) return sum;
     const price = isLocalCustomer && (addon as any).localPriceMvr ? Number((addon as any).localPriceMvr) : Number(addon.price ?? 0);
     const lineTotal = price * numRiders;
-    const amount = calcCommission(lineTotal, numRiders, addOnCommissionType, addOnCommissionValue)
+    const agentSpecific = addOnCommissions.find((c) => c.addOnId === id);
+    const amount = calcCommission(lineTotal, numRiders, agentSpecific?.type, agentSpecific?.value)
+      ?? calcCommission(lineTotal, numRiders, addOnCommissionType, addOnCommissionValue)
       ?? calcCommission(lineTotal, numRiders, addon.agentCommissionType, addon.agentCommissionValue == null ? null : Number(addon.agentCommissionValue))
       ?? (commissionBasis === "PACKAGE_AND_ADDONS" ? (lineTotal * commissionRate) / 100 : 0);
     return sum + amount;

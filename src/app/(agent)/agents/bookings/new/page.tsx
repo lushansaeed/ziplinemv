@@ -49,6 +49,11 @@ export default async function AgentNewBookingPage() {
           localCommissionValue={agent.localCommissionValue == null ? null : Number(agent.localCommissionValue)}
           addOnCommissionType={agent.addOnCommissionType}
           addOnCommissionValue={agent.addOnCommissionValue == null ? null : Number(agent.addOnCommissionValue)}
+          addOnCommissions={(agent as any).addOnCommissions?.map((c: any) => ({
+            addOnId: c.addOnId,
+            type: c.type,
+            value: Number(c.value),
+          })) ?? []}
           canMakeUnpaidBookings={agent.canMakeUnpaidBookings}
         />
       </div>

@@ -8,17 +8,25 @@ import { AgentsWorkspace } from "@/components/admin/agents/agents-workspace";
 export const metadata: Metadata = { title: "Agents | Admin" };
 
 async function getAgentsData() {
-  const [agents, applications] = await Promise.all([
+  const [agents, applications, addOns] = await Promise.all([
     prisma.agent.findMany({
       orderBy: { createdAt: "desc" },
       include: {
         user: { select: { email: true, lastLoginAt: true } },
         _count: { select: { bookings: true } },
+        addOnCommissions: {
+          include: { addOn: { select: { id: true, name: true } } },
+        },
       },
     }),
     prisma.agentApplication.findMany({
       where:   { status: "PENDING" },
       orderBy: { submittedAt: "desc" },
+    }),
+    prisma.addOn.findMany({
+      where: { active: true },
+      orderBy: { displayOrder: "asc" },
+      select: { id: true, name: true },
     }),
   ]);
 
@@ -42,7 +50,7 @@ async function getAgentsData() {
     salesData.map((s) => [s.agentId!, Number(s._sum.total ?? 0)])
   );
 
-  return { agents, applications, commissionMap, salesMap };
+  return { agents, applications, addOns, commissionMap, salesMap };
 }
 
 export default async function AgentsPage() {

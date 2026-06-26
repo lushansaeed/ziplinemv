@@ -252,6 +252,10 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
               localCommissionValue: true,
               addOnCommissionType: true,
               addOnCommissionValue: true,
+              addOnCommissions: {
+                where: { addOnId: { in: input.addOnIds } },
+                select: { addOnId: true, type: true, value: true },
+              },
             },
           }),
           tx.package.findUnique({
@@ -269,6 +273,9 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           const isLocalBooking = priceResult.currency === "MVR";
           const agentPackageType = isLocalBooking ? agent.localCommissionType : agent.touristCommissionType;
           const agentPackageValue = isLocalBooking ? agent.localCommissionValue : agent.touristCommissionValue;
+          const agentAddOnCommissionMap = new Map(
+            agent.addOnCommissions.map((c) => [c.addOnId, c])
+          );
           const packageCommission = pkg?.agentCommissionEligible
             ? agentPackageValue != null
               ? agentPackageType === "FIXED"
@@ -289,7 +296,12 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
               ? Number(addOn.localPriceMvr)
               : Number(addOn.price);
             const lineTotal = addOnPrice * qty;
-            const amount = agent.addOnCommissionValue != null
+            const agentSpecificAddOn = agentAddOnCommissionMap.get(addOn.id);
+            const amount = agentSpecificAddOn
+              ? agentSpecificAddOn.type === "FIXED"
+                ? Number(agentSpecificAddOn.value) * qty
+                : (lineTotal * Number(agentSpecificAddOn.value)) / 100
+              : agent.addOnCommissionValue != null
               ? agent.addOnCommissionType === "FIXED"
                 ? Number(agent.addOnCommissionValue) * qty
                 : (lineTotal * Number(agent.addOnCommissionValue)) / 100

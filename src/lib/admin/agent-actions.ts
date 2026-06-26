@@ -108,6 +108,11 @@ type AgentCommissionInput = {
   localCommissionValue?: number | null;
   addOnCommissionType?: string | null;
   addOnCommissionValue?: number | null;
+  addOnCommissions?: Array<{
+    addOnId: string;
+    type?: string | null;
+    value?: number | null;
+  }>;
 };
 
 function normalizeCommission(type?: string | null, value?: number | null) {
@@ -123,18 +128,41 @@ export async function updateAgentCommission(agentId: string, input: AgentCommiss
   const local   = normalizeCommission(input.localCommissionType, input.localCommissionValue);
   const addOn   = normalizeCommission(input.addOnCommissionType, input.addOnCommissionValue);
 
-  await prisma.agent.update({
-    where: { id: agentId },
-    data:  {
-      commissionRate:          input.commissionRate,
-      commissionBasis:         input.commissionBasis as any,
-      touristCommissionType:   tourist.type as any,
-      touristCommissionValue:  tourist.value,
-      localCommissionType:     local.type as any,
-      localCommissionValue:    local.value,
-      addOnCommissionType:     addOn.type as any,
-      addOnCommissionValue:    addOn.value,
-    },
+  await prisma.$transaction(async (tx) => {
+    await tx.agent.update({
+      where: { id: agentId },
+      data:  {
+        commissionRate:          input.commissionRate,
+        commissionBasis:         input.commissionBasis as any,
+        touristCommissionType:   tourist.type as any,
+        touristCommissionValue:  tourist.value,
+        localCommissionType:     local.type as any,
+        localCommissionValue:    local.value,
+        addOnCommissionType:     addOn.type as any,
+        addOnCommissionValue:    addOn.value,
+      },
+    });
+
+    for (const item of input.addOnCommissions ?? []) {
+      const normalized = normalizeCommission(item.type, item.value);
+      if (!normalized.value || !normalized.type) {
+        await tx.agentAddOnCommission.deleteMany({
+          where: { agentId, addOnId: item.addOnId },
+        });
+        continue;
+      }
+
+      await tx.agentAddOnCommission.upsert({
+        where: { agentId_addOnId: { agentId, addOnId: item.addOnId } },
+        update: { type: normalized.type as any, value: normalized.value },
+        create: {
+          agentId,
+          addOnId: item.addOnId,
+          type:    normalized.type as any,
+          value:   normalized.value,
+        },
+      });
+    }
   });
 
   await prisma.auditLog.create({
