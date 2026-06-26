@@ -7,6 +7,7 @@ import { Camera, Video, Tv2, ArrowRight, Clock, Star, AlertTriangle } from "luci
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "Media Add-ons — Zipline Maldives",
@@ -45,14 +46,7 @@ export default async function AddOnsPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-mango/10 border border-brand-mango/20">
             <span className="text-brand-mango text-xs font-semibold tracking-wider uppercase">Media Add-ons</span>
           </div>
-          <h1 className="font-display font-bold text-5xl lg:text-6xl text-white leading-[1.05]">
-            Add the shot.<br />
-            <span className="text-brand-citrus">Keep the memory.</span>
-          </h1>
-          <p className="text-white/55 text-xl max-w-2xl mx-auto leading-relaxed">
-            Personal phones and cameras aren't allowed on the zipline.
-            That's why we have professionals doing it for you.
-          </p>
+          <PageHeading pageKey="add-ons" className="items-center" subClassName="mx-auto" />
         </div>
 
         {/* Important note */}

@@ -1,10 +1,10 @@
-import { getPageTypography } from "@/lib/public/typography";
 import { PageBackground } from "@/components/public/page-background-server";
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { GalleryGrid } from "@/components/public/gallery-grid";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "Gallery — Zipline Maldives",
@@ -33,13 +33,7 @@ export default async function GalleryPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-turquoise/10 border border-brand-turquoise/20">
             <span className="text-brand-turquoise text-xs font-semibold tracking-wider uppercase">Gallery</span>
           </div>
-          <h1 className="font-display font-bold text-5xl lg:text-6xl text-white leading-[1.05]">
-            428 metres of<br />
-            <span className="text-brand-citrus">stories told.</span>
-          </h1>
-          <p className="text-white/50 text-xl max-w-md mx-auto">
-            Every ride is different. Every story is worth keeping.
-          </p>
+          <PageHeading pageKey="gallery" className="items-center" subClassName="mx-auto" />
         </div>
 
         {media.length === 0 ? (

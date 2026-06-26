@@ -1,4 +1,3 @@
-import { getPageTypography } from "@/lib/public/typography";
 import { PageBackground } from "@/components/public/page-background-server";
 export const dynamic = "force-dynamic";
 
@@ -7,6 +6,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma/client";
 import { FaqAccordion } from "@/components/public/faq-accordion";
 import { ArrowRight } from "lucide-react";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "FAQ — Zipline Maldives",
@@ -39,13 +39,7 @@ export default async function FaqPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-ocean/10 border border-brand-ocean/20">
             <span className="text-brand-ocean text-xs font-semibold tracking-wider uppercase">FAQ</span>
           </div>
-          <h1 className="font-display font-bold text-5xl text-white leading-[1.05]">
-            Got questions?<br />
-            <span className="text-brand-citrus">We've got answers.</span>
-          </h1>
-          <p className="text-white/50 text-lg max-w-md mx-auto">
-            Everything you need to know before your flight.
-          </p>
+          <PageHeading pageKey="faq" className="items-center" subClassName="mx-auto" />
         </div>
 
         {/* Category links */}

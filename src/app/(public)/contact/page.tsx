@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { Phone, Mail, MapPin, Clock, MessageCircle, Instagram, Facebook } from "lucide-react";
 import { ContactForm } from "@/components/public/contact-form";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "Contact — Zipline Maldives",
@@ -34,10 +35,7 @@ export default async function ContactPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-lime/10 border border-brand-lime/20">
             <span className="text-brand-lime text-xs font-semibold tracking-wider uppercase">Contact</span>
           </div>
-          <h1 className="font-display font-bold text-5xl text-white leading-[1.05]">
-            We'd love to<br />
-            <span className="text-brand-citrus">hear from you.</span>
-          </h1>
+          <PageHeading pageKey="contact" className="items-center" subClassName="mx-auto" />
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12">

@@ -30,7 +30,7 @@ export async function PageHeading({
       <h1
         className="font-display font-bold text-white leading-[1.05] text-balance [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
         style={{
-          fontSize:        `${typo.fontSize}px`,
+          fontSize:        `clamp(2rem, ${(typo.fontSize / 16).toFixed(2)}vw, ${typo.fontSize}px)`,
           transform:       typo.rotation !== 0 ? `rotate(${typo.rotation}deg)` : undefined,
           transformOrigin: "left center",
         }}

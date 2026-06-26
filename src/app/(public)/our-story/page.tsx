@@ -4,6 +4,7 @@ export const dynamic = "force-dynamic";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "Our Story — Zipline Maldives",
@@ -21,10 +22,7 @@ export default function OurStoryPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-lime/10 border border-brand-lime/20">
             <span className="text-brand-lime text-xs font-semibold tracking-wider uppercase">Our story</span>
           </div>
-          <h1 className="font-display font-bold text-5xl lg:text-6xl text-white leading-[1.05]">
-            Vahmāfushi is the island<br />
-            <span className="text-brand-citrus">of elevated experiences.</span>
-          </h1>
+          <PageHeading pageKey="our-story" />
         </div>
 
         {/* Story content */}

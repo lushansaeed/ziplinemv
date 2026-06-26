@@ -7,6 +7,7 @@ import { Check, X, ArrowRight } from "lucide-react";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { PageHeading } from "@/components/public/page-heading";
 
 export const metadata: Metadata = {
   title: "Packages — Zipline Maldives",
@@ -66,14 +67,7 @@ export default async function PackagesPage() {
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
             <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">Packages</span>
           </div>
-          <h1 className="font-display font-bold text-5xl lg:text-6xl text-white leading-[1.05]">
-            Book the ride.<br />
-            <span className="text-brand-citrus">Choose your vibe.</span>
-          </h1>
-          <p className="text-white/55 text-xl max-w-2xl mx-auto leading-relaxed">
-            Every package starts with the same 428-metre flight over the Indian Ocean.
-            What you capture is up to you.
-          </p>
+          <PageHeading pageKey="packages" className="items-center" subClassName="mx-auto" />
         </div>
 
         {/* Included in all packages */}

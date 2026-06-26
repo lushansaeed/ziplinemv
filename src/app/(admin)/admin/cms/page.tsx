@@ -13,8 +13,10 @@ async function getCmsData() {
     prisma.setting.findMany({
       where: {
         OR: [
-          { group: { in: ["general", "hero"] } },
-          // Logo settings may have been saved without a group — fetch by key too
+          { group: { in: ["general", "hero", "typography", "homepage_sections"] } },
+          { key: { startsWith: "page_" } },
+          { key: { startsWith: "section_" } },
+          // Logo settings may have been saved without a group - fetch by key too
           { key: { in: ["site_logo_url", "site_logo_size", "site_logo_text"] } },
         ],
       },

@@ -21,6 +21,18 @@ const KEY_GROUPS: Record<string, string> = {
   min_rider_age:         "safety",
 };
 
+function groupForKey(key: string) {
+  if (key.startsWith("page_")) return "typography";
+  if (key.startsWith("section_")) return "homepage_sections";
+  if (key.startsWith("theme_")) return "theme";
+  return KEY_GROUPS[key];
+}
+
+function typeForValue(key: string, value: unknown) {
+  if (key.endsWith("_font_size") || key.endsWith("_rotation")) return "number";
+  return typeof value;
+}
+
 export async function PATCH(req: NextRequest) {
   const auth = await requireApiPermission("settings", "edit");
   if (!auth.ok) return auth.response;
@@ -29,11 +41,11 @@ export async function PATCH(req: NextRequest) {
   const old = await prisma.setting.findMany({ where: { key: { in: Object.keys(body) } } });
 
   for (const [key, value] of Object.entries(body)) {
-    const group = KEY_GROUPS[key];
+    const group = groupForKey(key);
     await prisma.setting.upsert({
       where:  { key },
-      update: { value: value as any, ...(group ? { group } : {}) },
-      create: { key, value: value as any, type: typeof value, ...(group ? { group } : {}) },
+      update: { value: value as any, type: typeForValue(key, value), ...(group ? { group } : {}) },
+      create: { key, value: value as any, type: typeForValue(key, value), ...(group ? { group } : {}) },
     });
   }
 
