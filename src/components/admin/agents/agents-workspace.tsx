@@ -210,7 +210,7 @@ export function AgentsWorkspace({ agents, applications, packages, addOns, commis
     return (
       <tr>
         <td className="py-2 pr-3 text-sm">{label}</td>
-        <td className="py-2 pr-3 text-right text-sm font-medium">{currency === "USD" ? formatCurrency(publicPrice) : `MVR ${publicPrice.toLocaleString()}`}</td>
+        <td className="py-2 pr-3 text-right text-sm font-medium">{currency === "USD" ? formatCurrency(publicPrice) : publicPrice.toLocaleString()}</td>
         <td className="py-2 pr-3">
           <input
             type="number"

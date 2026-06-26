@@ -57,7 +57,7 @@ function commissionAmount(price: number, rule: CommissionRule | null) {
 }
 
 function formatMoney(amount: number, currency: "USD" | "MVR") {
-  return currency === "USD" ? formatCurrency(amount) : `MVR ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  return currency === "USD" ? formatCurrency(amount) : amount.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
 function formatRule(rule: CommissionRule | null, currency: "USD" | "MVR") {
