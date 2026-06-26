@@ -2,13 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { ApplicationStatus, UserStatus } from "@prisma/client";
 import { sendAgentApprovalNotification } from "@/lib/notifications/email";
 
 export async function approveAgent(applicationId: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("agents", "approve");
 
   const application = await prisma.agentApplication.findUnique({
     where: { id: applicationId },
@@ -68,7 +67,7 @@ export async function approveAgent(applicationId: string) {
 }
 
 export async function rejectAgent(applicationId: string, reason?: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("agents", "approve");
 
   await prisma.agentApplication.update({
     where: { id: applicationId },
@@ -84,7 +83,7 @@ export async function rejectAgent(applicationId: string, reason?: string) {
 }
 
 export async function suspendAgent(agentId: string, reason?: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("agents", "edit");
 
   const agent = await prisma.agent.findUnique({ where: { id: agentId }, select: { userId: true } });
   if (!agent) return { success: false, error: "Agent not found" };
@@ -125,7 +124,7 @@ function normalizeCommission(type?: string | null, value?: number | null) {
 }
 
 export async function updateAgentCommission(agentId: string, input: AgentCommissionInput) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("agents", "edit");
   const tourist = normalizeCommission(input.touristCommissionType, input.touristCommissionValue);
   const local   = normalizeCommission(input.localCommissionType, input.localCommissionValue);
   const addOn   = normalizeCommission(input.addOnCommissionType, input.addOnCommissionValue);

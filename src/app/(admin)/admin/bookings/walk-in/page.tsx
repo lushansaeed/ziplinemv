@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { WalkInBookingForm } from "@/components/admin/bookings/walk-in-form";
 
@@ -19,7 +18,7 @@ async function getFormData() {
 }
 
 export default async function WalkInBookingPage() {
-  await requireRole(BOOKING_ACCESS as any);
+  await requirePermission("bookings", "create");
   const { packages, addOns, activityId } = await getFormData();
 
   return (

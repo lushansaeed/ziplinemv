@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { MEDIA_ACCESS } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiRole(MEDIA_ACCESS);
+  const body = await req.json();
+  const auth = await requireApiPermission("media", body.deliveryStatus === "SENT_TO_CUSTOMER" ? "send" : "edit");
   if (!auth.ok) return auth.response;
 
-  const body = await req.json();
+  const old = await prisma.customerMediaDelivery.findUnique({ where: { id: params.id } });
   const { addonStatuses, ...rest } = body;
   const updateData: any = { ...rest };
 
@@ -43,6 +43,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const delivery = await prisma.customerMediaDelivery.update({
     where: { id: params.id },
     data:  updateData,
+  });
+  await logAudit({
+    userId: auth.dbUser.id,
+    action: updateData.deliveryStatus === "SENT_TO_CUSTOMER" ? "MEDIA_DELIVERY_LINK_SENT" : "MEDIA_DELIVERY_UPDATED",
+    module: "media",
+    recordId: params.id,
+    oldValue: old,
+    newValue: delivery,
   });
 
   return NextResponse.json(delivery);

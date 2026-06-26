@@ -2,15 +2,14 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { AddOnsManager } from "@/components/admin/packages/addons-manager";
 
 export const metadata: Metadata = { title: "Add-ons | Admin" };
 
 export default async function AddOnsPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("catalog", "view");
 
   const [addOns, activity] = await Promise.all([
     prisma.addOn.findMany({ orderBy: { displayOrder: "asc" } }),

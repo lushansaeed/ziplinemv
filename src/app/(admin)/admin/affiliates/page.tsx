@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { AffiliatesWorkspace } from "@/components/admin/affiliates/affiliates-workspace";
 
@@ -39,7 +38,7 @@ async function getAffiliateData() {
 }
 
 export default async function AffiliatesPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("affiliates", "view");
   const data = await getAffiliateData();
   return (
     <div>

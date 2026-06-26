@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { WaiversTable } from "@/components/admin/waivers/waivers-table";
 
@@ -54,7 +53,7 @@ export default async function WaiversPage({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  await requireRole(BOOKING_ACCESS as any);
+  await requirePermission("bookings", "view");
   const data = await getWaivers(searchParams);
 
   return (

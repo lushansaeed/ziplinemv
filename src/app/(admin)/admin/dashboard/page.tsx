@@ -5,8 +5,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_ROLES } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { bookingStatusColor, paymentStatusColor, sourceColor } from "@/lib/utils";
@@ -91,7 +90,7 @@ async function getDashboardData() {
 }
 
 export default async function AdminDashboardPage() {
-  await requireRole(ADMIN_ROLES as any);
+  await requirePermission("dashboard", "view");
   const data = await getDashboardData();
 
   const totalRevenue =

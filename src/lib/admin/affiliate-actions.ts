@@ -2,12 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { ApplicationStatus, UserStatus } from "@prisma/client";
 
 export async function approveAffiliate(applicationId: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("affiliates", "approve");
 
   const application = await prisma.affiliateApplication.findUnique({ where: { id: applicationId } });
   if (!application) return { success: false, error: "Application not found" };
@@ -79,7 +78,7 @@ export async function approveAffiliate(applicationId: string) {
 }
 
 export async function rejectAffiliate(applicationId: string, reason?: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("affiliates", "approve");
   await prisma.affiliateApplication.update({
     where: { id: applicationId },
     data:  { status: ApplicationStatus.REJECTED, adminNotes: reason, reviewedAt: new Date() },
@@ -90,7 +89,7 @@ export async function rejectAffiliate(applicationId: string, reason?: string) {
 }
 
 export async function approveCoupon(couponId: string) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("affiliates", "approve");
   await prisma.affiliateCoupon.update({
     where: { id: couponId },
     data:  { status: ApplicationStatus.APPROVED, approvedAt: new Date() },
@@ -101,7 +100,7 @@ export async function approveCoupon(couponId: string) {
 }
 
 export async function updateAffiliateCommission(affiliateId: string, rate: number) {
-  const admin = await requireRole(ADMIN_AND_ABOVE as any);
+  const admin = await requirePermission("affiliates", "edit");
   await prisma.affiliate.update({ where: { id: affiliateId }, data: { commissionRate: rate } });
   await prisma.auditLog.create({ data: { userId: admin.id, action: "AFFILIATE_COMMISSION_UPDATED", module: "affiliates", recordId: affiliateId, newValue: { rate } } });
   revalidatePath("/admin/affiliates");

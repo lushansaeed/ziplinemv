@@ -2,15 +2,14 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { PackagesManager } from "@/components/admin/packages/packages-manager";
 
 export const metadata: Metadata = { title: "Packages | Admin" };
 
 export default async function PackagesPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("catalog", "view");
 
   const [packages, activity] = await Promise.all([
     prisma.package.findMany({

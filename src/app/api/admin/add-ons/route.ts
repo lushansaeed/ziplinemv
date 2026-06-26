@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("catalog", "create");
   if (!auth.ok) return auth.response;
 
   const {
@@ -34,6 +33,7 @@ export async function POST(req: NextRequest) {
       active:        active ?? true,
     },
   });
+  await logAudit({ userId: auth.dbUser.id, action: "ADD_ON_CREATED", module: "catalog", recordId: addon.id, newValue: addon });
 
   return NextResponse.json(addon, { status: 201 });
 }

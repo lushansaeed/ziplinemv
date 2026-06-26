@@ -4,31 +4,35 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Save, UserX, UserCheck } from "lucide-react";
 import { ROLE_LABELS } from "@/lib/auth/roles";
-import { formatDate, formatDateTime, cn } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import type { UserRole } from "@prisma/client";
 
 interface UserRow {
   id: string; name: string; email: string;
-  role: UserRole; status: string;
+  role: UserRole; status: string; staffRoleId: string | null; staffRole: { name: string } | null;
   lastLoginAt: Date | null; createdAt: Date;
 }
 
-const ADMIN_ROLES: UserRole[] = ["SUPER_ADMIN", "ADMIN", "OPERATIONS_MANAGER", "BOOKING_STAFF", "MEDIA_STAFF", "FINANCE"] as any[];
+interface StaffRoleOption {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+}
 
-export function UsersTable({ users }: { users: UserRow[] }) {
+export function UsersTable({ users, staffRoles }: { users: UserRow[]; staffRoles: StaffRoleOption[] }) {
   const [isPending, startTransition] = useTransition();
   const [editId, setEditId]          = useState<string | null>(null);
   const [editRole, setEditRole]      = useState<string>("");
 
-  async function updateRole(userId: string, role: string) {
+  async function updateStaffRole(userId: string, staffRoleId: string) {
     startTransition(async () => {
       const res = await fetch(`/api/admin/users/${userId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
+        body: JSON.stringify({ staffRoleId }),
       });
-      if (res.ok) { toast.success("Role updated"); setEditId(null); }
-      else toast.error("Failed to update role");
+      if (res.ok) { toast.success("Staff role updated"); setEditId(null); }
+      else toast.error((await res.json()).error ?? "Failed to update staff role");
     });
   }
 
@@ -54,6 +58,7 @@ export function UsersTable({ users }: { users: UserRow[] }) {
               <th>Name</th>
               <th>Email</th>
               <th>Role</th>
+              <th>Permissions</th>
               <th>Status</th>
               <th>Last login</th>
               <th>Member since</th>
@@ -66,6 +71,9 @@ export function UsersTable({ users }: { users: UserRow[] }) {
                 <td className="font-medium text-sm">{user.name}</td>
                 <td className="text-sm text-muted-foreground">{user.email}</td>
                 <td>
+                  <span className="text-sm text-muted-foreground">{ROLE_LABELS[user.role] ?? user.role}</span>
+                </td>
+                <td>
                   {editId === user.id ? (
                     <div className="flex items-center gap-1.5">
                       <select
@@ -73,11 +81,11 @@ export function UsersTable({ users }: { users: UserRow[] }) {
                         onChange={(e) => setEditRole(e.target.value)}
                         className="text-xs rounded border border-border bg-background px-2 py-1 focus:outline-none"
                       >
-                        {ADMIN_ROLES.map((r) => (
-                          <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                        {staffRoles.map((role) => (
+                          <option key={role.id} value={role.id}>{role.name}</option>
                         ))}
                       </select>
-                      <button onClick={() => updateRole(user.id, editRole)} disabled={isPending}
+                      <button onClick={() => updateStaffRole(user.id, editRole)} disabled={isPending}
                         className="p-1 rounded bg-primary text-primary-foreground">
                         <Save className="w-3 h-3" />
                       </button>
@@ -85,10 +93,10 @@ export function UsersTable({ users }: { users: UserRow[] }) {
                     </div>
                   ) : (
                     <button
-                      onClick={() => { setEditId(user.id); setEditRole(user.role); }}
+                      onClick={() => { setEditId(user.id); setEditRole(user.staffRoleId ?? staffRoles[0]?.id ?? ""); }}
                       className="text-sm font-medium text-foreground hover:text-primary hover:underline transition-colors"
                     >
-                      {ROLE_LABELS[user.role] ?? user.role}
+                      {user.staffRole?.name ?? "No staff role"}
                     </button>
                   )}
                 </td>
@@ -125,7 +133,7 @@ export function UsersTable({ users }: { users: UserRow[] }) {
               </tr>
             ))}
             {users.length === 0 && (
-              <tr><td colSpan={7} className="text-center py-10 text-sm text-muted-foreground">No staff users yet.</td></tr>
+              <tr><td colSpan={8} className="text-center py-10 text-sm text-muted-foreground">No staff users yet.</td></tr>
             )}
           </tbody>
         </table>

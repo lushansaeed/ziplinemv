@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { FINANCE_ACCESS } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(FINANCE_ACCESS);
+  const auth = await requireApiPermission("payments", "create");
   if (!auth.ok) return auth.response;
 
   const { code, discountType, discountValue, maxUses, validFrom, validTo, description } = await req.json();

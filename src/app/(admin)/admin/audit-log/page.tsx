@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { AuditLogTable } from "@/components/admin/audit-log/audit-log-table";
 import { Prisma } from "@prisma/client";
@@ -49,7 +48,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("audit", "view");
   const data = await getLogs(searchParams);
   return (
     <div>

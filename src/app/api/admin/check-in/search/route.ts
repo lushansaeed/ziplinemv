@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function GET(req: NextRequest) {
-  const auth = await requireApiRole(BOOKING_ACCESS);
+  const auth = await requireApiPermission("bookings", "view");
   if (!auth.ok) return auth.response;
 
   const q = req.nextUrl.searchParams.get("q")?.trim();

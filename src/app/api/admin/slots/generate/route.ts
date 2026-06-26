@@ -2,11 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { parseISO, getDay } from "date-fns";
 import { SlotStatus } from "@prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { OPERATIONS_AND_ABOVE } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(OPERATIONS_AND_ABOVE);
+  const auth = await requireApiPermission("slots", "create");
   if (!auth.ok) return auth.response;
 
   const { date, activityId } = await req.json();

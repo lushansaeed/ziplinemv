@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { FINANCE_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { PricingWorkspace } from "@/components/admin/pricing/pricing-workspace";
 
@@ -20,7 +19,7 @@ async function getPricingData() {
 }
 
 export default async function PricingPage() {
-  await requireRole(FINANCE_ACCESS as any);
+  await requirePermission("payments", "view");
   const data = await getPricingData();
   return (
     <div>

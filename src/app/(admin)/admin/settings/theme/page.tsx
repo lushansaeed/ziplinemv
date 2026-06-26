@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { ThemeWorkspace } from "@/components/admin/theme/theme-workspace";
 
@@ -17,7 +16,7 @@ async function getThemeData() {
 }
 
 export default async function ThemePage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("settings", "view");
   const data = await getThemeData();
   return (
     <div>

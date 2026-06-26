@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { format } from "date-fns";
-import { requireApiRole } from "@/lib/auth/api";
-import { FINANCE_ACCESS } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 function toCSV(rows: Record<string, any>[]): string {
   if (rows.length === 0) return "";
@@ -22,7 +21,7 @@ function toCSV(rows: Record<string, any>[]): string {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireApiRole(FINANCE_ACCESS);
+  const auth = await requireApiPermission("reports", "export");
   if (!auth.ok) return auth.response;
 
   const { searchParams } = new URL(req.url);
@@ -129,6 +128,13 @@ export async function GET(req: NextRequest) {
       Status:      c.status,
     })));
   }
+
+  await logAudit({
+    userId: auth.dbUser.id,
+    action: "REPORT_EXPORTED",
+    module: "reports",
+    newValue: { type, from, to },
+  });
 
   return new NextResponse(csv, {
     headers: {

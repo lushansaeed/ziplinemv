@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("catalog", "edit");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
+  const old = await prisma.addOn.findUnique({ where: { id: params.id } });
   const {
     id: _id, activityId: _a, createdAt: _c, updatedAt: _u,
     price, localPriceMvr, agentCommissionValue,
@@ -25,16 +25,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       } : {}),
     },
   });
+  await logAudit({ userId: auth.dbUser.id, action: "ADD_ON_UPDATED", module: "catalog", recordId: params.id, oldValue: old, newValue: addon });
   return NextResponse.json(addon);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("catalog", "delete");
   if (!auth.ok) return auth.response;
 
-  const count = await prisma.bookingAddOn.count({ where: { addOnId: params.id } });
-  if (count > 0) return NextResponse.json({ error: "Add-on has bookings" }, { status: 409 });
-
-  await prisma.addOn.delete({ where: { id: params.id } });
+  const old = await prisma.addOn.findUnique({ where: { id: params.id } });
+  await prisma.addOn.update({ where: { id: params.id }, data: { active: false } });
+  await logAudit({ userId: auth.dbUser.id, action: "ADD_ON_ARCHIVED", module: "catalog", recordId: params.id, oldValue: old, newValue: { active: false } });
   return NextResponse.json({ success: true });
 }

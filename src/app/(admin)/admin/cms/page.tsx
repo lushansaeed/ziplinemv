@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { CmsWorkspace } from "@/components/admin/cms/cms-workspace";
 import { getHomepageSections } from "@/lib/public/section-manager";
@@ -28,7 +27,7 @@ async function getCmsData() {
 }
 
 export default async function CmsPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("settings", "view");
   const data = await getCmsData();
   return (
     <div>

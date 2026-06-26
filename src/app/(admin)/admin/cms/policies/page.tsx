@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { PoliciesEditor } from "@/components/admin/cms/policies-editor";
 
 export const metadata: Metadata = { title: "Policies | Admin" };
 
 export default async function PoliciesPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("settings", "view");
   const policies = await prisma.policy.findMany();
   return (
     <div>

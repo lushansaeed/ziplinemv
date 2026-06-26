@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { MEDIA_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { CustomerMediaTable } from "@/components/admin/media/customer-media-table";
 
@@ -76,7 +75,7 @@ export default async function CustomerMediaDeliveryPage({
 }: {
   searchParams: Record<string, string | undefined>;
 }) {
-  await requireRole(MEDIA_ACCESS as any);
+  await requirePermission("media", "view");
   const data = await getDeliveries(searchParams);
   return (
     <div>

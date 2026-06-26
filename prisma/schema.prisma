@@ -163,6 +163,8 @@ model User {
   email        String     @unique
   name         String
   role         UserRole   @default(BOOKING_STAFF)
+  staffRoleId  String?    @map("staff_role_id")
+  staffRole    StaffRole? @relation(fields: [staffRoleId], references: [id])
   status       UserStatus @default(ACTIVE)
   avatarUrl    String?    @map("avatar_url")
   phone        String?
@@ -181,6 +183,37 @@ model User {
   payoutRequests PayoutRequest[]
 
   @@map("users")
+}
+
+model StaffRole {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  isSystem    Boolean  @default(false) @map("is_system")
+  isAdmin     Boolean  @default(false) @map("is_admin")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("staff_roles")
+}
+
+model RolePermission {
+  id        String    @id @default(cuid())
+  roleId    String    @map("role_id")
+  role      StaffRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  module    String
+  action    String
+  allowed   Boolean   @default(false)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([roleId, module, action])
+  @@index([module, action])
+  @@map("role_permissions")
 }
 
 model AuditLog {

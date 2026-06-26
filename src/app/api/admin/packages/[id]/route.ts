@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("catalog", "edit");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
+  const old = await prisma.package.findUnique({ where: { id: params.id } });
 
   // Strip read-only / relational fields that Prisma won't accept in update
   const {
@@ -30,17 +30,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       } : {}),
     },
   });
+  await logAudit({ userId: auth.dbUser.id, action: "PACKAGE_UPDATED", module: "catalog", recordId: params.id, oldValue: old, newValue: pkg });
 
   return NextResponse.json(pkg);
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("catalog", "delete");
   if (!auth.ok) return auth.response;
 
-  const count = await prisma.booking.count({ where: { packageId: params.id } });
-  if (count > 0) return NextResponse.json({ error: "Package has bookings" }, { status: 409 });
-
-  await prisma.package.delete({ where: { id: params.id } });
+  const old = await prisma.package.findUnique({ where: { id: params.id } });
+  await prisma.package.update({ where: { id: params.id }, data: { active: false } });
+  await logAudit({ userId: auth.dbUser.id, action: "PACKAGE_ARCHIVED", module: "catalog", recordId: params.id, oldValue: old, newValue: { active: false } });
   return NextResponse.json({ success: true });
 }

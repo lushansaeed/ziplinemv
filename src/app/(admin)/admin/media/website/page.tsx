@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { MEDIA_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { WebsiteMediaManager } from "@/components/admin/media/website-media-manager";
 
@@ -19,7 +18,7 @@ async function getMediaData() {
 }
 
 export default async function WebsiteMediaPage() {
-  await requireRole(MEDIA_ACCESS as any);
+  await requirePermission("gallery", "view");
   const data = await getMediaData();
   return (
     <div>

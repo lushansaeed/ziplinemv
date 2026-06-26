@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { MEDIA_ACCESS } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(MEDIA_ACCESS);
+  const auth = await requireApiPermission("gallery", "create");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

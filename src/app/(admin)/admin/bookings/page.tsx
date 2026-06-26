@@ -2,8 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { BookingsTable } from "@/components/admin/bookings/bookings-table";
 import { Prisma } from "@prisma/client";
@@ -84,7 +83,7 @@ export default async function BookingsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  await requireRole(BOOKING_ACCESS as any);
+  await requirePermission("bookings", "view");
   const { bookings, total, page, perPage } = await getBookings(searchParams);
 
   return (

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiRole } from "@/lib/auth/api";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
 
 // Map known keys to their groups so settings are always fetchable by group
 const KEY_GROUPS: Record<string, string> = {
@@ -23,10 +22,11 @@ const KEY_GROUPS: Record<string, string> = {
 };
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireApiRole(ADMIN_AND_ABOVE);
+  const auth = await requireApiPermission("settings", "edit");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
+  const old = await prisma.setting.findMany({ where: { key: { in: Object.keys(body) } } });
 
   for (const [key, value] of Object.entries(body)) {
     const group = KEY_GROUPS[key];
@@ -36,6 +36,8 @@ export async function PATCH(req: NextRequest) {
       create: { key, value: value as any, type: typeof value, ...(group ? { group } : {}) },
     });
   }
+
+  await logAudit({ userId: auth.dbUser.id, action: "SETTINGS_UPDATED", module: "settings", oldValue: old, newValue: body });
 
   return NextResponse.json({ success: true });
 }

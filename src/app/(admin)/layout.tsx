@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/actions";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
+import { getUserPermissionSet } from "@/lib/auth/permissions";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getLogoData } from "@/components/shared/site-logo";
 
@@ -20,5 +21,7 @@ export default async function AdminLayout({
     redirect("/auth/login?error=You+don't+have+access+to+the+admin+portal.");
   }
 
-  return <AdminShell user={user} logo={logo}>{children}</AdminShell>;
+  const permissions = await getUserPermissionSet(user.id, user.role);
+
+  return <AdminShell user={user} logo={logo} permissions={Array.from(permissions)}>{children}</AdminShell>;
 }

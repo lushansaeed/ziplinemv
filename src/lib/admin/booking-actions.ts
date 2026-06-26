@@ -3,11 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, PaymentStatus } from "@prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
-  const user = await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("bookings", "edit");
 
   const old = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -35,7 +34,7 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
 }
 
 export async function updatePaymentStatus(bookingId: string, status: PaymentStatus, method?: string) {
-  const user = await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("payments", "edit");
 
   const old = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -54,7 +53,7 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
     data: {
       userId:   user.id,
       action:   "PAYMENT_STATUS_UPDATED",
-      module:   "bookings",
+      module:   "payments",
       recordId: bookingId,
       oldValue: { paymentStatus: old?.paymentStatus },
       newValue: { paymentStatus: status },
@@ -66,7 +65,7 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
 }
 
 export async function cancelBooking(bookingId: string, reason?: string) {
-  const user = await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("bookings", "delete");
 
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
@@ -101,7 +100,7 @@ export async function cancelBooking(bookingId: string, reason?: string) {
 }
 
 export async function checkInBooking(bookingId: string, notes?: string) {
-  const user = await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("bookings", "edit");
 
   const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
   if (existing) {
@@ -136,7 +135,7 @@ export async function checkInBooking(bookingId: string, notes?: string) {
 }
 
 export async function completeBooking(bookingId: string) {
-  const user = await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("bookings", "edit");
 
   await prisma.booking.update({
     where: { id: bookingId },
@@ -157,14 +156,23 @@ export async function completeBooking(bookingId: string) {
 }
 
 export async function updateBookingNotes(bookingId: string, notes: string) {
-  await requireRole(BOOKING_ACCESS as any);
+  const user = await requirePermission("bookings", "edit");
   await prisma.booking.update({ where: { id: bookingId }, data: { notes } });
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "BOOKING_NOTES_UPDATED",
+      module: "bookings",
+      recordId: bookingId,
+      newValue: { notes },
+    },
+  });
   revalidatePath("/admin/bookings");
   return { success: true };
 }
 
 export async function getBookingDetail(bookingId: string) {
-  await requireRole(BOOKING_ACCESS as any);
+  await requirePermission("bookings", "view");
   return prisma.booking.findUnique({
     where: { id: bookingId },
     include: {

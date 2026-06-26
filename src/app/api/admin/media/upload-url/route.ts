@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { SUPABASE_URL } from "@/lib/supabase/config";
-import { requireApiRole } from "@/lib/auth/api";
-import { MEDIA_ACCESS } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 
 const BUCKET = "website-media";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(MEDIA_ACCESS);
+  const auth = await requireApiPermission("gallery", "create");
   if (!auth.ok) return auth.response;
 
   const { filename, contentType } = await req.json();

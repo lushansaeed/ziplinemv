@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { AgentsWorkspace } from "@/components/admin/agents/agents-workspace";
 
@@ -74,7 +73,7 @@ async function getAgentsData() {
 }
 
 export default async function AgentsPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("agents", "view");
   const data = await getAgentsData();
   return (
     <div>

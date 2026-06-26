@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { SettingsWorkspace } from "@/components/admin/settings/settings-workspace";
 
@@ -13,7 +12,7 @@ async function getAllSettings() {
 }
 
 export default async function SettingsPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("settings", "view");
   const settings = await getAllSettings();
   return (
     <div>

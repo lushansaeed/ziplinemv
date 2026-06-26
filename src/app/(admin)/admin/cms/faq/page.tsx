@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
-import { requireRole } from "@/lib/auth/actions";
-import { ADMIN_AND_ABOVE } from "@/lib/auth/roles";
+import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { FaqManager } from "@/components/admin/cms/faq-manager";
 
 export const metadata: Metadata = { title: "FAQ Management | Admin" };
 
 export default async function FaqManagementPage() {
-  await requireRole(ADMIN_AND_ABOVE as any);
+  await requirePermission("settings", "view");
   const faqs = await prisma.faq.findMany({ orderBy: [{ category: "asc" }, { displayOrder: "asc" }] });
   return (
     <div>

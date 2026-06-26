@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireApiRole } from "@/lib/auth/api";
-import { BOOKING_ACCESS } from "@/lib/auth/roles";
+import { requireApiPermission } from "@/lib/auth/permissions";
 import {
   sendBookingConfirmation,
   sendBookingCancellation,
@@ -16,10 +15,9 @@ const HANDLERS: Record<string, (bookingId: string, extra?: string) => Promise<an
 };
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiRole(BOOKING_ACCESS);
-  if (!auth.ok) return auth.response;
-
   const { type, bookingId, extra } = await req.json();
+  const auth = await requireApiPermission(type === "media_delivery" ? "media" : "bookings", type === "media_delivery" ? "send" : "edit");
+  if (!auth.ok) return auth.response;
 
   const handler = HANDLERS[type];
   if (!handler) return NextResponse.json({ error: "Unknown notification type" }, { status: 400 });
