@@ -84,7 +84,7 @@ export function AgentProfile({ user, agent, packages, addOns }: AgentProfileProp
   }
 
   return (
-    <div className="p-6 space-y-6 max-w-2xl">
+    <div className="p-6 space-y-6 max-w-5xl">
       {/* Business info (read-only — managed by admin) */}
       <div className="admin-card space-y-4">
         <div className="flex items-center gap-2">
@@ -152,15 +152,22 @@ export function AgentProfile({ user, agent, packages, addOns }: AgentProfileProp
             return (
               <div key={kind} className="overflow-hidden rounded-lg border border-border">
                 <div className="bg-muted/60 px-4 py-2 text-sm font-semibold">{title}</div>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[620px]">
+                <div className="overflow-hidden">
+                  <table className="w-full table-fixed">
+                    <colgroup>
+                      <col className="w-[34%]" />
+                      <col className="w-[17%]" />
+                      <col className="w-[17%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[20%]" />
+                    </colgroup>
                     <thead>
                       <tr className="border-b border-border text-xs text-muted-foreground">
-                        <th className="px-4 py-2 text-left">Description</th>
-                        <th className="px-3 py-2 text-right">Zipline</th>
-                        <th className="px-3 py-2 text-right">Agent price</th>
-                        <th className="px-3 py-2 text-left">Type</th>
-                        <th className="px-4 py-2 text-right">Commission</th>
+                        <th className="px-3 py-2 text-left">Description</th>
+                        <th className="px-2 py-2 text-right">Zipline</th>
+                        <th className="px-2 py-2 text-right">Agent</th>
+                        <th className="px-2 py-2 text-left">Type</th>
+                        <th className="px-3 py-2 text-right">Commission</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
@@ -172,16 +179,16 @@ export function AgentProfile({ user, agent, packages, addOns }: AgentProfileProp
                         const commission = commissionAmount(price, packageRule);
                         return (
                           <tr key={pkg.id}>
-                            <td className="px-4 py-2 text-sm">{pkg.name}</td>
-                            <td className="px-3 py-2 text-right text-sm font-medium">{formatMoney(price, currency)}</td>
-                            <td className="px-3 py-2 text-right text-sm">{formatMoney(Math.max(0, price - commission), currency)}</td>
-                            <td className="px-3 py-2 text-xs">{packageRule.type === "FIXED" ? "Fixed" : "Percent"}</td>
-                            <td className="px-4 py-2 text-right text-sm font-semibold text-primary">{formatRule(packageRule, currency)}</td>
+                            <td className="px-3 py-2 text-sm leading-snug break-words">{pkg.name}</td>
+                            <td className="px-2 py-2 text-right text-sm font-medium leading-snug break-words">{formatMoney(price, currency)}</td>
+                            <td className="px-2 py-2 text-right text-sm leading-snug break-words">{formatMoney(Math.max(0, price - commission), currency)}</td>
+                            <td className="px-2 py-2 text-xs">{packageRule.type === "FIXED" ? "Fixed" : "Percent"}</td>
+                            <td className="px-3 py-2 text-right text-sm font-semibold leading-snug text-primary break-words">{formatRule(packageRule, currency)}</td>
                           </tr>
                         );
                       })}
                       <tr>
-                        <td colSpan={5} className="bg-muted/30 px-4 py-1.5 text-xs font-semibold text-muted-foreground">Add-ons</td>
+                        <td colSpan={5} className="bg-muted/30 px-3 py-1.5 text-xs font-semibold text-muted-foreground">Add-ons</td>
                       </tr>
                       {addOns.map((addOn) => {
                         const price = kind === "tourist" ? addOn.price : Number(addOn.localPriceMvr ?? addOn.price);
@@ -195,11 +202,11 @@ export function AgentProfile({ user, agent, packages, addOns }: AgentProfileProp
                         const commission = commissionAmount(price, addOnRule);
                         return (
                           <tr key={addOn.id}>
-                            <td className="px-4 py-2 text-sm">{addOn.name}</td>
-                            <td className="px-3 py-2 text-right text-sm font-medium">{formatMoney(price, currency)}</td>
-                            <td className="px-3 py-2 text-right text-sm">{formatMoney(Math.max(0, price - commission), currency)}</td>
-                            <td className="px-3 py-2 text-xs">{addOnRule?.type === "FIXED" ? "Fixed" : addOnRule ? "Percent" : "—"}</td>
-                            <td className="px-4 py-2 text-right text-sm font-semibold text-primary">{formatRule(addOnRule, currency)}</td>
+                            <td className="px-3 py-2 text-sm leading-snug break-words">{addOn.name}</td>
+                            <td className="px-2 py-2 text-right text-sm font-medium leading-snug break-words">{formatMoney(price, currency)}</td>
+                            <td className="px-2 py-2 text-right text-sm leading-snug break-words">{formatMoney(Math.max(0, price - commission), currency)}</td>
+                            <td className="px-2 py-2 text-xs">{addOnRule?.type === "FIXED" ? "Fixed" : addOnRule ? "Percent" : "-"}</td>
+                            <td className="px-3 py-2 text-right text-sm font-semibold leading-snug text-primary break-words">{formatRule(addOnRule, currency)}</td>
                           </tr>
                         );
                       })}
