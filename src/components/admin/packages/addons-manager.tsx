@@ -10,12 +10,14 @@ interface AddOn {
   id: string; name: string; description: string | null;
   price: number; localPriceMvr?: number | null; currency: string;
   bestFor: string | null; rules: string | null;
-  displayOrder: number; active: boolean;
+  agentCommissionEligible: boolean; agentCommissionType: "PERCENTAGE" | "FIXED" | null;
+  agentCommissionValue: number | null; displayOrder: number; active: boolean;
 }
 
 const BLANK: Omit<AddOn, "id"> = {
   name: "", description: "", price: 0, localPriceMvr: null, currency: "USD",
-  bestFor: "", rules: "", displayOrder: 0, active: true,
+  bestFor: "", rules: "", agentCommissionEligible: true, agentCommissionType: "PERCENTAGE",
+  agentCommissionValue: null, displayOrder: 0, active: true,
 };
 
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
@@ -30,6 +32,14 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
   function openNew()         { setEditing({ ...BLANK }); setIsNew(true); }
   function openEdit(a: AddOn){ setEditing({ ...a });     setIsNew(false); }
   function closeForm()       { setEditing(null); }
+
+  function formatAgentCommission(addon: Partial<AddOn>) {
+    if (!addon.agentCommissionEligible) return "Off";
+    if (addon.agentCommissionValue == null || addon.agentCommissionValue === 0) return "Agent default";
+    return addon.agentCommissionType === "FIXED"
+      ? `${formatCurrency(Number(addon.agentCommissionValue))} / unit`
+      : `${Number(addon.agentCommissionValue)}%`;
+  }
 
   async function save() {
     if (!editing?.name || !editing?.price) { toast.error("Name and price are required"); return; }
@@ -82,11 +92,11 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
       <div className="admin-card p-0 overflow-hidden">
         <table className="admin-table">
           <thead>
-            <tr><th>Add-on</th><th>Tourist (USD)</th><th>Local (MVR)</th><th>Best for</th><th>Order</th><th>Status</th><th>Actions</th></tr>
+            <tr><th>Add-on</th><th>Tourist (USD)</th><th>Local (MVR)</th><th>Agent commission</th><th>Best for</th><th>Order</th><th>Status</th><th>Actions</th></tr>
           </thead>
           <tbody>
             {addOns.length === 0 ? (
-              <tr><td colSpan={6} className="text-center py-12 text-muted-foreground text-sm">No add-ons yet.</td></tr>
+              <tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">No add-ons yet.</td></tr>
             ) : addOns.map((addon) => (
               <tr key={addon.id} className="table-row-hover">
                 <td>
@@ -97,6 +107,7 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
                 <td className="text-sm font-semibold text-brand-lime">
                   {addon.localPriceMvr ? `MVR ${Number(addon.localPriceMvr).toLocaleString()}` : <span className="text-muted-foreground font-normal">—</span>}
                 </td>
+                <td className="text-xs text-muted-foreground">{formatAgentCommission(addon)}</td>
                 <td className="text-sm text-muted-foreground">{addon.bestFor ?? "—"}</td>
                 <td className="text-sm">{addon.displayOrder}</td>
                 <td>
@@ -142,6 +153,50 @@ export function AddOnsManager({ addOns: initial, activityId }: { addOns: AddOn[]
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">Description</label>
                 <textarea rows={3} value={editing.description ?? ""} onChange={(e) => setEditing((p) => ({ ...p, description: e.target.value }))} placeholder="What the customer gets…" className={cn(inputCls, "resize-none")} />
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.agentCommissionEligible}
+                    onChange={(e) => setEditing((p) => ({ ...p, agentCommissionEligible: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-foreground">Agent commission</span>
+                </label>
+                {editing.agentCommissionEligible && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Type</label>
+                      <select
+                        value={editing.agentCommissionType ?? "PERCENTAGE"}
+                        onChange={(e) => setEditing((p) => ({ ...p, agentCommissionType: e.target.value as "PERCENTAGE" | "FIXED" }))}
+                        className={inputCls}
+                      >
+                        <option value="PERCENTAGE">Percentage</option>
+                        <option value="FIXED">Fixed per unit</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {editing.agentCommissionType === "FIXED" ? "Amount (USD)" : "Percent"}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={editing.agentCommissionValue ?? ""}
+                        onChange={(e) => setEditing((p) => ({
+                          ...p,
+                          agentCommissionValue: e.target.value ? parseFloat(e.target.value) : null,
+                        }))}
+                        placeholder="Use agent default"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

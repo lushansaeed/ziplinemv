@@ -11,7 +11,8 @@ interface Package {
   touristPrice: number; localPrice: number | null; localPriceMvr?: number | null; childPrice: number | null;
   currency: string; included: string[]; excluded: string[];
   featured: boolean; imageUrl: string | null; active: boolean;
-  displayOrder: number; agentCommissionEligible: boolean; affiliateCommissionEligible: boolean;
+  displayOrder: number; agentCommissionEligible: boolean; agentCommissionType: "PERCENTAGE" | "FIXED" | null;
+  agentCommissionValue: number | null; affiliateCommissionEligible: boolean;
   _count: { bookingsList: number };
 }
 
@@ -19,7 +20,8 @@ const BLANK: Omit<Package, "id" | "_count"> = {
   name: "", slug: "", description: "", touristPrice: 0, localPrice: null, localPriceMvr: null,
   childPrice: null, currency: "USD", included: [], excluded: [],
   featured: false, imageUrl: null, active: true, displayOrder: 0,
-  agentCommissionEligible: true, affiliateCommissionEligible: true,
+  agentCommissionEligible: true, agentCommissionType: "PERCENTAGE", agentCommissionValue: null,
+  affiliateCommissionEligible: true,
 };
 
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
@@ -51,6 +53,14 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
 
   function slugify(text: string) {
     return text.toLowerCase().replace(/[^\w\s-]/g, "").replace(/[\s_-]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function formatAgentCommission(pkg: Partial<Package>) {
+    if (!pkg.agentCommissionEligible) return "Off";
+    if (pkg.agentCommissionValue == null || pkg.agentCommissionValue === 0) return "Agent default";
+    return pkg.agentCommissionType === "FIXED"
+      ? `${formatCurrency(Number(pkg.agentCommissionValue))} / rider`
+      : `${Number(pkg.agentCommissionValue)}%`;
   }
 
   async function save() {
@@ -121,6 +131,7 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
               <th>Tourist (USD)</th>
               <th>Local (MVR)</th>
               <th>Bookings</th>
+              <th>Agent commission</th>
               <th>Featured</th>
               <th>Status</th>
               <th>Actions</th>
@@ -128,7 +139,7 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
           </thead>
           <tbody>
             {packages.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">
+              <tr><td colSpan={8} className="text-center py-12 text-muted-foreground text-sm">
                 No packages yet. Add your first one.
               </td></tr>
             ) : packages.map((pkg) => (
@@ -144,6 +155,7 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
                     : <span className="text-muted-foreground font-normal">—</span>}
                 </td>
                 <td className="text-sm">{pkg._count.bookingsList}</td>
+                <td className="text-xs text-muted-foreground">{formatAgentCommission(pkg)}</td>
                 <td>{pkg.featured && <Star className="w-4 h-4 text-brand-citrus" />}</td>
                 <td>
                   <span className={cn("status-badge text-xs",
@@ -210,6 +222,51 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
                 </div>
               </div>
 
+              {/* Agent commission */}
+              <div className="space-y-3 rounded-lg border border-border p-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={!!editing.agentCommissionEligible}
+                    onChange={(e) => setEditing((p) => ({ ...p, agentCommissionEligible: e.target.checked }))}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-foreground">Agent commission</span>
+                </label>
+                {editing.agentCommissionEligible && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">Type</label>
+                      <select
+                        value={editing.agentCommissionType ?? "PERCENTAGE"}
+                        onChange={(e) => setEditing((p) => ({ ...p, agentCommissionType: e.target.value as "PERCENTAGE" | "FIXED" }))}
+                        className={inputCls}
+                      >
+                        <option value="PERCENTAGE">Percentage</option>
+                        <option value="FIXED">Fixed per rider</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {editing.agentCommissionType === "FIXED" ? "Amount (USD)" : "Percent"}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={editing.agentCommissionValue ?? ""}
+                        onChange={(e) => setEditing((p) => ({
+                          ...p,
+                          agentCommissionValue: e.target.value ? parseFloat(e.target.value) : null,
+                        }))}
+                        placeholder="Use agent default"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Included */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">What's included (one per line)</label>
@@ -233,7 +290,6 @@ export function PackagesManager({ packages: initial, activityId }: { packages: P
                   <div className="space-y-2 pt-1">
                     {[
                       { key: "featured",                    label: "Featured (show badge)" },
-                      { key: "agentCommissionEligible",     label: "Agent commission" },
                       { key: "affiliateCommissionEligible", label: "Affiliate commission" },
                       { key: "active",                      label: "Active (visible)" },
                     ].map(({ key, label }) => (

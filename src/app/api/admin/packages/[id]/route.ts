@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // Strip read-only / relational fields that Prisma won't accept in update
   const {
     id: _id, activityId: _activityId, createdAt: _c, updatedAt: _u, _count: _cnt,
-    touristPrice, localPrice, childPrice,
+    touristPrice, localPrice, localPriceMvr, childPrice, agentCommissionValue,
     ...rest
   } = body;
 
@@ -22,7 +22,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...rest,
       ...(touristPrice !== undefined ? { touristPrice: parseFloat(touristPrice) } : {}),
       ...(localPrice   !== undefined ? { localPrice:   localPrice   ? parseFloat(localPrice)   : null } : {}),
+      ...(localPriceMvr !== undefined ? { localPriceMvr: localPriceMvr ? parseFloat(localPriceMvr) : null } : {}),
       ...(childPrice   !== undefined ? { childPrice:   childPrice   ? parseFloat(childPrice)   : null } : {}),
+      ...(agentCommissionValue !== undefined ? {
+        agentCommissionType:  agentCommissionValue ? (rest.agentCommissionType ?? "PERCENTAGE") : null,
+        agentCommissionValue: agentCommissionValue ? parseFloat(agentCommissionValue) : null,
+      } : {}),
     },
   });
 

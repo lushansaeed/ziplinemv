@@ -8,9 +8,10 @@ export async function POST(req: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
-  const { activityId, name, slug, description, touristPrice, localPrice, childPrice,
+  const { activityId, name, slug, description, touristPrice, localPrice, localPriceMvr, childPrice,
           currency, included, excluded, featured, active, displayOrder,
-          agentCommissionEligible, affiliateCommissionEligible } = body;
+          agentCommissionEligible, agentCommissionType, agentCommissionValue,
+          affiliateCommissionEligible } = body;
 
   if (!activityId || !name || !touristPrice) {
     return NextResponse.json({ error: "activityId, name and touristPrice are required" }, { status: 400 });
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
       description:                description || null,
       touristPrice:               parseFloat(touristPrice),
       localPrice:                 localPrice ? parseFloat(localPrice) : null,
+      localPriceMvr:              localPriceMvr ? parseFloat(localPriceMvr) : null,
       childPrice:                 childPrice ? parseFloat(childPrice) : null,
       currency:                   currency ?? "USD",
       included:                   included ?? [],
@@ -35,6 +37,8 @@ export async function POST(req: NextRequest) {
       active:                     active ?? true,
       displayOrder:               displayOrder ?? 0,
       agentCommissionEligible:    agentCommissionEligible ?? true,
+      agentCommissionType:        agentCommissionValue ? (agentCommissionType ?? "PERCENTAGE") : null,
+      agentCommissionValue:       agentCommissionValue ? parseFloat(agentCommissionValue) : null,
       affiliateCommissionEligible: affiliateCommissionEligible ?? true,
     },
   });

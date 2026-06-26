@@ -499,6 +499,8 @@ model Package {
   packageTerms              String?  @map("package_terms")
   maxParticipants           Int?     @map("max_participants")
   agentCommissionEligible   Boolean  @default(true) @map("agent_commission_eligible")
+  agentCommissionType       DiscountType? @map("agent_commission_type")
+  agentCommissionValue      Decimal? @map("agent_commission_value") @db.Decimal(10, 2)
   affiliateCommissionEligible Boolean @default(true) @map("affiliate_commission_eligible")
   displayOrder              Int      @default(0) @map("display_order")
   active                    Boolean  @default(true)
@@ -523,6 +525,9 @@ model AddOn {
   mediaUrl      String?  @map("media_url")
   bestFor      String?  @map("best_for")
   rules        String?
+  agentCommissionEligible Boolean @default(true) @map("agent_commission_eligible")
+  agentCommissionType     DiscountType? @map("agent_commission_type")
+  agentCommissionValue    Decimal? @map("agent_commission_value") @db.Decimal(10, 2)
   displayOrder Int      @default(0) @map("display_order")
   active       Boolean  @default(true)
   createdAt    DateTime @default(now()) @map("created_at")

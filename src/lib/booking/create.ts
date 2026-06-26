@@ -111,6 +111,19 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
 
     // 7. Create booking in transaction
     const booking = await prisma.$transaction(async (tx) => {
+      const addOnRecords = input.addOnIds.length > 0
+        ? await tx.addOn.findMany({
+            where: { id: { in: input.addOnIds } },
+            select: {
+              id: true,
+              price: true,
+              agentCommissionEligible: true,
+              agentCommissionType: true,
+              agentCommissionValue: true,
+            },
+          })
+        : [];
+
       const claimedSlots = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         UPDATE "time_slots"
         SET "booked_count" = "booked_count" + ${input.numRiders}
@@ -177,10 +190,6 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
 
       // Create booking add-ons
       if (input.addOnIds.length > 0) {
-        const addOnRecords = await tx.addOn.findMany({
-          where: { id: { in: input.addOnIds } },
-          select: { id: true, price: true },
-        });
         await tx.bookingAddOn.createMany({
           data: addOnRecords.map((a) => {
             const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
@@ -233,26 +242,54 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           }),
           tx.package.findUnique({
             where: { id: input.packageId },
-            select: { agentCommissionEligible: true },
+            select: {
+              agentCommissionEligible: true,
+              agentCommissionType: true,
+              agentCommissionValue: true,
+            },
           }),
         ]);
 
-        if (agent?.status === "APPROVED" && pkg?.agentCommissionEligible) {
-          const commissionBase = agent.commissionBasis === "PACKAGE_ONLY"
-            ? priceResult.basePrice
-            : priceResult.total;
-          const commissionAmount = (commissionBase * Number(agent.commissionRate)) / 100;
+        if (agent?.status === "APPROVED") {
+          const agentRate = Number(agent.commissionRate);
+          const packageCommission = pkg?.agentCommissionEligible
+            ? pkg.agentCommissionValue != null
+              ? pkg.agentCommissionType === "FIXED"
+                ? Number(pkg.agentCommissionValue) * input.numRiders
+                : (priceResult.basePrice * Number(pkg.agentCommissionValue)) / 100
+              : (priceResult.basePrice * agentRate) / 100
+            : 0;
 
-          await tx.agentCommission.create({
-            data: {
-              bookingId: b.id,
-              agentId:   input.agentId,
-              amount:    commissionAmount,
-              rate:      Number(agent.commissionRate),
-              basis:     agent.commissionBasis,
-              status:    "PENDING",
-            },
-          });
+          const addOnCommission = addOnRecords.reduce((sum, addOn) => {
+            if (!addOn.agentCommissionEligible) return sum;
+
+            const qty = input.addOnQuantities?.[addOn.id] ?? input.numRiders;
+            const lineTotal = Number(addOn.price) * qty;
+            const amount = addOn.agentCommissionValue != null
+              ? addOn.agentCommissionType === "FIXED"
+                ? Number(addOn.agentCommissionValue) * qty
+                : (lineTotal * Number(addOn.agentCommissionValue)) / 100
+              : agent.commissionBasis === "PACKAGE_AND_ADDONS"
+                ? (lineTotal * agentRate) / 100
+                : 0;
+
+            return sum + amount;
+          }, 0);
+
+          const commissionAmount = packageCommission + addOnCommission;
+
+          if (commissionAmount > 0) {
+            await tx.agentCommission.create({
+              data: {
+                bookingId: b.id,
+                agentId:   input.agentId,
+                amount:    commissionAmount,
+                rate:      agentRate,
+                basis:     agent.commissionBasis,
+                status:    "PENDING",
+              },
+            });
+          }
         }
       }
 
