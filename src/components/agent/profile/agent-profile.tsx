@@ -14,21 +14,62 @@ interface AgentProfileProps {
     touristCommissionType?: string | null; touristCommissionValue?: any;
     localCommissionType?: string | null; localCommissionValue?: any;
     addOnCommissionType?: string | null; addOnCommissionValue?: any;
+    addOnCommissions: Array<{
+      addOnId: string;
+      type: CommissionType;
+      value: any;
+      localType?: CommissionType | null;
+      localValue?: any;
+    }>;
     canMakeUnpaidBookings: boolean;
   };
+  packages: Array<{
+    id: string;
+    name: string;
+    touristPrice: number;
+    localPriceMvr: number | null;
+    agentCommissionType?: string | null;
+    agentCommissionValue?: number | null;
+  }>;
+  addOns: Array<{
+    id: string;
+    name: string;
+    price: number;
+    localPriceMvr: number | null;
+    agentCommissionType?: string | null;
+    agentCommissionValue?: number | null;
+  }>;
 }
 
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
+type CommissionType = "PERCENTAGE" | "FIXED";
+type CommissionRule = { type: CommissionType; value: number };
 
-function formatCommissionRule(type?: string | null, value?: any, unit = "") {
-  if (value == null || Number(value) <= 0) return "Default";
-  return type === "FIXED" ? `${formatCurrency(Number(value))}${unit}` : `${Number(value)}%`;
+function positiveRule(type?: string | null, value?: any): CommissionRule | null {
+  const amount = Number(value);
+  if (!type || value == null || Number.isNaN(amount) || amount <= 0) return null;
+  return { type: type as CommissionType, value: amount };
 }
 
-export function AgentProfile({ user, agent }: AgentProfileProps) {
+function commissionAmount(price: number, rule: CommissionRule | null) {
+  if (!rule) return 0;
+  return rule.type === "FIXED" ? rule.value : (price * rule.value) / 100;
+}
+
+function formatMoney(amount: number, currency: "USD" | "MVR") {
+  return currency === "USD" ? formatCurrency(amount) : `MVR ${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function formatRule(rule: CommissionRule | null, currency: "USD" | "MVR") {
+  if (!rule) return "No commission";
+  return rule.type === "FIXED" ? formatMoney(rule.value, currency) : `${rule.value}%`;
+}
+
+export function AgentProfile({ user, agent, packages, addOns }: AgentProfileProps) {
   const [isPending, startTransition] = useTransition();
   const [name, setName]             = useState(user.name);
   const [phone, setPhone]           = useState(agent.phone);
+  const addOnCommissionMap = new Map(agent.addOnCommissions.map((row) => [row.addOnId, row]));
 
   async function saveProfile() {
     startTransition(async () => {
@@ -67,37 +108,21 @@ export function AgentProfile({ user, agent }: AgentProfileProps) {
       </div>
 
       {/* Commission info */}
-      <div className="admin-card space-y-4">
+      <div className="admin-card space-y-5">
         <div className="flex items-center gap-2">
           <DollarSign className="w-4 h-4 text-muted-foreground" />
-          <p className="font-semibold text-sm">Commission</p>
+          <p className="font-semibold text-sm">Agreed commission details</p>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Default rate</p>
-            <p className="text-2xl font-display font-bold text-primary">{agent.commissionRate}%</p>
+        <div className="grid sm:grid-cols-3 gap-3">
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-xs text-muted-foreground mb-1">Fallback rate</p>
+            <p className="text-2xl font-display font-bold text-primary">{Number(agent.commissionRate)}%</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Applies to</p>
-            <p className="text-sm font-medium">
-              {agent.commissionBasis === "PACKAGE_ONLY"
-                ? "Package price only"
-                : "Package + add-ons"}
-            </p>
+          <div className="rounded-lg border border-border p-3">
+            <p className="text-xs text-muted-foreground mb-1">Fallback applies to</p>
+            <p className="text-sm font-medium">{agent.commissionBasis === "PACKAGE_ONLY" ? "Packages only" : "Packages + add-ons"}</p>
           </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Tourist package</p>
-            <p className="text-sm font-medium">{formatCommissionRule(agent.touristCommissionType, agent.touristCommissionValue, " / rider")}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Local package</p>
-            <p className="text-sm font-medium">{formatCommissionRule(agent.localCommissionType, agent.localCommissionValue, " / rider")}</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground mb-1">Add-ons</p>
-            <p className="text-sm font-medium">{formatCommissionRule(agent.addOnCommissionType, agent.addOnCommissionValue, " / unit")}</p>
-          </div>
-          <div className="sm:col-span-2">
+          <div className="rounded-lg border border-border p-3">
             <p className="text-xs text-muted-foreground mb-1">Unpaid bookings</p>
             <div className={cn(
               "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
@@ -106,10 +131,88 @@ export function AgentProfile({ user, agent }: AgentProfileProps) {
                 : "bg-muted text-muted-foreground"
             )}>
               <ShieldCheck className="w-3 h-3" />
-              {agent.canMakeUnpaidBookings ? "Allowed — collect payment from customer" : "Not allowed"}
+              {agent.canMakeUnpaidBookings ? "Allowed" : "Not allowed"}
             </div>
           </div>
         </div>
+
+        <div className="space-y-4">
+          {[
+            { title: "Foreigners (USD)", kind: "tourist" as const, currency: "USD" as const },
+            { title: "Locals / Expats (MVR)", kind: "local" as const, currency: "MVR" as const },
+          ].map(({ title, kind, currency }) => {
+            const packageAgentRule = positiveRule(
+              kind === "tourist" ? agent.touristCommissionType : agent.localCommissionType,
+              kind === "tourist" ? agent.touristCommissionValue : agent.localCommissionValue
+            );
+            const defaultAgentAddOnRule = positiveRule(agent.addOnCommissionType, agent.addOnCommissionValue);
+            const fallbackPackageRule = { type: "PERCENTAGE" as CommissionType, value: Number(agent.commissionRate) };
+            const fallbackAddOnRule = agent.commissionBasis === "PACKAGE_AND_ADDONS" ? fallbackPackageRule : null;
+
+            return (
+              <div key={kind} className="overflow-hidden rounded-lg border border-border">
+                <div className="bg-muted/60 px-4 py-2 text-sm font-semibold">{title}</div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[620px]">
+                    <thead>
+                      <tr className="border-b border-border text-xs text-muted-foreground">
+                        <th className="px-4 py-2 text-left">Description</th>
+                        <th className="px-3 py-2 text-right">Zipline</th>
+                        <th className="px-3 py-2 text-right">Agent price</th>
+                        <th className="px-3 py-2 text-left">Type</th>
+                        <th className="px-4 py-2 text-right">Commission</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {packages.map((pkg) => {
+                        const price = kind === "tourist" ? pkg.touristPrice : Number(pkg.localPriceMvr ?? pkg.touristPrice);
+                        const packageRule = packageAgentRule
+                          ?? positiveRule(pkg.agentCommissionType, pkg.agentCommissionValue)
+                          ?? fallbackPackageRule;
+                        const commission = commissionAmount(price, packageRule);
+                        return (
+                          <tr key={pkg.id}>
+                            <td className="px-4 py-2 text-sm">{pkg.name}</td>
+                            <td className="px-3 py-2 text-right text-sm font-medium">{formatMoney(price, currency)}</td>
+                            <td className="px-3 py-2 text-right text-sm">{formatMoney(Math.max(0, price - commission), currency)}</td>
+                            <td className="px-3 py-2 text-xs">{packageRule.type === "FIXED" ? "Fixed" : "Percent"}</td>
+                            <td className="px-4 py-2 text-right text-sm font-semibold text-primary">{formatRule(packageRule, currency)}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr>
+                        <td colSpan={5} className="bg-muted/30 px-4 py-1.5 text-xs font-semibold text-muted-foreground">Add-ons</td>
+                      </tr>
+                      {addOns.map((addOn) => {
+                        const price = kind === "tourist" ? addOn.price : Number(addOn.localPriceMvr ?? addOn.price);
+                        const custom = addOnCommissionMap.get(addOn.id);
+                        const touristAddOnRule = positiveRule(custom?.type, custom?.value);
+                        const localAddOnRule = positiveRule(custom?.localType, custom?.localValue);
+                        const addOnRule = (kind === "local" ? localAddOnRule ?? touristAddOnRule : touristAddOnRule)
+                          ?? defaultAgentAddOnRule
+                          ?? positiveRule(addOn.agentCommissionType, addOn.agentCommissionValue)
+                          ?? fallbackAddOnRule;
+                        const commission = commissionAmount(price, addOnRule);
+                        return (
+                          <tr key={addOn.id}>
+                            <td className="px-4 py-2 text-sm">{addOn.name}</td>
+                            <td className="px-3 py-2 text-right text-sm font-medium">{formatMoney(price, currency)}</td>
+                            <td className="px-3 py-2 text-right text-sm">{formatMoney(Math.max(0, price - commission), currency)}</td>
+                            <td className="px-3 py-2 text-xs">{addOnRule?.type === "FIXED" ? "Fixed" : addOnRule ? "Percent" : "—"}</td>
+                            <td className="px-4 py-2 text-right text-sm font-semibold text-primary">{formatRule(addOnRule, currency)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Commission is paid in the same currency in which the payment is received.
+        </p>
       </div>
 
       {/* Editable profile */}
