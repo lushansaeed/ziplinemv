@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { BookingStatus, PaymentStatus } from "@prisma/client";
+import { BookingStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
 import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
 import { sendBookingWaiverLink } from "@/lib/notifications/email";
@@ -37,35 +37,52 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   return { success: true };
 }
 
+function normalizePaymentMethod(method?: string): PaymentMethod | undefined {
+  const normalized = String(method ?? "").trim().toUpperCase();
+  if (!normalized) return undefined;
+  if (normalized in PaymentMethod) return PaymentMethod[normalized as keyof typeof PaymentMethod];
+  return undefined;
+}
+
 export async function updatePaymentStatus(bookingId: string, status: PaymentStatus, method?: string) {
-  const user = await requirePermission("payments", "edit");
+  try {
+    const user = await requirePermission("payments", "edit");
+    const paymentMethod = normalizePaymentMethod(method);
 
-  const old = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    select: { paymentStatus: true },
-  });
+    const old = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { paymentStatus: true },
+    });
 
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data:  {
-      paymentStatus:  status,
-      paymentMethod:  method as any ?? undefined,
-    },
-  });
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data:  {
+        paymentStatus:  status,
+        paymentMethod,
+      },
+    });
 
-  await prisma.auditLog.create({
-    data: {
-      userId:   user.id,
-      action:   "PAYMENT_STATUS_UPDATED",
-      module:   "payments",
-      recordId: bookingId,
-      oldValue: { paymentStatus: old?.paymentStatus },
-      newValue: { paymentStatus: status },
-    },
-  });
+    await prisma.auditLog.create({
+      data: {
+        userId:   user.id,
+        action:   "PAYMENT_STATUS_UPDATED",
+        module:   "payments",
+        recordId: bookingId,
+        oldValue: { paymentStatus: old?.paymentStatus },
+        newValue: { paymentStatus: status, paymentMethod },
+      },
+    });
 
-  revalidatePath("/admin/bookings");
-  return { success: true };
+    revalidatePath("/admin/bookings");
+    revalidatePath("/admin/check-in");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[updatePaymentStatus]", error);
+    return {
+      success: false,
+      error: error?.message ?? "Could not update payment status. Please try again.",
+    };
+  }
 }
 
 export async function cancelBooking(bookingId: string, reason?: string) {
