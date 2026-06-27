@@ -26,7 +26,7 @@ async function getBookingData(packageSlug?: string) {
 export default async function BookPage({
   searchParams,
 }: {
-  searchParams: { package?: string; date?: string; coupon?: string };
+  searchParams: { package?: string; date?: string; ref?: string; coupon?: string };
 }) {
   const { packages, addOns, preselectedPackage } = await getBookingData(searchParams.package);
 
@@ -38,6 +38,7 @@ export default async function BookPage({
         addOns={addOns as any}
         preselectedPackageId={preselectedPackage?.id}
         initialDate={searchParams.date}
+        affiliateRef={searchParams.ref}
         affiliateCoupon={searchParams.coupon}
       />
     </div>

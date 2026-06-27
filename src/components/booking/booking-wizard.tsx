@@ -21,6 +21,7 @@ interface BookingWizardProps {
   addOns:               AddOn[];
   preselectedPackageId?: string;
   initialDate?:         string;
+  affiliateRef?:        string;
   affiliateCoupon?:     string;
 }
 
@@ -30,7 +31,7 @@ const STEPS = [
 ];
 
 export function BookingWizard({
-  packages, addOns, preselectedPackageId, initialDate, affiliateCoupon,
+  packages, addOns, preselectedPackageId, initialDate, affiliateRef, affiliateCoupon,
 }: BookingWizardProps) {
   const { currentStep, setField, reset } = useBookingStore();
 
@@ -44,8 +45,14 @@ export function BookingWizard({
         setField("packagePrice", Number(pkg.touristPrice));
       }
     }
-    if (initialDate)    setField("date", initialDate);
-    if (affiliateCoupon) setField("affiliateCoupon", affiliateCoupon);
+    const storedAffiliateRef = typeof window !== "undefined" ? sessionStorage.getItem("aff_ref") : null;
+    const storedAffiliateCoupon = typeof window !== "undefined" ? sessionStorage.getItem("aff_coupon") : null;
+    const resolvedAffiliateRef = affiliateRef || storedAffiliateRef || "";
+    const resolvedAffiliateCoupon = affiliateCoupon || storedAffiliateCoupon || "";
+
+    if (initialDate) setField("date", initialDate);
+    if (resolvedAffiliateRef) setField("affiliateLinkId", resolvedAffiliateRef);
+    if (resolvedAffiliateCoupon) setField("affiliateCoupon", resolvedAffiliateCoupon);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

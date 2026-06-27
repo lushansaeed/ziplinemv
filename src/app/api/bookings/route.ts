@@ -31,6 +31,7 @@ const schema = z.object({
   promoCode:            z.string().optional(),
   affiliateCoupon:      z.string().optional(),
   affiliateLinkId:      z.string().optional(),
+  affiliateSessionId:   z.string().optional(),
   paymentMethod:        z.string().optional(),
   transferSlipUrl:      z.string().optional(),
   transferSlipPath:     z.string().optional(),

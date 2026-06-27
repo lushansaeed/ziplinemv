@@ -30,6 +30,7 @@ export interface CreateBookingInput {
   promoCode?:           string;
   affiliateCoupon?:     string;
   affiliateLinkId?:     string;
+  affiliateSessionId?:  string;
   // Payment
   paymentMethod?: string;
   transferSlipUrl?: string;
@@ -148,13 +149,25 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       affiliateCouponCode: input.affiliateCoupon,
     });
 
-    // 4. Resolve promo/affiliate coupon records
+    // 4. Resolve promo/affiliate records
     const promoRecord = input.promoCode
       ? await prisma.promoCode.findFirst({ where: { code: input.promoCode.toUpperCase(), active: true } })
       : null;
 
     const affiliateCouponRecord = input.affiliateCoupon
       ? await prisma.affiliateCoupon.findFirst({ where: { code: input.affiliateCoupon.toUpperCase(), status: "APPROVED" } })
+      : null;
+
+    const affiliateLinkRecord = input.affiliateLinkId
+      ? await prisma.affiliateLink.findFirst({
+          where: {
+            active: true,
+            OR: [
+              { id: input.affiliateLinkId },
+              { slug: input.affiliateLinkId },
+            ],
+          },
+        })
       : null;
 
     // 5. Determine booking source + affiliate
@@ -164,6 +177,9 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
     if (affiliateCouponRecord?.affiliateId) {
       source      = BookingSource.AFFILIATE;
       affiliateId = affiliateCouponRecord.affiliateId;
+    } else if (affiliateLinkRecord?.affiliateId) {
+      source      = BookingSource.AFFILIATE;
+      affiliateId = affiliateLinkRecord.affiliateId;
     }
 
     // 6. Generate reference
@@ -300,6 +316,28 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           where: { id: affiliateCouponRecord.id },
           data:  { usedCount: { increment: 1 } },
         });
+      }
+
+      if (affiliateLinkRecord) {
+        const click = await tx.affiliateClick.findFirst({
+          where: {
+            linkId: affiliateLinkRecord.id,
+            bookingId: null,
+            ...(input.affiliateSessionId ? { sessionId: input.affiliateSessionId } : {}),
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true },
+        });
+
+        if (click) {
+          await tx.affiliateClick.update({
+            where: { id: click.id },
+            data: {
+              bookingId: b.id,
+              convertedAt: new Date(),
+            },
+          });
+        }
       }
 
       if (paymentMethod === PaymentMethod.BANK_TRANSFER) {
@@ -478,7 +516,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       }
 
       // Create affiliate commission record
-      if (affiliateId && affiliateCouponRecord) {
+      if (affiliateId && (affiliateCouponRecord || affiliateLinkRecord)) {
         const affiliate = await tx.affiliate.findUnique({
           where: { id: affiliateId },
           select: { commissionRate: true, commissionBasis: true },

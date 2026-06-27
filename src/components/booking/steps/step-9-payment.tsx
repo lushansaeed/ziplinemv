@@ -102,6 +102,15 @@ export function Step9Payment() {
 
     startTransition(async () => {
       try {
+        const affiliateRef = typeof window !== "undefined"
+          ? sessionStorage.getItem("aff_ref") ?? ""
+          : "";
+        const affiliateCoupon = typeof window !== "undefined"
+          ? sessionStorage.getItem("aff_coupon") ?? ""
+          : "";
+        const affiliateSessionId = typeof window !== "undefined"
+          ? sessionStorage.getItem("aff_session") ?? ""
+          : "";
         const completedRiders = store.riders.filter((rider) =>
           rider.name.trim() || rider.age.trim() || rider.weight.trim()
         );
@@ -125,8 +134,9 @@ export function Step9Payment() {
             customerHotel:        store.customerHotel,
             riders:               completedRiders,
             promoCode:            store.promoCode,
-            affiliateCoupon:      store.affiliateCoupon,
-            affiliateLinkId:      store.affiliateLinkId,
+            affiliateCoupon:      store.affiliateCoupon || affiliateCoupon,
+            affiliateLinkId:      store.affiliateLinkId || affiliateRef,
+            affiliateSessionId,
             paymentMethod,
             transferSlipUrl:      store.transferSlipUrl,
             transferSlipPath:     store.transferSlipPath,
