@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { X, QrCode, Check, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, QrCode, Check, AlertCircle, ShieldAlert, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface Rider {
   id: string;
   name: string;
   hasWristband: boolean;
+  waiverSigned?: boolean; // loaded from API
 }
 
 interface Props {
@@ -22,9 +23,26 @@ export function WristbandCheckInModal({ bookingId, reference, riders, onClose, o
   const [assignments, setAssignments] = useState<Record<string, string>>(
     Object.fromEntries(riders.map((r) => [r.id, ""]))
   );
+  const [waiverMap, setWaiverMap] = useState<Record<string, boolean>>({});
+  const [loadingWaivers, setLoadingWaivers] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const canSave = riders.every((r) => r.hasWristband || assignments[r.id]?.trim().length > 0);
+  // Load waiver status for each rider
+  useEffect(() => {
+    fetch(`/api/admin/bookings/${bookingId}/waiver-status`)
+      .then((r) => r.json())
+      .then((data: { riderId: string; signed: boolean }[]) => {
+        const map: Record<string, boolean> = {};
+        data.forEach((d) => { map[d.riderId] = d.signed; });
+        setWaiverMap(map);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingWaivers(false));
+  }, [bookingId]);
+
+  const allWaiversSigned = riders.every((r) => waiverMap[r.id] === true);
+  const canSave = !loadingWaivers && allWaiversSigned &&
+    riders.every((r) => r.hasWristband || assignments[r.id]?.trim().length > 0);
 
   async function handleSave() {
     const toAssign = riders
@@ -42,8 +60,8 @@ export function WristbandCheckInModal({ bookingId, reference, riders, onClose, o
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        const errs = data.errors ?? [data.error ?? "Failed to assign wristbands"];
-        toast.error(errs.join("; "));
+        const errs: string[] = data.errors ?? [data.error ?? "Failed to assign wristbands"];
+        errs.forEach((e) => toast.error(e, { duration: 8000 }));
       } else {
         toast.success("Wristbands assigned — booking checked in");
         onSuccess();
@@ -70,32 +88,60 @@ export function WristbandCheckInModal({ bookingId, reference, riders, onClose, o
         </div>
 
         <div className="p-6 space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Scan or enter the QR code printed on each rider's wristband.
-          </p>
-          {riders.map((rider) => (
-            <div key={rider.id} className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground flex items-center gap-2">
-                {rider.hasWristband && <Check className="w-4 h-4 text-green-500" />}
-                {rider.name}
-                {rider.hasWristband && <span className="text-xs text-green-600 font-normal">already assigned</span>}
-              </label>
-              {!rider.hasWristband && (
-                <input
-                  type="text"
-                  value={assignments[rider.id] ?? ""}
-                  onChange={(e) => setAssignments((prev) => ({ ...prev, [rider.id]: e.target.value }))}
-                  placeholder="Scan or type QR code..."
-                  autoComplete="off"
-                  className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              )}
+          {/* Waiver status warning */}
+          {!loadingWaivers && !allWaiversSigned && (
+            <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-800">
+              <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-red-600" />
+              <span>
+                <strong>Waiver required.</strong> One or more riders have not signed the waiver form.
+                Wristband linking is blocked until all waivers are completed. Resend the waiver link and ask the customer to sign before proceeding.
+              </span>
             </div>
-          ))}
+          )}
+
+          <p className="text-sm text-muted-foreground">
+            Scan or enter the QR code printed on each rider's wristband. All waivers must be signed first.
+          </p>
+
+          {riders.map((rider) => {
+            const signed = waiverMap[rider.id];
+            return (
+              <div key={rider.id} className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                  {rider.hasWristband
+                    ? <Check className="w-4 h-4 text-green-500" />
+                    : signed
+                      ? <ShieldCheck className="w-4 h-4 text-green-500" />
+                      : <ShieldAlert className="w-4 h-4 text-red-500" />
+                  }
+                  {rider.name}
+                  {rider.hasWristband && <span className="text-xs text-green-600 font-normal">already assigned</span>}
+                  {!rider.hasWristband && !loadingWaivers && (
+                    signed
+                      ? <span className="text-xs text-green-600 font-normal">waiver signed ✓</span>
+                      : <span className="text-xs text-red-600 font-semibold">waiver not signed — blocked</span>
+                  )}
+                </label>
+                {!rider.hasWristband && (
+                  <input
+                    type="text"
+                    value={assignments[rider.id] ?? ""}
+                    onChange={(e) => setAssignments((prev) => ({ ...prev, [rider.id]: e.target.value }))}
+                    placeholder={signed === false ? "Blocked — waiver not signed" : "Scan or type QR code..."}
+                    disabled={signed === false}
+                    autoComplete="off"
+                    className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                  />
+                )}
+              </div>
+            );
+          })}
 
           <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-            <span>Each wristband QR must be unique. A wristband in use by another active rider cannot be assigned.</span>
+            <span>
+              Wristband linking requires a completed waiver. This check is enforced by the server and cannot be bypassed.
+            </span>
           </div>
         </div>
 

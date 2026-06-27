@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LOCATION_LABELS: Record<string, string> = {
@@ -252,7 +252,9 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
             "w-full rounded-2xl border-2 p-6 transition-all",
             result.success
               ? "bg-emerald-950 border-emerald-500"
-              : "bg-red-950 border-red-500"
+              : result.error?.toLowerCase().includes("waiver")
+                ? "bg-orange-950 border-orange-500"
+                : "bg-red-950 border-red-500"
           )}>
             <div className="flex items-start gap-4">
               {result.success
@@ -281,6 +283,17 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
                       </p>
                     )}
                   </>
+                ) : result.error?.toLowerCase().includes("waiver") ? (
+                  <div className="flex items-start gap-3">
+                    <ShieldAlert className="w-6 h-6 text-orange-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-orange-300 font-bold text-base">Waiver Not Completed</p>
+                      <p className="text-orange-200/80 text-sm mt-1">{result.error}</p>
+                      <p className="text-orange-300/60 text-xs mt-2">
+                        Ask the customer to sign the waiver form before proceeding. Contact reception if needed.
+                      </p>
+                    </div>
+                  </div>
                 ) : (
                   <p className="text-red-300 font-medium">{result.error}</p>
                 )}
