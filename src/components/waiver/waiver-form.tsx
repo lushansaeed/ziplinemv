@@ -1,11 +1,144 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { CheckCircle2, Loader2, RotateCcw } from "lucide-react";
 import { COUNTRIES } from "@/lib/booking/countries";
 import { cn } from "@/lib/utils";
 
 const inputClass = "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-ring";
+
+function SignaturePad({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const drawingRef = useRef(false);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const valueRef = useRef(value);
+
+  useEffect(() => {
+    valueRef.current = value;
+  }, [value]);
+
+  function setupCanvas() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    const previous = valueRef.current;
+    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(ratio, ratio);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, rect.width, rect.height);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = "#111827";
+
+    if (previous) {
+      const image = new Image();
+      image.onload = () => ctx.drawImage(image, 0, 0, rect.width, rect.height);
+      image.src = previous;
+    }
+  }
+
+  useEffect(() => {
+    setupCanvas();
+    window.addEventListener("resize", setupCanvas);
+    return () => window.removeEventListener("resize", setupCanvas);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function pointFromEvent(event: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    };
+  }
+
+  function saveSignature() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    onChange(canvas.toDataURL("image/png"));
+  }
+
+  function startDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    drawingRef.current = true;
+    lastPointRef.current = pointFromEvent(event);
+  }
+
+  function draw(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current || !lastPointRef.current) return;
+    event.preventDefault();
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    const next = pointFromEvent(event);
+    ctx.beginPath();
+    ctx.moveTo(lastPointRef.current.x, lastPointRef.current.y);
+    ctx.lineTo(next.x, next.y);
+    ctx.stroke();
+    lastPointRef.current = next;
+  }
+
+  function stopDrawing(event: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current) return;
+    event.preventDefault();
+    drawingRef.current = false;
+    lastPointRef.current = null;
+    saveSignature();
+  }
+
+  function clearSignature() {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (canvas && ctx) {
+      const rect = canvas.getBoundingClientRect();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, rect.width, rect.height);
+    }
+    onChange("");
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+        <button
+          type="button"
+          onClick={clearSignature}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+          Clear
+        </button>
+      </div>
+      <canvas
+        ref={canvasRef}
+        onPointerDown={startDrawing}
+        onPointerMove={draw}
+        onPointerUp={stopDrawing}
+        onPointerCancel={stopDrawing}
+        onPointerLeave={stopDrawing}
+        className="h-44 w-full touch-none rounded-xl border border-border bg-white shadow-inner"
+        aria-label={label}
+      />
+      <p className="text-[11px] text-muted-foreground">Sign inside the box using your finger, stylus, or mouse.</p>
+    </div>
+  );
+}
 
 interface WaiverFormProps {
   token: string;
@@ -195,10 +328,11 @@ export function WaiverForm({ token, minWeight, maxWeight, staffAssisted = false 
             <input type="checkbox" checked={form.guardianDeclarationAccepted} onChange={(e) => setField("guardianDeclarationAccepted", e.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
             <span>I confirm that I am the parent or legal guardian of the minor named above and I accept the risks, safety rules, and waiver terms on their behalf.</span>
           </label>
-          <label className="space-y-1.5 block">
-            <span className="text-xs font-semibold text-muted-foreground">Guardian digital signature</span>
-            <input value={form.guardianSignatureData} onChange={(e) => setField("guardianSignatureData", e.target.value)} placeholder="Type guardian full name" className={inputClass} required />
-          </label>
+          <SignaturePad
+            label="Guardian signature"
+            value={form.guardianSignatureData}
+            onChange={(value) => setField("guardianSignatureData", value)}
+          />
         </div>
       )}
 
@@ -234,10 +368,11 @@ export function WaiverForm({ token, minWeight, maxWeight, staffAssisted = false 
       </div>
 
       {form.riderType === "adult" && (
-        <label className="space-y-1.5 block">
-          <span className="text-xs font-semibold text-muted-foreground">Rider digital signature</span>
-          <input value={form.signatureData} onChange={(e) => setField("signatureData", e.target.value)} placeholder="Type rider full name" className={inputClass} required />
-        </label>
+        <SignaturePad
+          label="Rider signature"
+          value={form.signatureData}
+          onChange={(value) => setField("signatureData", value)}
+        />
       )}
 
       {staffAssisted && (
