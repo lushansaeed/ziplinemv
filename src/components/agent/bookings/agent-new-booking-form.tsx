@@ -9,9 +9,11 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { formatCurrency, cn } from "@/lib/utils";
+import { COUNTRIES_SORTED, DEFAULT_COUNTRY, NATIONALITIES_SORTED } from "@/lib/booking/countries";
 import type { Package as PkgType, AddOn } from "@prisma/client";
 
 const inputCls = "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground";
+const whatsappNotice = "Please enter your correct WhatsApp number. Booking updates and media files will be delivered through WhatsApp.";
 
 interface Props {
   packages:           Array<PkgType & { agentCommissionType?: string | null; agentCommissionValue?: any }>;
@@ -57,12 +59,21 @@ export function AgentNewBookingForm({
   // Customer
   const [customerName, setCustomerName]   = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhoneCountry, setCustomerPhoneCountry] = useState(DEFAULT_COUNTRY.iso);
+  const [customerPhoneDialCode, setCustomerPhoneDialCode] = useState(DEFAULT_COUNTRY.dialCode);
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerHotel, setCustomerHotel] = useState("");
   const [customerNationality, setCustomerNationality] = useState("");
+  const [customerNationalityIso, setCustomerNationalityIso] = useState("");
   const [notes, setNotes]                 = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const selectedAddOns = Object.entries(addOnQuantities).filter(([, qty]) => qty > 0).map(([id]) => id);
+  const selectedPhoneCountry = COUNTRIES_SORTED.find((c) => c.iso === customerPhoneCountry) ?? DEFAULT_COUNTRY;
+  const cleanCustomerPhone = customerPhone.replace(/\D/g, "");
+  const fullCustomerPhone = cleanCustomerPhone ? `${customerPhoneDialCode}${cleanCustomerPhone}` : "";
+  const phonePlaceholder = selectedPhoneCountry.phoneDigits[0] === selectedPhoneCountry.phoneDigits[1]
+    ? `${selectedPhoneCountry.phoneDigits[0]} digit WhatsApp number`
+    : `${selectedPhoneCountry.phoneDigits[0]}-${selectedPhoneCountry.phoneDigits[1]} digit WhatsApp number`;
 
   async function loadSlots(d: string) {
     setDate(d); setSlotId(""); setSlotsLoading(true);
@@ -89,6 +100,32 @@ export function AgentNewBookingForm({
       else next[id] = capped;
       return next;
     });
+  }
+
+  function applyCustomerType(type: "local" | "tourist") {
+    setCustomerType(type);
+    if (type === "local") {
+      setCustomerPhoneCountry(DEFAULT_COUNTRY.iso);
+      setCustomerPhoneDialCode(DEFAULT_COUNTRY.dialCode);
+      setCustomerNationalityIso(DEFAULT_COUNTRY.iso);
+      setCustomerNationality(DEFAULT_COUNTRY.nationality);
+    }
+  }
+
+  function handlePhoneCountryChange(iso: string) {
+    const country = COUNTRIES_SORTED.find((c) => c.iso === iso) ?? DEFAULT_COUNTRY;
+    setCustomerPhoneCountry(country.iso);
+    setCustomerPhoneDialCode(country.dialCode);
+  }
+
+  function handleNationalityChange(iso: string) {
+    const country = NATIONALITIES_SORTED.find((c) => c.iso === iso);
+    setCustomerNationalityIso(country?.iso ?? "");
+    setCustomerNationality(country?.nationality ?? "");
+    if (country && (!cleanCustomerPhone || customerPhoneCountry === DEFAULT_COUNTRY.iso)) {
+      setCustomerPhoneCountry(country.iso);
+      setCustomerPhoneDialCode(country.dialCode);
+    }
   }
 
   // Price calculation preview
@@ -134,7 +171,7 @@ export function AgentNewBookingForm({
 
   async function handleSubmit() {
     setError(null);
-    if (!customerType || !slotId || !packageId || !customerName || !customerPhone) {
+    if (!customerType || !slotId || !packageId || !customerName || !cleanCustomerPhone || !customerNationality) {
       setError("Please fill in all required fields."); return;
     }
 
@@ -148,10 +185,10 @@ export function AgentNewBookingForm({
             riderType: customerType,
             date, numRiders,
             customerName,
-            customerPhone: customerPhone.replace(/\s/g, ""),
-            customerPhoneCountry: "MV",
+            customerPhone: fullCustomerPhone,
+            customerPhoneCountry,
             customerEmail:       customerEmail || "",
-            customerNationality: customerType === "local" && !customerNationality ? "MV" : customerNationality,
+            customerNationality,
             customerHotel,
             riders: [],
             paymentMethod, notes,
@@ -267,7 +304,7 @@ export function AgentNewBookingForm({
                   <button
                     key={option.value}
                     type="button"
-                    onClick={() => setCustomerType(option.value)}
+                    onClick={() => applyCustomerType(option.value)}
                     className={cn(
                       "rounded-xl border p-3 text-left transition-all",
                       customerType === option.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
@@ -448,15 +485,47 @@ export function AgentNewBookingForm({
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Phone *</label>
-              <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="+960 7XX XXXX" className={inputCls} />
+              <div className="grid grid-cols-[132px_minmax(0,1fr)] gap-2">
+                <select
+                  value={customerPhoneCountry}
+                  onChange={(e) => handlePhoneCountryChange(e.target.value)}
+                  className={inputCls}
+                  aria-label="Phone country code"
+                >
+                  {COUNTRIES_SORTED.map((country, index) => (
+                    <option key={`${country.iso}-${index}`} value={country.iso}>
+                      {country.flag} {country.dialCode}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+                  inputMode="tel"
+                  placeholder={phonePlaceholder}
+                  className={inputCls}
+                />
+              </div>
+              <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">{whatsappNotice}</p>
             </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Email</label>
               <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="optional" className={inputCls} />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Nationality</label>
-              <input value={customerNationality} onChange={(e) => setCustomerNationality(e.target.value)} placeholder="e.g. British" className={inputCls} />
+              <label className="text-xs text-muted-foreground font-medium">Nationality *</label>
+              <select
+                value={customerNationalityIso}
+                onChange={(e) => handleNationalityChange(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Select nationality</option>
+                {NATIONALITIES_SORTED.map((country, index) => (
+                  <option key={`${country.iso}-${index}`} value={country.iso}>
+                    {country.flag} {country.nationality}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <label className="text-xs text-muted-foreground font-medium">Hotel / guesthouse</label>
@@ -467,7 +536,7 @@ export function AgentNewBookingForm({
             <button onClick={() => setStep(2)} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
             <button
               onClick={() => setStep(4)}
-              disabled={!customerName || !customerPhone}
+              disabled={!customerName || !cleanCustomerPhone || !customerNationality}
               className="btn-brand text-sm px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue

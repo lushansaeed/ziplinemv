@@ -6,12 +6,14 @@ import { Loader2, CheckCircle2, Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { cn, formatCurrency } from "@/lib/utils";
+import { COUNTRIES_SORTED, DEFAULT_COUNTRY, NATIONALITIES_SORTED } from "@/lib/booking/countries";
 import type { Package, AddOn } from "@prisma/client";
 
 const inputCls = cn(
   "w-full rounded-lg px-3 py-2 text-sm bg-background border border-border",
   "focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground"
 );
+const whatsappNotice = "Please enter your correct WhatsApp number. Booking updates and media files will be delivered through WhatsApp.";
 
 interface WalkInBookingFormProps {
   packages: Package[];
@@ -35,12 +37,22 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
   // Customer
   const [customerName, setCustomerName]   = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerPhoneCountry, setCustomerPhoneCountry] = useState(DEFAULT_COUNTRY.iso);
+  const [customerPhoneDialCode, setCustomerPhoneDialCode] = useState(DEFAULT_COUNTRY.dialCode);
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerHotel, setCustomerHotel] = useState("");
+  const [customerNationality, setCustomerNationality] = useState("");
+  const [customerNationalityIso, setCustomerNationalityIso] = useState("");
   const [notes, setNotes]                 = useState("");
   const selectedAddOns = Object.entries(addOnQuantities).filter(([, qty]) => qty > 0).map(([id]) => id);
   const isLocalCustomer = customerType === "local";
   const displayCurrency = isLocalCustomer ? "MVR" : "USD";
+  const selectedPhoneCountry = COUNTRIES_SORTED.find((c) => c.iso === customerPhoneCountry) ?? DEFAULT_COUNTRY;
+  const cleanCustomerPhone = customerPhone.replace(/\D/g, "");
+  const fullCustomerPhone = cleanCustomerPhone ? `${customerPhoneDialCode}${cleanCustomerPhone}` : "";
+  const phonePlaceholder = selectedPhoneCountry.phoneDigits[0] === selectedPhoneCountry.phoneDigits[1]
+    ? `${selectedPhoneCountry.phoneDigits[0]} digit WhatsApp number`
+    : `${selectedPhoneCountry.phoneDigits[0]}-${selectedPhoneCountry.phoneDigits[1]} digit WhatsApp number`;
 
   function syncRiders(n: number) {
     setNumRiders(n);
@@ -59,11 +71,37 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
     });
   }
 
+  function applyCustomerType(type: "local" | "tourist") {
+    setCustomerType(type);
+    if (type === "local") {
+      setCustomerPhoneCountry(DEFAULT_COUNTRY.iso);
+      setCustomerPhoneDialCode(DEFAULT_COUNTRY.dialCode);
+      setCustomerNationalityIso(DEFAULT_COUNTRY.iso);
+      setCustomerNationality(DEFAULT_COUNTRY.nationality);
+    }
+  }
+
+  function handlePhoneCountryChange(iso: string) {
+    const country = COUNTRIES_SORTED.find((c) => c.iso === iso) ?? DEFAULT_COUNTRY;
+    setCustomerPhoneCountry(country.iso);
+    setCustomerPhoneDialCode(country.dialCode);
+  }
+
+  function handleNationalityChange(iso: string) {
+    const country = NATIONALITIES_SORTED.find((c) => c.iso === iso);
+    setCustomerNationalityIso(country?.iso ?? "");
+    setCustomerNationality(country?.nationality ?? "");
+    if (country && (!cleanCustomerPhone || customerPhoneCountry === DEFAULT_COUNTRY.iso)) {
+      setCustomerPhoneCountry(country.iso);
+      setCustomerPhoneDialCode(country.dialCode);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!customerType || !packageId || !customerName || !customerPhone) {
+    if (!customerType || !packageId || !customerName || !cleanCustomerPhone || !customerNationality) {
       setError("Please fill in all required fields.");
       return;
     }
@@ -77,9 +115,12 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
             packageId, addOnIds: selectedAddOns, addOnQuantities,
             riderType: customerType,
             date, numRiders,
-            customerName, customerPhone,
-            customerPhoneCountry: "MV",
-            customerEmail, customerNationality: customerType === "local" ? "MV" : "", customerHotel,
+            customerName,
+            customerPhone: fullCustomerPhone,
+            customerPhoneCountry,
+            customerEmail,
+            customerNationality,
+            customerHotel,
             riders: [], paymentMethod,
             source: "WALK_IN",
           }),
@@ -139,7 +180,7 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setCustomerType(option.value)}
+                  onClick={() => applyCustomerType(option.value)}
                   className={cn(
                     "rounded-xl border p-3 text-left transition-all",
                     customerType === option.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
@@ -223,11 +264,49 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground font-medium">Phone *</label>
-            <input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="+960 7XX XXXX" className={inputCls} required />
+            <div className="grid grid-cols-[132px_minmax(0,1fr)] gap-2">
+              <select
+                value={customerPhoneCountry}
+                onChange={(e) => handlePhoneCountryChange(e.target.value)}
+                className={inputCls}
+                aria-label="Phone country code"
+              >
+                {COUNTRIES_SORTED.map((country, index) => (
+                  <option key={`${country.iso}-${index}`} value={country.iso}>
+                    {country.flag} {country.dialCode}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d\s-]/g, ""))}
+                inputMode="tel"
+                placeholder={phonePlaceholder}
+                className={inputCls}
+                required
+              />
+            </div>
+            <p className="rounded-lg border border-primary/15 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">{whatsappNotice}</p>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground font-medium">Email</label>
             <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} placeholder="optional" className={inputCls} />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground font-medium">Nationality *</label>
+            <select
+              value={customerNationalityIso}
+              onChange={(e) => handleNationalityChange(e.target.value)}
+              className={inputCls}
+              required
+            >
+              <option value="">Select nationality</option>
+              {NATIONALITIES_SORTED.map((country, index) => (
+                <option key={`${country.iso}-${index}`} value={country.iso}>
+                  {country.flag} {country.nationality}
+                </option>
+              ))}
+            </select>
           </div>
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground font-medium">Hotel / guesthouse</label>
@@ -268,7 +347,7 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Any notes for this booking…" className={cn(inputCls, "resize-none")} />
       </div>
 
-      <button type="submit" disabled={isPending || !customerType || !packageId || !customerName || !customerPhone} className={cn(
+      <button type="submit" disabled={isPending || !customerType || !packageId || !customerName || !cleanCustomerPhone || !customerNationality} className={cn(
         "w-full flex items-center justify-center gap-2 rounded-xl py-3.5 font-semibold",
         "bg-primary text-primary-foreground hover:bg-primary/90",
         "transition-all disabled:opacity-50 disabled:cursor-not-allowed"
