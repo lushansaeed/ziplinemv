@@ -9,6 +9,7 @@ import { formatDate, formatDateTime, cn } from "@/lib/utils";
 
 interface WaiverRow {
   id: string; status: string; riderName: string;
+  isMinor: boolean; guardianName: string | null; guardianRelationship: string | null; staffAssisted: boolean;
   signedAt: Date | null; createdAt: Date;
   booking: {
     reference: string; bookingDate: Date;
@@ -61,7 +62,18 @@ export function WaiversTable({ waivers, total, page, perPage, searchParams }: Wa
     },
     {
       key: "riderName", header: "Rider",
-      cell: (r) => <span className="text-sm">{r.riderName}</span>,
+      cell: (r) => (
+        <div>
+          <p className="text-sm font-medium">{r.riderName}</p>
+          <p className="text-xs text-muted-foreground">
+            {[
+              r.isMinor ? "Minor" : "Adult",
+              r.guardianName ? `Guardian: ${r.guardianName}` : null,
+              r.staffAssisted ? "Staff assisted" : null,
+            ].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+      ),
     },
     {
       key: "status", header: "Status",

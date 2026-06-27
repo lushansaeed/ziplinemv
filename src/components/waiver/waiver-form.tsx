@@ -11,14 +11,16 @@ interface WaiverFormProps {
   token: string;
   minWeight: number;
   maxWeight: number;
+  staffAssisted?: boolean;
 }
 
-export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
+export function WaiverForm({ token, minWeight, maxWeight, staffAssisted = false }: WaiverFormProps) {
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     guestName: "",
+    riderType: "adult",
     nationality: "",
     dateOfBirth: "",
     age: "",
@@ -34,6 +36,11 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
     safetyRulesAcknowledged: false,
     mediaConsent: false,
     signatureData: "",
+    guardianName: "",
+    guardianPhone: "",
+    guardianRelationship: "",
+    guardianDeclarationAccepted: false,
+    guardianSignatureData: "",
   });
 
   const nationalities = useMemo(
@@ -51,7 +58,11 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
       const res = await fetch(`/api/waivers/${token}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          isMinor: form.riderType === "minor",
+          submissionMode: staffAssisted ? "staff_assisted" : "public",
+        }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -82,9 +93,36 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="space-y-1.5 sm:col-span-2">
-          <span className="text-xs font-semibold text-muted-foreground">Guest full name</span>
+          <span className="text-xs font-semibold text-muted-foreground">Rider full name</span>
           <input value={form.guestName} onChange={(e) => setField("guestName", e.target.value)} className={inputClass} required />
         </label>
+
+        <div className="space-y-2 sm:col-span-2">
+          <p className="text-xs font-semibold text-muted-foreground">Rider type</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {[
+              { value: "adult", label: "Adult rider" },
+              { value: "minor", label: "Minor / child rider" },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium",
+                  form.riderType === option.value ? "border-primary bg-primary/10 text-primary" : "border-border bg-background"
+                )}
+              >
+                <input
+                  type="radio"
+                  name="riderType"
+                  checked={form.riderType === option.value}
+                  onChange={() => setField("riderType", option.value)}
+                  className="h-4 w-4 accent-primary"
+                />
+                {option.label}
+              </label>
+            ))}
+          </div>
+        </div>
 
         <label className="space-y-1.5">
           <span className="text-xs font-semibold text-muted-foreground">Nationality</span>
@@ -117,7 +155,7 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-xs font-semibold text-muted-foreground">Phone number</span>
+            <span className="text-xs font-semibold text-muted-foreground">Contact phone used for this waiver</span>
             <input inputMode="numeric" value={form.phoneNumber} onChange={(e) => setField("phoneNumber", e.target.value.replace(/\D/g, ""))} className={inputClass} required />
           </label>
         </div>
@@ -132,6 +170,37 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
           <input inputMode="numeric" value={form.emergencyContactPhone} onChange={(e) => setField("emergencyContactPhone", e.target.value.replace(/\D/g, ""))} className={inputClass} required />
         </label>
       </div>
+
+      {form.riderType === "minor" && (
+        <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/5 p-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Parent or legal guardian</p>
+            <p className="mt-1 text-xs text-muted-foreground">A parent or legal guardian must complete and sign this waiver for a minor rider.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Parent/guardian full name</span>
+              <input value={form.guardianName} onChange={(e) => setField("guardianName", e.target.value)} className={inputClass} required />
+            </label>
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold text-muted-foreground">Parent/guardian phone number</span>
+              <input inputMode="numeric" value={form.guardianPhone} onChange={(e) => setField("guardianPhone", e.target.value.replace(/\D/g, ""))} className={inputClass} required />
+            </label>
+            <label className="space-y-1.5 sm:col-span-2">
+              <span className="text-xs font-semibold text-muted-foreground">Relationship to rider</span>
+              <input value={form.guardianRelationship} onChange={(e) => setField("guardianRelationship", e.target.value)} placeholder="Parent, legal guardian, etc." className={inputClass} required />
+            </label>
+          </div>
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={form.guardianDeclarationAccepted} onChange={(e) => setField("guardianDeclarationAccepted", e.target.checked)} className="mt-1 h-4 w-4 accent-primary" />
+            <span>I confirm that I am the parent or legal guardian of the minor named above and I accept the risks, safety rules, and waiver terms on their behalf.</span>
+          </label>
+          <label className="space-y-1.5 block">
+            <span className="text-xs font-semibold text-muted-foreground">Guardian digital signature</span>
+            <input value={form.guardianSignatureData} onChange={(e) => setField("guardianSignatureData", e.target.value)} placeholder="Type guardian full name" className={inputClass} required />
+          </label>
+        </div>
+      )}
 
       <div className="space-y-3 rounded-2xl border border-border bg-muted/20 p-4">
         <p className="text-sm font-semibold">Health declaration</p>
@@ -164,10 +233,18 @@ export function WaiverForm({ token, minWeight, maxWeight }: WaiverFormProps) {
         </label>
       </div>
 
-      <label className="space-y-1.5 block">
-        <span className="text-xs font-semibold text-muted-foreground">Digital signature</span>
-        <input value={form.signatureData} onChange={(e) => setField("signatureData", e.target.value)} placeholder="Type your full name" className={inputClass} required />
-      </label>
+      {form.riderType === "adult" && (
+        <label className="space-y-1.5 block">
+          <span className="text-xs font-semibold text-muted-foreground">Rider digital signature</span>
+          <input value={form.signatureData} onChange={(e) => setField("signatureData", e.target.value)} placeholder="Type rider full name" className={inputClass} required />
+        </label>
+      )}
+
+      {staffAssisted && (
+        <div className="rounded-xl border border-brand-citrus/30 bg-brand-citrus/10 px-4 py-3 text-xs text-foreground">
+          Staff-assisted mode: this waiver will be recorded as completed on a reception or staff device.
+        </div>
+      )}
 
       <button
         onClick={submit}

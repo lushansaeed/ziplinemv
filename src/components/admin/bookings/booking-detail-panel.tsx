@@ -58,6 +58,11 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
       status: waiver.status,
       nationality: waiver.nationality ?? "",
       phone: [waiver.phoneCountryCode, waiver.phoneNumber].filter(Boolean).join(" "),
+      riderType: waiver.isMinor ? "Minor" : "Adult",
+      guardianName: waiver.guardianName ?? "",
+      guardianPhone: waiver.guardianPhone ?? "",
+      guardianRelationship: waiver.guardianRelationship ?? "",
+      submissionMode: waiver.staffAssisted ? "Staff assisted" : "Public link",
       emergencyContactName: waiver.emergencyContactName ?? "",
       emergencyContactPhone: waiver.emergencyContactPhone ?? "",
       weight: waiver.weight ?? "",
@@ -279,7 +284,14 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
                   <p className="font-medium">{w.riderName}</p>
                   {w.status === "SIGNED" && (
                     <p className="text-xs text-muted-foreground">
-                      {[w.nationality, w.phoneNumber && `${w.phoneCountryCode ?? ""} ${w.phoneNumber}`, w.weight && `${w.weight} kg`].filter(Boolean).join(" · ")}
+                      {[
+                        w.isMinor ? "Minor" : "Adult",
+                        w.nationality,
+                        w.phoneNumber && `${w.phoneCountryCode ?? ""} ${w.phoneNumber}`,
+                        w.weight && `${w.weight} kg`,
+                        w.guardianName && `Guardian: ${w.guardianName}`,
+                        w.staffAssisted && "Staff assisted",
+                      ].filter(Boolean).join(" · ")}
                     </p>
                   )}
                 </div>

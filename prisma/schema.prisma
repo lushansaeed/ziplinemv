@@ -819,8 +819,14 @@ model Waiver {
   riderName     String       @map("rider_name")
   nationality   String?
   dateOfBirth   DateTime?    @map("date_of_birth") @db.Date
+  isMinor       Boolean      @default(false) @map("is_minor")
   phoneCountryCode String?   @map("phone_country_code")
   phoneNumber   String?      @map("phone_number")
+  guardianName  String?      @map("guardian_name")
+  guardianPhone String?      @map("guardian_phone")
+  guardianRelationship String? @map("guardian_relationship")
+  guardianDeclarationAccepted Boolean @default(false) @map("guardian_declaration_accepted")
+  guardianSignatureData String? @map("guardian_signature_data")
   emergencyContactName String? @map("emergency_contact_name")
   emergencyContactPhone String? @map("emergency_contact_phone")
   weight        Decimal?     @db.Decimal(5, 2)
@@ -833,6 +839,8 @@ model Waiver {
   ipAddress     String?      @map("ip_address")
   userAgent     String?      @map("user_agent")
   deviceInfo    String?      @map("device_info")
+  submissionMode String?     @map("submission_mode")
+  staffAssisted Boolean      @default(false) @map("staff_assisted")
   status        WaiverStatus @default(PENDING)
   createdAt     DateTime     @default(now()) @map("created_at")
 

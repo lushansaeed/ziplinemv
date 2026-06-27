@@ -19,7 +19,13 @@ async function getWeightLimits() {
   return { min: value("min_rider_weight_kg", 35), max: value("max_rider_weight_kg", 110) };
 }
 
-export default async function PublicWaiverPage({ params }: { params: { token: string } }) {
+export default async function PublicWaiverPage({
+  params,
+  searchParams,
+}: {
+  params: { token: string };
+  searchParams: Record<string, string | undefined>;
+}) {
   const [link, limits] = await Promise.all([
     prisma.bookingWaiverLink.findUnique({
       where: { token: params.token },
@@ -54,6 +60,9 @@ export default async function PublicWaiverPage({ params }: { params: { token: st
             <p><span className="font-semibold text-foreground">Waivers:</span> {completed} of {link.maxSubmissions} completed</p>
             <p><span className="font-semibold text-foreground">Riders:</span> {link.booking.numRiders}</p>
           </div>
+          <p className="mt-4 text-xs text-muted-foreground">
+            One phone or device may be used for multiple riders. Submit one waiver per rider; the link closes when all riders are complete.
+          </p>
         </div>
 
         {inactive ? (
@@ -66,7 +75,7 @@ export default async function PublicWaiverPage({ params }: { params: { token: st
           </div>
         ) : (
           <div className="rounded-2xl border border-border bg-card p-5">
-            <WaiverForm token={params.token} minWeight={limits.min} maxWeight={limits.max} />
+            <WaiverForm token={params.token} minWeight={limits.min} maxWeight={limits.max} staffAssisted={searchParams.mode === "staff"} />
           </div>
         )}
       </div>
