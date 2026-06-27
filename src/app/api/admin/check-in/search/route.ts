@@ -23,8 +23,15 @@ export async function GET(req: NextRequest) {
         package:  { select: { name: true } },
         slot:     { select: { startTime: true } },
         riders:   { select: { id: true, name: true, age: true, weight: true } },
-        waivers:  { select: { status: true } },
+        waivers:  { select: { status: true, riderName: true, riderId: true } },
         checkIn:  { select: { checkedInAt: true } },
+        rideTrackings: {
+          select: {
+            bookingRiderId: true,
+            status: true,
+            wristband: { select: { qrCode: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
