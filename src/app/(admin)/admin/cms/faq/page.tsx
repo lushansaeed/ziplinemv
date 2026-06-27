@@ -7,7 +7,7 @@ import { FaqManager } from "@/components/admin/cms/faq-manager";
 export const metadata: Metadata = { title: "FAQ Management | Admin" };
 
 export default async function FaqManagementPage() {
-  await requirePermission("settings", "view");
+  await requirePermission("website_customization", "view");
   const faqs = await prisma.faq.findMany({ orderBy: [{ category: "asc" }, { displayOrder: "asc" }] });
   return (
     <div>

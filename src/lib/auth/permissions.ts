@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/lib/auth/actions";
 import { requireApiRole } from "@/lib/auth/api";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
 
-export const PERMISSION_ACTIONS = ["view", "create", "edit", "approve", "export", "delete", "send"] as const;
+export const PERMISSION_ACTIONS = ["view", "create", "edit", "update", "approve", "export", "delete", "send", "publish"] as const;
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
 export const PERMISSION_MODULES = [
@@ -17,6 +17,7 @@ export const PERMISSION_MODULES = [
   { key: "affiliates", label: "Affiliates", actions: ["view", "create", "edit", "approve", "export", "delete"] },
   { key: "staff", label: "Staff", actions: ["view", "create", "edit", "delete"] },
   { key: "media", label: "Media Delivery", actions: ["view", "create", "edit", "send", "delete"] },
+  { key: "website_customization", label: "Website Customization", actions: ["view", "create", "update", "delete", "publish"] },
   { key: "gallery", label: "Website Gallery", actions: ["view", "create", "edit", "delete"] },
   { key: "catalog", label: "Packages & Add-ons", actions: ["view", "create", "edit", "delete"] },
   { key: "slots", label: "Time Slots", actions: ["view", "create", "edit", "delete"] },
@@ -40,14 +41,16 @@ export const ADMIN_ROUTE_MODULES: Array<{ prefix: string; module: PermissionModu
   { prefix: "/admin/users", module: "staff" },
   { prefix: "/admin/roles", module: "roles" },
   { prefix: "/admin/media/customer-delivery", module: "media" },
-  { prefix: "/admin/media/website", module: "gallery" },
+  { prefix: "/admin/media/website", module: "website_customization" },
+  { prefix: "/admin/website-customization", module: "website_customization" },
   { prefix: "/admin/packages", module: "catalog" },
   { prefix: "/admin/add-ons", module: "catalog" },
   { prefix: "/admin/pricing", module: "payments" },
   { prefix: "/admin/slots", module: "slots" },
   { prefix: "/admin/reports", module: "reports" },
+  { prefix: "/admin/settings/theme", module: "website_customization" },
   { prefix: "/admin/settings", module: "settings" },
-  { prefix: "/admin/cms", module: "settings" },
+  { prefix: "/admin/cms", module: "website_customization" },
   { prefix: "/admin/audit-log", module: "audit" },
 ];
 
@@ -57,7 +60,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
     dashboard: ["view"], bookings: ["view", "create", "edit", "approve", "export"],
     customers: ["view", "create", "edit", "export"], agents: ["view", "create", "edit", "approve", "export"],
     affiliates: ["view", "create", "edit", "approve", "export"], media: ["view", "create", "edit", "send"],
-    gallery: ["view", "create", "edit"], catalog: ["view", "create", "edit"], slots: ["view", "create", "edit"],
+    website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"], catalog: ["view", "create", "edit"], slots: ["view", "create", "edit"],
     payments: ["view", "create", "edit", "export"], reports: ["view", "export"], audit: ["view"],
   },
   "Reception Staff": {
@@ -67,10 +70,10 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
     dashboard: ["view"], bookings: ["view", "edit"], customers: ["view"], slots: ["view"],
   },
   Photographer: {
-    dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], gallery: ["view", "create", "edit"],
+    dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"],
   },
   "Media Staff": {
-    dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], gallery: ["view", "create", "edit"],
+    dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"],
   },
   Accountant: {
     dashboard: ["view"], bookings: ["view"], payments: ["view", "create", "edit", "export"], reports: ["view", "export"],

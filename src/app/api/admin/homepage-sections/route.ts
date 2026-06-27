@@ -4,7 +4,7 @@ import type { SectionConfig } from "@/lib/public/section-manager";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function GET() {
-  const auth = await requireApiPermission("settings", "view");
+  const auth = await requireApiPermission("website_customization", "view");
   if (!auth.ok) return auth.response;
 
   const sections = await getHomepageSections();
@@ -12,7 +12,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireApiPermission("settings", "edit");
+  const auth = await requireApiPermission("website_customization", "update");
   if (!auth.ok) return auth.response;
 
   const sections: SectionConfig[] = await req.json();

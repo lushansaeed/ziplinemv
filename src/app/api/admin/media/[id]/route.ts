@@ -3,16 +3,17 @@ import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiPermission("gallery", "edit");
-  if (!auth.ok) return auth.response;
-
   const body = await req.json();
+  const keys = Object.keys(body);
+  const isPublishOnly = keys.length > 0 && keys.every((key) => key === "active");
+  const auth = await requireApiPermission("website_customization", isPublishOnly ? "publish" : "update");
+  if (!auth.ok) return auth.response;
   await prisma.websiteMedia.update({ where: { id: params.id }, data: body });
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiPermission("gallery", "delete");
+  const auth = await requireApiPermission("website_customization", "delete");
   if (!auth.ok) return auth.response;
 
   await prisma.websiteMedia.update({ where: { id: params.id }, data: { active: false } });

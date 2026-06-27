@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiPermission("settings", "edit");
+  const auth = await requireApiPermission("website_customization", "update");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();
@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiPermission("settings", "delete");
+  const auth = await requireApiPermission("website_customization", "delete");
   if (!auth.ok) return auth.response;
 
   const preset = await prisma.themePreset.findUnique({ where: { id: params.id }, select: { isDefault: true } });

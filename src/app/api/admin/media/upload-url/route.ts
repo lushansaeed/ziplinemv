@@ -6,7 +6,7 @@ import { requireApiPermission } from "@/lib/auth/permissions";
 const BUCKET = "website-media";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiPermission("gallery", "create");
+  const auth = await requireApiPermission("website_customization", "create");
   if (!auth.ok) return auth.response;
 
   const { filename, contentType } = await req.json();

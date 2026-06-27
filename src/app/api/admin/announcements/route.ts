@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiPermission("settings", "edit");
+  const auth = await requireApiPermission("website_customization", "create");
   if (!auth.ok) return auth.response;
 
   const { text, ctaLabel, ctaUrl, active } = await req.json();

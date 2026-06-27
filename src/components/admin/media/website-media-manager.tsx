@@ -13,10 +13,32 @@ interface MediaItem extends WebsiteMedia {
 interface WebsiteMediaManagerProps {
   categories: MediaCategory[];
   media:      MediaItem[];
+  categorySlugs?: string[];
+  defaultLocation?: string;
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  canPublish?: boolean;
 }
 
-export function WebsiteMediaManager({ categories, media: initialMedia }: WebsiteMediaManagerProps) {
-  const [media, setMedia]             = useState(initialMedia);
+export function WebsiteMediaManager({
+  categories,
+  media: initialMedia,
+  categorySlugs,
+  defaultLocation = "gallery",
+  canCreate = true,
+  canUpdate = true,
+  canDelete = true,
+  canPublish = true,
+}: WebsiteMediaManagerProps) {
+  const visibleCategories = categorySlugs?.length
+    ? categories.filter((category) => categorySlugs.includes(category.slug))
+    : categories;
+  const visibleCategoryIds = new Set(visibleCategories.map((category) => category.id));
+  const scopedInitialMedia = categorySlugs?.length
+    ? initialMedia.filter((item) => item.categoryId ? visibleCategoryIds.has(item.categoryId) : true)
+    : initialMedia;
+  const [media, setMedia]             = useState(scopedInitialMedia);
   const [activeCategory, setActiveCat] = useState<string>("all");
   const [isPending, startTransition]   = useTransition();
   const [uploading, setUploading]      = useState(false);
@@ -27,8 +49,8 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
   const galleryCategory = categories.find((c) => c.slug === "gallery");
   const [uploadForm, setUploadForm] = useState({
     title: "", caption: "", altText: "",
-    categoryId: galleryCategory?.id ?? categories[0]?.id ?? "",
-    frontendLocation: "gallery", displayOrder: 0,
+    categoryId: galleryCategory?.id ?? visibleCategories[0]?.id ?? "",
+    frontendLocation: defaultLocation, displayOrder: 0,
   });
 
   const filtered = activeCategory === "all"
@@ -85,6 +107,10 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
   }
 
   async function toggleActive(id: string, active: boolean) {
+    if (!canPublish) {
+      toast.error("You do not have permission to publish website media.");
+      return;
+    }
     startTransition(async () => {
       const res = await fetch(`/api/admin/media/${id}`, {
         method: "PATCH",
@@ -99,6 +125,11 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
   }
 
   async function deleteMedia(id: string) {
+    if (!canDelete) {
+      toast.error("You do not have permission to delete website media.");
+      return;
+    }
+    if (!window.confirm("Hide this media from the website?")) return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
       if (res.ok) { setMedia((prev) => prev.filter((m) => m.id !== id)); toast.success("Media deleted"); }
@@ -119,7 +150,7 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
           >
             All ({media.length})
           </button>
-          {categories.map((cat) => {
+          {visibleCategories.map((cat) => {
             const count = media.filter((m) => m.category?.id === cat.id).length;
             return (
               <button key={cat.id} onClick={() => setActiveCat(cat.id)}
@@ -132,12 +163,14 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
             );
           })}
         </div>
-        <button
-          onClick={() => setShowUpload(!showUpload)}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Upload media
-        </button>
+        {canCreate && (
+          <button
+            onClick={() => setShowUpload(!showUpload)}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Upload media
+          </button>
+        )}
       </div>
 
       {/* Upload form */}
@@ -170,11 +203,11 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
                 }}
                 className="w-full rounded-lg px-3 py-2 text-sm bg-background border border-border focus:outline-none focus:ring-2 focus:ring-ring"
               >
-                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {visibleCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               <p className="text-[10px] text-muted-foreground">
                 {uploadForm.categoryId === galleryCategory?.id
-                  ? "✓ Will appear on the Gallery page and homepage gallery section"
+                  ? "Will appear on the Gallery page and homepage gallery section"
                   : "Select 'Gallery' to show on the public gallery page"}
               </p>
             </div>
@@ -270,17 +303,20 @@ export function WebsiteMediaManager({ categories, media: initialMedia }: Website
                 <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => toggleActive(item.id, !item.active)}
+                    disabled={!canPublish}
                     className="p-1.5 rounded-lg bg-white/90 text-gray-800 hover:bg-white transition-colors"
                     title={item.active ? "Hide" : "Show"}
                   >
                     {item.active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                   </button>
-                  <button
-                    onClick={() => deleteMedia(item.id)}
-                    className="p-1.5 rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {canDelete && (
+                    <button
+                      onClick={() => deleteMedia(item.id)}
+                      className="p-1.5 rounded-lg bg-red-500/90 text-white hover:bg-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
 

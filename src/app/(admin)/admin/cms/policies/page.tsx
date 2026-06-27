@@ -7,7 +7,7 @@ import { PoliciesEditor } from "@/components/admin/cms/policies-editor";
 export const metadata: Metadata = { title: "Policies | Admin" };
 
 export default async function PoliciesPage() {
-  await requirePermission("settings", "view");
+  await requirePermission("website_customization", "view");
   const policies = await prisma.policy.findMany();
   return (
     <div>

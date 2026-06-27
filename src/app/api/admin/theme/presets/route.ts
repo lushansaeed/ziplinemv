@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function GET() {
-  const auth = await requireApiPermission("settings", "view");
+  const auth = await requireApiPermission("website_customization", "view");
   if (!auth.ok) return auth.response;
 
   const presets = await prisma.themePreset.findMany({ orderBy: { createdAt: "asc" } });
@@ -11,7 +11,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await requireApiPermission("settings", "edit");
+  const auth = await requireApiPermission("website_customization", "create");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

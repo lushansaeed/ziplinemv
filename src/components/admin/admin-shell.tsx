@@ -6,8 +6,8 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, CalendarCheck, Users, Package, Plus,
   BarChart3, Settings, Tag, Clock, UserCheck, Handshake,
-  Image, FileText, ChevronLeft, ChevronRight, Menu, X,
-  QrCode, AlertTriangle, ShieldCheck, ClipboardList, Palette,
+  ChevronLeft, ChevronRight, Menu, X,
+  QrCode, ShieldCheck, ClipboardList, Palette,
   KeyRound,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -79,16 +79,13 @@ const NAV_SECTIONS: NavSection[] = [
   {
     title: "Media",
     items: [
-      { label: "Website Media", href: "/admin/media/website",          icon: Image, module: "gallery" },
       { label: "Customer Media",href: "/admin/media/customer-delivery", icon: ClipboardList, module: "media" },
     ],
   },
   {
-    title: "Content",
+    title: "Website",
     items: [
-      { label: "Pages & CMS",   href: "/admin/cms",        icon: FileText, module: "settings" },
-      { label: "FAQ",           href: "/admin/cms/faq",    icon: AlertTriangle, module: "settings" },
-      { label: "Policies",      href: "/admin/cms/policies",icon: ShieldCheck, module: "settings" },
+      { label: "Website Customization", href: "/admin/website-customization", icon: Palette, module: "website_customization" },
     ],
   },
   {
@@ -104,7 +101,6 @@ const NAV_SECTIONS: NavSection[] = [
       { label: "Staff",         href: "/admin/users",           icon: Users, module: "staff" },
       { label: "Roles & Permissions", href: "/admin/roles",     icon: KeyRound, module: "roles" },
       { label: "Settings",      href: "/admin/settings",        icon: Settings, module: "settings" },
-      { label: "Theme & Style", href: "/admin/settings/theme",  icon: Palette, module: "settings" },
     ],
   },
 ];

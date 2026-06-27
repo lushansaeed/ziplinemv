@@ -31,15 +31,20 @@ const SECTION_TYPE_COLORS: Record<string, string> = {
 
 interface Props {
   initialSections: SectionConfig[];
+  canCreate?: boolean;
+  canUpdate?: boolean;
+  canDelete?: boolean;
+  canPublish?: boolean;
 }
 
-export function SectionOrderManager({ initialSections }: Props) {
+export function SectionOrderManager({ initialSections, canCreate = true, canUpdate = true, canDelete = true, canPublish = true }: Props) {
   const [sections, setSections]     = useState<SectionConfig[]>(initialSections);
   const [isPending, startTransition] = useTransition();
   const [newLabel, setNewLabel]     = useState("");
 
   // Move section up
   function moveUp(index: number) {
+    if (!canUpdate) return;
     if (index === 0) return;
     setSections((prev) => {
       const next = [...prev];
@@ -50,6 +55,7 @@ export function SectionOrderManager({ initialSections }: Props) {
 
   // Move section down
   function moveDown(index: number) {
+    if (!canUpdate) return;
     setSections((prev) => {
       if (index >= prev.length - 1) return prev;
       const next = [...prev];
@@ -60,6 +66,7 @@ export function SectionOrderManager({ initialSections }: Props) {
 
   // Toggle visibility
   function toggleVisible(key: string) {
+    if (!canPublish) { toast.error("You do not have permission to publish website sections."); return; }
     setSections((prev) =>
       prev.map((s) => s.key === key ? { ...s, visible: !s.visible } : s)
     );
@@ -67,11 +74,13 @@ export function SectionOrderManager({ initialSections }: Props) {
 
   // Rename label
   function renameLabel(key: string, label: string) {
+    if (!canUpdate) return;
     setSections((prev) => prev.map((s) => s.key === key ? { ...s, label } : s));
   }
 
   // Add custom section
   function addCustom() {
+    if (!canCreate) { toast.error("You do not have permission to create website sections."); return; }
     if (!newLabel.trim()) { toast.error("Enter a section name"); return; }
     const key = `custom_${Date.now()}`;
     setSections((prev) => [
@@ -84,11 +93,14 @@ export function SectionOrderManager({ initialSections }: Props) {
 
   // Delete custom section
   function deleteCustom(key: string) {
+    if (!canDelete) { toast.error("You do not have permission to delete website sections."); return; }
+    if (!window.confirm("Delete this custom section?")) return;
     setSections((prev) => prev.filter((s) => s.key !== key).map((s, i) => ({ ...s, order: i + 1 })));
   }
 
   // Save to API
   async function save() {
+    if (!canUpdate) { toast.error("You do not have permission to update website sections."); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/homepage-sections", {
         method: "PATCH",
@@ -123,7 +135,7 @@ export function SectionOrderManager({ initialSections }: Props) {
           <button onClick={reset} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted transition-colors">
             <RotateCcw className="w-3.5 h-3.5" /> Reset
           </button>
-          <button onClick={save} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+          <button onClick={save} disabled={isPending || !canUpdate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> {isPending ? "Saving…" : "Save order"}
           </button>
         </div>
@@ -148,7 +160,7 @@ export function SectionOrderManager({ initialSections }: Props) {
             <div className="flex flex-col gap-0.5 flex-shrink-0">
               <button
                 onClick={() => moveUp(i)}
-                disabled={i === 0}
+                disabled={i === 0 || !canUpdate}
                 className="p-0.5 rounded hover:bg-muted disabled:opacity-20 transition-colors"
                 aria-label="Move up"
               >
@@ -156,7 +168,7 @@ export function SectionOrderManager({ initialSections }: Props) {
               </button>
               <button
                 onClick={() => moveDown(i)}
-                disabled={i === sections.length - 1}
+                disabled={i === sections.length - 1 || !canUpdate}
                 className="p-0.5 rounded hover:bg-muted disabled:opacity-20 transition-colors"
                 aria-label="Move down"
               >
@@ -182,6 +194,7 @@ export function SectionOrderManager({ initialSections }: Props) {
               <input
                 value={section.label}
                 onChange={(e) => renameLabel(section.key, e.target.value)}
+                disabled={!canUpdate}
                 className="flex-1 text-sm bg-transparent border-0 focus:outline-none focus:ring-0 font-medium"
                 placeholder="Section name"
               />
@@ -197,6 +210,7 @@ export function SectionOrderManager({ initialSections }: Props) {
             {/* Visibility toggle */}
             <button
               onClick={() => toggleVisible(section.key)}
+              disabled={!canPublish}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all flex-shrink-0",
                 section.visible
@@ -211,7 +225,7 @@ export function SectionOrderManager({ initialSections }: Props) {
             </button>
 
             {/* Delete custom */}
-            {section.type === "custom" && (
+            {section.type === "custom" && canDelete && (
               <button
                 onClick={() => deleteCustom(section.key)}
                 className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors flex-shrink-0"
@@ -225,6 +239,7 @@ export function SectionOrderManager({ initialSections }: Props) {
       </div>
 
       {/* Add custom section */}
+      {canCreate && (
       <div className="admin-card space-y-3">
         <p className="text-sm font-semibold">Add a new custom section</p>
         <p className="text-xs text-muted-foreground">
@@ -247,6 +262,7 @@ export function SectionOrderManager({ initialSections }: Props) {
           </button>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -33,11 +33,32 @@ function typeForValue(key: string, value: unknown) {
   return typeof value;
 }
 
-export async function PATCH(req: NextRequest) {
-  const auth = await requireApiPermission("settings", "edit");
-  if (!auth.ok) return auth.response;
+function isWebsiteCustomizationKey(key: string) {
+  return (
+    key.startsWith("page_") ||
+    key.startsWith("section_") ||
+    key.startsWith("theme_") ||
+    key.startsWith("hero_") ||
+    key.startsWith("seo_") ||
+    key.startsWith("social_") ||
+    key === "site_name" ||
+    key === "site_tagline" ||
+    key === "site_logo_url" ||
+    key === "site_logo_size" ||
+    key === "site_logo_text" ||
+    key === "favicon_url" ||
+    key === "social_sharing_image" ||
+    key === "website_visible"
+  );
+}
 
+export async function PATCH(req: NextRequest) {
   const body = await req.json();
+  const keys = Object.keys(body);
+  const permissionModule = keys.length > 0 && keys.every(isWebsiteCustomizationKey) ? "website_customization" : "settings";
+  const action = permissionModule === "website_customization" ? "update" : "edit";
+  const auth = await requireApiPermission(permissionModule, action);
+  if (!auth.ok) return auth.response;
   const old = await prisma.setting.findMany({ where: { key: { in: Object.keys(body) } } });
 
   for (const [key, value] of Object.entries(body)) {
@@ -49,7 +70,7 @@ export async function PATCH(req: NextRequest) {
     });
   }
 
-  await logAudit({ userId: auth.dbUser.id, action: "SETTINGS_UPDATED", module: "settings", oldValue: old, newValue: body });
+  await logAudit({ userId: auth.dbUser.id, action: "SETTINGS_UPDATED", module: permissionModule, oldValue: old, newValue: body });
 
   return NextResponse.json({ success: true });
 }

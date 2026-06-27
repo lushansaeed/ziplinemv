@@ -31,8 +31,22 @@ const HOMEPAGE_SECTIONS = [
   { key: "story",    label: "Story section",    badge: "Our story",    defaultH: "Vahmāfushi is the island\nof elevated experiences." },
 ];
 
-export function CmsWorkspace({ settings, contact, announcements: initialAnnouncements, sectionOrder }: any) {
-  const [currentTab, setCurrentTab] = useState<"general" | "order" | "sections" | "pages" | "contact" | "announcements">("general");
+type CmsTab = "general" | "order" | "sections" | "pages" | "contact" | "announcements";
+
+export function CmsWorkspace({
+  settings,
+  contact,
+  announcements: initialAnnouncements,
+  sectionOrder,
+  visibleTabs,
+  initialTab,
+  canCreate = true,
+  canUpdate = true,
+  canDelete = true,
+  canPublish = true,
+}: any) {
+  const allowedTabs = (visibleTabs as CmsTab[] | undefined) ?? ["general", "order", "sections", "pages", "contact", "announcements"];
+  const [currentTab, setCurrentTab] = useState<CmsTab>((initialTab && allowedTabs.includes(initialTab)) ? initialTab : allowedTabs[0]);
   const [isPending, startTransition] = useTransition();
 
   // General
@@ -83,6 +97,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function saveSection(key: string) {
+    if (!canUpdate) { toast.error("You do not have permission to update website text."); return; }
     const s = sectionContent[key];
     if (!s) return;
     startTransition(async () => {
@@ -105,6 +120,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function savePageTypo(pageKey: string) {
+    if (!canUpdate) { toast.error("You do not have permission to update page typography."); return; }
     const t = pageTypo[pageKey];
     if (!t) return;
     startTransition(async () => {
@@ -145,6 +161,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   const [newCtaUrl, setNewCtaUrl]     = useState("");
 
   async function saveGeneral() {
+    if (!canUpdate) { toast.error("You do not have permission to update website settings."); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -158,6 +175,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function uploadLogo(file: File) {
+    if (!canCreate && !canUpdate) { toast.error("You do not have permission to upload branding media."); return; }
     setUploading(true);
     try {
       const urlRes = await fetch("/api/admin/media/upload-url", {
@@ -175,6 +193,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function saveContact() {
+    if (!canUpdate) { toast.error("You do not have permission to update contact settings."); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/contact", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -185,6 +204,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function toggleAnnouncement(id: string, active: boolean) {
+    if (!canPublish) { toast.error("You do not have permission to publish website content."); return; }
     startTransition(async () => {
       const res = await fetch(`/api/admin/announcements/${id}`, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -198,6 +218,8 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function deleteAnnouncement(id: string) {
+    if (!canDelete) { toast.error("You do not have permission to delete website content."); return; }
+    if (!window.confirm("Hide this announcement?")) return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/announcements/${id}`, { method: "DELETE" });
       if (res.ok) { setAnnouncements((prev) => prev.filter((a) => a.id !== id)); toast.success("Deleted"); }
@@ -205,6 +227,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function createAnnouncement() {
+    if (!canCreate) { toast.error("You do not have permission to create website content."); return; }
     if (!newText.trim()) { toast.error("Banner text is required"); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/announcements", {
@@ -221,6 +244,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
   }
 
   async function saveHero() {
+    if (!canUpdate) { toast.error("You do not have permission to update hero typography."); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/settings", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
@@ -237,7 +261,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
     { key: "pages",         label: "Page typography",      icon: Type },
     { key: "contact",       label: "Contact & social",     icon: Phone },
     { key: "announcements", label: "Announcement banner",  icon: Megaphone },
-  ];
+  ].filter((tab) => allowedTabs.includes(tab.key as CmsTab));
 
   return (
     <div className="p-6 space-y-6">
@@ -309,7 +333,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
                 />
                 <button
                   onClick={() => logoInputRef.current?.click()}
-                  disabled={uploading}
+                  disabled={uploading || (!canCreate && !canUpdate)}
                   className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-sm hover:bg-muted transition-colors flex-shrink-0 disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
@@ -373,7 +397,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
             </div>
           </div>
 
-          <button onClick={saveGeneral} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+          <button onClick={saveGeneral} disabled={isPending || !canUpdate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> Save all
           </button>
         </div>
@@ -387,7 +411,13 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
             <p><Eye className="w-3.5 h-3.5 inline mr-1" />Toggle visibility to show/hide sections without deleting them.</p>
             <p><Plus className="w-3.5 h-3.5 inline mr-1" />Add custom sections and configure their content in the <strong>Section content</strong> tab.</p>
           </div>
-          <SectionOrderManager initialSections={sectionOrder ?? []} />
+          <SectionOrderManager
+            initialSections={sectionOrder ?? []}
+            canCreate={canCreate}
+            canUpdate={canUpdate}
+            canDelete={canDelete}
+            canPublish={canPublish}
+          />
         </div>
       )}
 
@@ -507,7 +537,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
 
                     <button
                       onClick={() => saveSection(sec.key)}
-                      disabled={isPending}
+                      disabled={isPending || !canUpdate}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -651,7 +681,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
 
                     <button
                       onClick={() => savePageTypo(page.key)}
-                      disabled={isPending}
+                      disabled={isPending || !canUpdate}
                       className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50"
                     >
                       <Save className="w-3.5 h-3.5" />
@@ -697,7 +727,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
               </div>
             ))}
           </div>
-          <button onClick={saveContact} disabled={isPending} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+          <button onClick={saveContact} disabled={isPending || !canUpdate} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
             <Save className="w-4 h-4" /> Save contact settings
           </button>
         </div>
@@ -727,7 +757,7 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
                   placeholder="/book" className={inputCls} />
               </div>
             </div>
-            <button onClick={createAnnouncement} disabled={isPending || !newText.trim()}
+            <button onClick={createAnnouncement} disabled={isPending || !canCreate || !newText.trim()}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
               <Plus className="w-4 h-4" /> Create banner
             </button>
@@ -757,16 +787,18 @@ export function CmsWorkspace({ settings, contact, announcements: initialAnnounce
                   )}>
                     {a.active ? "Showing" : "Hidden"}
                   </span>
-                  <button onClick={() => toggleAnnouncement(a.id, !a.active)} disabled={isPending}
+                  <button onClick={() => toggleAnnouncement(a.id, !a.active)} disabled={isPending || !canPublish}
                     className="p-1.5 rounded hover:bg-muted transition-colors" title={a.active ? "Hide" : "Show"}>
                     {a.active
                       ? <EyeOff className="w-4 h-4 text-muted-foreground" />
                       : <Eye className="w-4 h-4 text-muted-foreground" />}
                   </button>
-                  <button onClick={() => deleteAnnouncement(a.id)} disabled={isPending}
-                    className="p-1.5 rounded hover:bg-destructive/10 transition-colors">
-                    <Trash2 className="w-4 h-4 text-destructive" />
-                  </button>
+                  {canDelete && (
+                    <button onClick={() => deleteAnnouncement(a.id)} disabled={isPending}
+                      className="p-1.5 rounded hover:bg-destructive/10 transition-colors">
+                      <Trash2 className="w-4 h-4 text-destructive" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

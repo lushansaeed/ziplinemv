@@ -22,10 +22,12 @@ const ACTION_LABELS: Record<string, string> = {
   view: "View",
   create: "Create",
   edit: "Edit",
+  update: "Update",
   approve: "Approve",
   export: "Export",
   delete: "Delete",
   send: "Send link",
+  publish: "Publish",
 };
 
 function permissionSet(role: StaffRole) {

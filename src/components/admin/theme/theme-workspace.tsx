@@ -81,7 +81,15 @@ interface ThemeData {
   buttonRadius: string;
 }
 
-export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, presets: initialPresets }: any) {
+export function ThemeWorkspace({
+  theme: initialTheme,
+  backgrounds: initialBgs,
+  presets: initialPresets,
+  canCreate = true,
+  canUpdate = true,
+  canDelete = true,
+  canPublish = true,
+}: any) {
   const [activeTab, setActiveTab] = useState<"colors" | "backgrounds" | "gradients" | "presets">("colors");
   const [isPending, startTransition] = useTransition();
   const [showPreview, setShowPreview] = useState(false);
@@ -118,6 +126,7 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
   if (textContrast   < 4.5) warnings.push(`Low text contrast (${textContrast.toFixed(1)}:1 — body text may be hard to read)`);
 
   async function publish() {
+    if (!canPublish) { toast.error("You do not have permission to publish website theme changes."); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/theme", {
         method: "PATCH",
@@ -130,12 +139,14 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
   }
 
   async function resetToDefault() {
+    if (!canUpdate) { toast.error("You do not have permission to update website theme changes."); return; }
     setTheme({ ...BRAND_DEFAULTS });
     setIsDraft(true);
     toast("Reset to brand defaults — click Publish to apply.");
   }
 
   async function savePreset() {
+    if (!canCreate) { toast.error("You do not have permission to create theme presets."); return; }
     if (!presetName.trim()) { toast.error("Enter a preset name"); return; }
     startTransition(async () => {
       const res = await fetch("/api/admin/theme/presets", {
@@ -160,6 +171,8 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
   }
 
   async function deletePreset(id: string) {
+    if (!canDelete) { toast.error("You do not have permission to delete theme presets."); return; }
+    if (!window.confirm("Delete this theme preset?")) return;
     startTransition(async () => {
       const res = await fetch(`/api/admin/theme/presets/${id}`, { method: "DELETE" });
       if (res.ok) { setPresets((p) => p.filter((x) => x.id !== id)); toast.success("Preset deleted"); }
@@ -203,11 +216,11 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
               )}>
               <Eye className="w-3.5 h-3.5" /> Preview
             </button>
-            <button onClick={resetToDefault}
+            <button onClick={resetToDefault} disabled={!canUpdate}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-border hover:bg-muted transition-all">
               <RotateCcw className="w-3.5 h-3.5" /> Reset
             </button>
-            <button onClick={publish} disabled={isPending}
+            <button onClick={publish} disabled={isPending || !canPublish}
               className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-all">
               <Save className="w-4 h-4" /> {isPending ? "Publishing…" : "Publish theme"}
             </button>
@@ -352,7 +365,7 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
                     className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     onKeyDown={(e) => e.key === "Enter" && savePreset()}
                   />
-                  <button onClick={savePreset} disabled={isPending} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
+                  <button onClick={savePreset} disabled={isPending || !canCreate} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50">
                     <Plus className="w-4 h-4" /> Save
                   </button>
                 </div>
@@ -382,13 +395,14 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => applyPreset(preset)}
+                          disabled={!canUpdate}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                         >
                           <Check className="w-3 h-3" /> Apply
                         </button>
                         <button
                           onClick={async () => {
-                            const dup = { ...preset.config, name: `${preset.name} (copy)` };
+                            if (!canCreate) { toast.error("You do not have permission to create theme presets."); return; }
                             const res = await fetch("/api/admin/theme/presets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: `${preset.name} (copy)`, config: preset.config }) });
                             if (res.ok) { const p = await res.json(); setPresets((prev) => [...prev, p]); toast.success("Preset duplicated"); }
                           }}
@@ -396,7 +410,7 @@ export function ThemeWorkspace({ theme: initialTheme, backgrounds: initialBgs, p
                         >
                           <Copy className="w-3.5 h-3.5" />
                         </button>
-                        {!preset.isDefault && (
+                        {!preset.isDefault && canDelete && (
                           <button onClick={() => deletePreset(preset.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-destructive transition-colors" title="Delete">
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>

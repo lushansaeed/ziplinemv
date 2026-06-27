@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
 export async function GET() {
-  const auth = await requireApiPermission("settings", "view");
+  const auth = await requireApiPermission("website_customization", "view");
   if (!auth.ok) return auth.response;
 
   const theme = await prisma.websiteTheme.findFirst({ where: { isActive: true } });
@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const auth = await requireApiPermission("settings", "edit");
+  const auth = await requireApiPermission("website_customization", "publish");
   if (!auth.ok) return auth.response;
 
   const body = await req.json();

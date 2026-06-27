@@ -1,40 +1,5 @@
-import type { Metadata } from "next";
-import { prisma } from "@/lib/prisma/client";
-import { requirePermission } from "@/lib/auth/permissions";
-import { PageHeader } from "@/components/shared/page-header";
-import { CmsWorkspace } from "@/components/admin/cms/cms-workspace";
-import { getHomepageSections } from "@/lib/public/section-manager";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "CMS | Admin" };
-
-async function getCmsData() {
-  const [pages, settings, contact, announcements, sectionOrder] = await Promise.all([
-    prisma.websitePage.findMany({ orderBy: { slug: "asc" }, include: { sections: true } }),
-    prisma.setting.findMany({
-      where: {
-        OR: [
-          { group: { in: ["general", "hero", "typography", "homepage_sections"] } },
-          { key: { startsWith: "page_" } },
-          { key: { startsWith: "section_" } },
-          // Logo settings may have been saved without a group - fetch by key too
-          { key: { in: ["site_logo_url", "site_logo_size", "site_logo_text"] } },
-        ],
-      },
-    }),
-    prisma.contactSetting.findFirst(),
-    prisma.announcement.findMany({ orderBy: { createdAt: "desc" } }),
-    getHomepageSections(),
-  ]);
-  return { pages, settings, contact, announcements, sectionOrder };
-}
-
-export default async function CmsPage() {
-  await requirePermission("settings", "view");
-  const data = await getCmsData();
-  return (
-    <div>
-      <PageHeader title="Content Management" description="Edit site settings, hero copy, contact details, and page sections." />
-      <CmsWorkspace {...(data as any)} />
-    </div>
-  );
+export default function CmsPage() {
+  redirect("/admin/website-customization");
 }
