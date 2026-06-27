@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert, RotateCcw, Zap, ZapOff } from "lucide-react";
+import jsQR from "jsqr";
 import { cn } from "@/lib/utils";
 
 const LOCATION_LABELS: Record<string, string> = {
@@ -60,9 +61,12 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [scanning, setScanning]   = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraStarting, setCameraStarting] = useState(false);
+  const [cameraPrompt, setCameraPrompt] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const inputRef                  = useRef<HTMLInputElement>(null);
   const videoRef                  = useRef<HTMLVideoElement>(null);
+  const canvasRef                 = useRef<HTMLCanvasElement>(null);
   const streamRef                 = useRef<MediaStream | null>(null);
   const detectorRef               = useRef<any>(null);
   const lastDetectedRef           = useRef("");
@@ -136,6 +140,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
     setCameraActive(false);
+    setCameraStarting(false);
     setTorchOn(false);
   }, []);
 
@@ -158,30 +163,45 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const startCamera = useCallback(async () => {
     if (!device || device.scanMode === "manual" || scanning) return;
     setCameraError("");
-
-    if (!("BarcodeDetector" in window)) {
-      setCameraError("Camera QR scanning is not supported in this browser. Use Chrome on Android, or ask admin to switch this device to Manual/testing mode.");
-      return;
-    }
+    setCameraStarting(true);
 
     try {
-      detectorRef.current = detectorRef.current ?? new (window as any).BarcodeDetector({ formats: ["qr_code"] });
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("Camera API is not available in this browser.");
+      }
+
+      if ("BarcodeDetector" in window) {
+        detectorRef.current = detectorRef.current ?? new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      }
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.setAttribute("playsinline", "true");
         await videoRef.current.play();
       }
       setCameraActive(true);
-    } catch {
-      setCameraError("Camera access failed. Allow camera permission, then press Retry.");
+      setCameraPrompt(false);
+    } catch (error: any) {
+      setCameraError(error?.message ? `Camera access failed: ${error.message}` : "Camera access failed. Allow camera permission, then press Start Camera.");
+      setCameraPrompt(true);
+    } finally {
+      setCameraStarting(false);
     }
   }, [device, scanning]);
 
@@ -190,9 +210,9 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       stopCamera();
       return;
     }
-    startCamera();
+    setCameraPrompt(true);
     return stopCamera;
-  }, [device, startCamera, stopCamera]);
+  }, [device, stopCamera]);
 
   useEffect(() => {
     if (!cameraActive || device?.scanMode === "manual" || !device) return;
@@ -206,17 +226,31 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
 
       const video = videoRef.current;
       const detector = detectorRef.current;
-      if (video && detector && video.readyState >= 2) {
+      if (video && video.readyState >= 2) {
         try {
-          const codes = await detector.detect(video);
-          const rawValue = codes?.[0]?.rawValue?.trim();
+          let rawValue = "";
+          if (detector) {
+            const codes = await detector.detect(video);
+            rawValue = codes?.[0]?.rawValue?.trim() ?? "";
+          }
+          if (!rawValue) {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext("2d", { willReadFrequently: true });
+            if (canvas && context && video.videoWidth > 0 && video.videoHeight > 0) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+              rawValue = jsQR(imageData.data, imageData.width, imageData.height)?.data?.trim() ?? "";
+            }
+          }
           if (rawValue && rawValue !== lastDetectedRef.current) {
             lastDetectedRef.current = rawValue;
             await processQr(rawValue);
             setTimeout(() => { lastDetectedRef.current = ""; }, 2500);
           }
-        } catch {
-          setCameraError("Camera scanner paused. Try again or use manual/testing mode.");
+        } catch (error: any) {
+          setCameraError(error?.message ? `Camera scanner paused: ${error.message}` : "Camera scanner paused. Press Retry.");
         }
       }
       scanLoopRef.current = requestAnimationFrame(detect);
@@ -358,12 +392,24 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
           <div className="w-full space-y-4">
             <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black aspect-[3/4] shadow-2xl">
               <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+              <canvas ref={canvasRef} className="hidden" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,transparent_42%,rgba(0,0,0,0.62)_43%,rgba(0,0,0,0.72)_100%)]" />
               <div className="absolute inset-x-10 top-1/2 aspect-square -translate-y-1/2 rounded-3xl border-2 border-amber-300/90 shadow-[0_0_40px_rgba(245,166,35,0.32)]" />
               <div className="absolute left-12 right-12 top-1/2 h-0.5 -translate-y-1/2 bg-amber-300 shadow-[0_0_18px_rgba(245,166,35,0.9)]" />
+              {!cameraActive && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-8">
+                  <button
+                    onClick={startCamera}
+                    disabled={cameraStarting}
+                    className="rounded-2xl bg-amber-500 px-6 py-4 text-base font-bold text-gray-950 shadow-lg disabled:opacity-60"
+                  >
+                    {cameraStarting ? "Starting camera..." : "Start Camera"}
+                  </button>
+                </div>
+              )}
               <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/80 to-transparent">
                 <p className="text-center text-sm font-semibold text-white">
-                  {scanning ? "Processing wristband..." : cameraActive ? "Point camera at wristband QR" : "Starting camera..."}
+                  {scanning ? "Processing wristband..." : cameraActive ? "Point camera at wristband QR" : cameraPrompt ? "Tap Start Camera to scan" : "Camera is not active"}
                 </p>
               </div>
             </div>
@@ -376,7 +422,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
 
             <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => { stopCamera(); startCamera(); }}
+                onClick={() => { stopCamera(); window.setTimeout(() => startCamera(), 100); }}
                 className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
               >
                 <RotateCcw className="w-4 h-4" />
