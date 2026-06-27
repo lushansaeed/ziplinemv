@@ -14,7 +14,7 @@ async function getCommissionData(agentId: string) {
       include: {
         booking: {
           select: {
-            reference: true, bookingDate: true, total: true,
+            reference: true, bookingDate: true, total: true, currency: true,
             customer: { select: { name: true } },
             package:  { select: { name: true } },
           },

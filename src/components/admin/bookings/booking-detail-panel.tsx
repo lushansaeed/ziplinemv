@@ -12,6 +12,7 @@ import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
+import { AgentCommissionBreakdown } from "@/components/commission/agent-commission-breakdown";
 
 interface DetailRow {
   label: string;
@@ -241,7 +242,9 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
               <Row icon={Link2} label="Affiliate" value={booking.affiliate.name} />
             )}
             {booking.agentCommission && (
-              <Row icon={DollarSign} label="Agent commission" value={formatCurrency(Number(booking.agentCommission.amount))} />
+              <div className="py-3">
+                <AgentCommissionBreakdown commission={booking.agentCommission} currency={booking.currency} />
+              </div>
             )}
             {booking.affiliateCommission && (
               <Row icon={DollarSign} label="Affiliate commission" value={formatCurrency(Number(booking.affiliateCommission.amount))} />

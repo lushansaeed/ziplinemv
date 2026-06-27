@@ -26,7 +26,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       riders:   true,
       addOns:   { include: { addOn: { select: { name: true } } } },
       waivers:  true,
-      agentCommission: { select: { amount: true, status: true } },
+      agentCommission: { select: { amount: true, status: true, breakdown: true } },
     },
   });
 

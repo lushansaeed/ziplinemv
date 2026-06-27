@@ -329,6 +329,7 @@ model AgentCommission {
   amount    Decimal     @db.Decimal(10, 2)
   rate      Decimal     @db.Decimal(5, 2)
   basis     CommissionBasis
+  breakdown Json?
   status    PayoutStatus @default(PENDING)
   paidAt    DateTime?   @map("paid_at")
   createdAt DateTime    @default(now()) @map("created_at")

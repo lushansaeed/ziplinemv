@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Calendar, Clock, Package, Users, DollarSign, ExternalLink } from "lucide-react";
+import { Loader2, Calendar, Clock, Package, Users, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/admin/shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
+import { AgentCommissionBreakdown } from "@/components/commission/agent-commission-breakdown";
 
 export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
   const [booking, setBooking] = useState<any>(null);
@@ -115,9 +116,8 @@ export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
           <span className="font-bold text-base text-primary">{formatCurrency(Number(booking.total), booking.currency)}</span>
         </div>
         {booking.agentCommission && (
-          <div className="py-2.5 flex justify-between text-sm">
-            <span className="text-muted-foreground flex items-center gap-1.5"><DollarSign className="w-3.5 h-3.5" />Your commission</span>
-            <span className="font-semibold text-primary">{formatCurrency(Number(booking.agentCommission.amount))}</span>
+          <div className="py-3">
+            <AgentCommissionBreakdown commission={booking.agentCommission} currency={booking.currency} />
           </div>
         )}
       </div>

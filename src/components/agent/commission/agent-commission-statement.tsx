@@ -1,13 +1,15 @@
 "use client";
 
+import { Fragment } from "react";
 import { DollarSign, Clock, CheckCircle2, TrendingUp } from "lucide-react";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
 import { StatCard } from "@/components/shared/stat-card";
+import { AgentCommissionBreakdown } from "@/components/commission/agent-commission-breakdown";
 
 interface CommissionRow {
-  id: string; amount: number; rate: number; status: string; createdAt: Date;
+  id: string; amount: number; rate: number; status: string; createdAt: Date; breakdown?: any;
   booking: {
-    reference: string; bookingDate: Date; total: number;
+    reference: string; bookingDate: Date; total: number; currency?: string | null;
     customer: { name: string };
     package:  { name: string };
   };
@@ -100,28 +102,35 @@ export function AgentCommissionStatement({
               </tr>
             ) : (
               commissions.map((c) => (
-                <tr key={c.id} className="table-row-hover">
-                  <td>
-                    <a
-                      href={`/book/confirmation?ref=${c.booking.reference}`}
-                      target="_blank"
-                      className="font-mono text-xs font-bold text-primary hover:underline"
-                    >
-                      {c.booking.reference}
-                    </a>
-                  </td>
-                  <td className="text-sm">{c.booking.customer.name}</td>
-                  <td className="text-sm text-muted-foreground">{formatDate(c.booking.bookingDate)}</td>
-                  <td className="text-sm">{c.booking.package.name}</td>
-                  <td className="text-sm">{formatCurrency(Number(c.booking.total))}</td>
-                  <td className="text-sm text-muted-foreground">{c.rate}%</td>
-                  <td className="font-bold text-sm text-primary">{formatCurrency(Number(c.amount))}</td>
-                  <td>
-                    <span className={cn("status-badge text-xs capitalize", STATUS_COLOR[c.status] ?? "bg-muted text-muted-foreground")}>
-                      {c.status.toLowerCase()}
-                    </span>
-                  </td>
-                </tr>
+                <Fragment key={c.id}>
+                  <tr className="table-row-hover">
+                    <td>
+                      <a
+                        href={`/book/confirmation?ref=${c.booking.reference}`}
+                        target="_blank"
+                        className="font-mono text-xs font-bold text-primary hover:underline"
+                      >
+                        {c.booking.reference}
+                      </a>
+                    </td>
+                    <td className="text-sm">{c.booking.customer.name}</td>
+                    <td className="text-sm text-muted-foreground">{formatDate(c.booking.bookingDate)}</td>
+                    <td className="text-sm">{c.booking.package.name}</td>
+                    <td className="text-sm">{formatCurrency(Number(c.booking.total), c.booking.currency ?? "USD")}</td>
+                    <td className="text-sm text-muted-foreground">{c.rate}%</td>
+                    <td className="font-bold text-sm text-primary">{formatCurrency(Number(c.amount), c.booking.currency ?? "USD")}</td>
+                    <td>
+                      <span className={cn("status-badge text-xs capitalize", STATUS_COLOR[c.status] ?? "bg-muted text-muted-foreground")}>
+                        {c.status.toLowerCase()}
+                      </span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={8} className="bg-muted/20 px-4 py-3">
+                      <AgentCommissionBreakdown commission={c} currency={c.booking.currency ?? "USD"} compact />
+                    </td>
+                  </tr>
+                </Fragment>
               ))
             )}
           </tbody>

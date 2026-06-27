@@ -117,6 +117,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             where: { id: { in: input.addOnIds } },
             select: {
               id: true,
+              name: true,
               price: true,
               localPriceMvr: true,
               agentCommissionEligible: true,
@@ -288,9 +289,27 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
                 : (priceResult.basePrice * Number(pkg.agentCommissionValue)) / 100
               : (priceResult.basePrice * agentRate) / 100
             : 0;
+          const packageRuleLabel = agentPackageValue != null
+            ? agentPackageType === "FIXED"
+              ? `${Number(agentPackageValue).toFixed(2)} fixed per rider`
+              : `${Number(agentPackageValue)}% agent package rule`
+            : pkg?.agentCommissionValue != null
+            ? pkg.agentCommissionType === "FIXED"
+              ? `${Number(pkg.agentCommissionValue).toFixed(2)} fixed per rider`
+              : `${Number(pkg.agentCommissionValue)}% package rule`
+            : `${agentRate}% default rate`;
 
-          const addOnCommission = addOnRecords.reduce((sum, addOn) => {
-            if (!addOn.agentCommissionEligible) return sum;
+          const addOnBreakdown = addOnRecords.map((addOn) => {
+            if (!addOn.agentCommissionEligible) {
+              return {
+                id: addOn.id,
+                name: addOn.name,
+                quantity: input.addOnQuantities?.[addOn.id] ?? input.numRiders,
+                lineTotal: 0,
+                rule: "Not commission eligible",
+                amount: 0,
+              };
+            }
 
             const qty = input.addOnQuantities?.[addOn.id] ?? input.numRiders;
             const addOnPrice = isLocalBooking && addOn.localPriceMvr
@@ -317,9 +336,38 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
               : agent.commissionBasis === "PACKAGE_AND_ADDONS"
                 ? (lineTotal * agentRate) / 100
                 : 0;
+            const rule = agentSpecificAddOn
+              ? isLocalBooking && agentSpecificAddOn.localValue != null
+                ? agentSpecificAddOn.localType === "FIXED"
+                  ? `${Number(agentSpecificAddOn.localValue).toFixed(2)} fixed per unit`
+                  : `${Number(agentSpecificAddOn.localValue)}% agent add-on rule`
+                : agentSpecificAddOn.type === "FIXED"
+                  ? `${Number(agentSpecificAddOn.value).toFixed(2)} fixed per unit`
+                  : `${Number(agentSpecificAddOn.value)}% agent add-on rule`
+              : agent.addOnCommissionValue != null
+              ? agent.addOnCommissionType === "FIXED"
+                ? `${Number(agent.addOnCommissionValue).toFixed(2)} fixed per unit`
+                : `${Number(agent.addOnCommissionValue)}% agent add-on default`
+              : addOn.agentCommissionValue != null
+              ? addOn.agentCommissionType === "FIXED"
+                ? `${Number(addOn.agentCommissionValue).toFixed(2)} fixed per unit`
+                : `${Number(addOn.agentCommissionValue)}% add-on rule`
+              : agent.commissionBasis === "PACKAGE_AND_ADDONS"
+                ? `${agentRate}% default rate`
+                : "No add-on commission";
 
-            return sum + amount;
-          }, 0);
+            return {
+              id: addOn.id,
+              name: addOn.name,
+              quantity: qty,
+              unitPrice: addOnPrice,
+              lineTotal,
+              rule,
+              amount,
+            };
+          });
+
+          const addOnCommission = addOnBreakdown.reduce((sum, addOn) => sum + addOn.amount, 0);
 
           const commissionAmount = packageCommission + addOnCommission;
 
@@ -331,6 +379,17 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
                 amount:    commissionAmount,
                 rate:      agentRate,
                 basis:     agent.commissionBasis,
+                breakdown: {
+                  currency: priceResult.currency,
+                  total: commissionAmount,
+                  package: {
+                    base: priceResult.basePrice,
+                    rule: packageRuleLabel,
+                    amount: packageCommission,
+                  },
+                  addOns: addOnBreakdown,
+                  addOnTotal: addOnCommission,
+                },
                 status:    "PENDING",
               },
             });
