@@ -16,13 +16,13 @@ export function BookingProgressBar({ currentStep, steps }: BookingProgressBarPro
       {/* ── Mobile: compact progress bar + step label ── */}
       <div className="lg:hidden space-y-1.5">
         <div className="flex items-center justify-between text-xs">
-          <span className="text-white/40">Step {currentStep} of {total + 1}</span>
+          <span className="text-white/40">Step {currentStep} of {total}</span>
           <span className="text-brand-citrus font-semibold">{steps[currentStep - 1] ?? ""}</span>
         </div>
         <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
           <div
             className="h-full bg-brand-citrus rounded-full transition-all duration-500"
-            style={{ width: `${(currentStep / (total + 1)) * 100}%` }}
+            style={{ width: `${(currentStep / total) * 100}%` }}
           />
         </div>
       </div>

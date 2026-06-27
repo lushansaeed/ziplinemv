@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { CheckCircle2, Calendar, Clock, Users, Package, MessageCircle } from "lucide-react";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate, bookingStatusColor, paymentStatusColor } from "@/lib/utils";
+import { buildWaiverSharePayload } from "@/lib/waivers/links";
+import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
 
 export const metadata: Metadata = { title: "Booking Confirmed — Zipline Maldives" };
 
@@ -29,6 +31,7 @@ export default async function ConfirmationPage({
 
   const booking = await getBooking(searchParams.ref);
   if (!booking) notFound();
+  const waiverShare = await buildWaiverSharePayload(booking.id);
 
   return (
     <div className="min-h-screen pt-28 pb-20">
@@ -127,6 +130,16 @@ export default async function ConfirmationPage({
           <p className="text-white font-medium">{booking.customer.name}</p>
           <p className="text-white/50 text-sm">{booking.customer.phone}</p>
           {booking.customer.email && <p className="text-white/50 text-sm">{booking.customer.email}</p>}
+        </div>
+
+        <div className="mb-8">
+          <div className="mb-3 rounded-2xl border border-brand-citrus/20 bg-brand-citrus/8 p-4">
+            <p className="text-sm font-semibold text-white">Waiver forms</p>
+            <p className="mt-1 text-sm text-white/55">
+              Your booking is confirmed. The waiver form link has been sent to your WhatsApp and Email. Please ensure each rider completes the waiver before the ride.
+            </p>
+          </div>
+          <WaiverShareCard waiverShare={waiverShare} />
         </div>
 
         {/* Actions */}

@@ -56,6 +56,13 @@ export interface BookingState {
   totalAmount: number;
   currency: string;
   qrCode: string;
+  waiverShare: {
+    url: string;
+    qrCode: string;
+    maxSubmissions: number;
+    currentSubmissions: number;
+    status: string;
+  } | null;
   // UI
   currentStep: number;
   // Registered by StepShell so sidebar/sticky bar can mirror the Continue button
@@ -75,7 +82,7 @@ const INITIAL: BookingState = {
   riderWaivers: [], waiverAccepted: false, termsAccepted: false, refundAccepted: false, safetyAccepted: false,
   paymentMethod: "", promoCode: "", promoDiscount: 0,
   affiliateCoupon: "", affiliateLinkId: "",
-  bookingReference: "", bookingId: "", totalAmount: 0, currency: "USD", qrCode: "",
+  bookingReference: "", bookingId: "", totalAmount: 0, currency: "USD", qrCode: "", waiverShare: null,
   currentStep: 1,
   stepContinueDisabled: true,
   stepContinueFn: null,
@@ -103,7 +110,7 @@ export const useBookingStore = create<BookingState & BookingActions>()(
 
       setStep: (step) => set({ currentStep: step }),
 
-      nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 10) })),
+      nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 9) })),
 
       prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
 
@@ -155,7 +162,7 @@ export const useBookingStore = create<BookingState & BookingActions>()(
     }),
     {
       name: "zipline-booking",
-      version: 3, // bump when store shape changes to clear stale persisted state
+      version: 4, // bump when store shape changes to clear stale persisted state
       partialize: (state) => ({
         date: state.date, slotId: state.slotId, slotTime: state.slotTime,
         numRiders: state.numRiders, packageId: state.packageId,

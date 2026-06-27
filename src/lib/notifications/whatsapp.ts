@@ -126,6 +126,43 @@ export async function sendWaiverReminderWhatsApp(
   });
 }
 
+export async function sendBookingWaiverLinkWhatsApp({
+  phone,
+  reference,
+  rideDate,
+  rideTime,
+  numberOfRiders,
+  waiverUrl,
+}: {
+  phone: string;
+  reference: string;
+  rideDate: string;
+  rideTime: string;
+  numberOfRiders: number;
+  waiverUrl: string;
+}): Promise<boolean> {
+  return sendWhatsAppText({
+    to: phone,
+    body: `Hi,
+
+Your zipline booking has been confirmed.
+
+Please ask each rider to complete the waiver form using the link below before your ride:
+
+${waiverUrl}
+
+You can also scan the QR code available on your booking confirmation page to open the waiver form.
+
+Booking Reference: ${reference}
+Ride Date: ${rideDate}
+Ride Time: ${rideTime}
+Number of Riders: ${numberOfRiders}
+
+Thank you,
+Zipline Maldives Team`,
+  });
+}
+
 /**
  * Send a freeform text message (only to users who have opted in / messaged first).
  * Use for support replies, not outbound marketing.

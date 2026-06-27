@@ -19,6 +19,7 @@ interface BookingResult {
   package: { name: string };
   slot: { startTime: string };
   riders: Array<{ id: string; name: string; age: number | null; weight: number | null }>;
+  waivers?: Array<{ status: string }>;
   checkIn: { checkedInAt: Date } | null;
 }
 
@@ -54,6 +55,7 @@ export function CheckInModule() {
     if (!r.weight) return false;
     return !isWeightEligible(r.weight).eligible;
   }) ?? [];
+  const signedWaivers = result?.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -201,6 +203,18 @@ export function CheckInModule() {
             </div>
           )}
 
+          {result.waivers && signedWaivers < result.numRiders && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
+              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-400">Waivers incomplete</p>
+                <p className="text-yellow-700 dark:text-yellow-500 text-sm">
+                  {signedWaivers} of {result.numRiders} rider waivers signed. Admin override is required to check in.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Already checked in */}
           {result.checkIn && (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
@@ -216,7 +230,13 @@ export function CheckInModule() {
             {result.bookingStatus === "CONFIRMED" && !result.checkIn && weightIssues.length === 0 && (
               <button
                 onClick={() => startTransition(async () => {
-                  const r = await checkInBooking(result.id);
+                  let override = false;
+                  if (signedWaivers < result.numRiders) {
+                    const confirmed = window.confirm(`Waivers incomplete: ${signedWaivers} of ${result.numRiders} signed. Check in with admin override?`);
+                    if (!confirmed) return;
+                    override = true;
+                  }
+                  const r = await checkInBooking(result.id, undefined, override);
                   if (r.success) {
                     toast.success("Checked in successfully!");
                     setResult((prev) => prev ? { ...prev, bookingStatus: "CHECKED_IN", checkIn: { checkedInAt: new Date() } } : prev);

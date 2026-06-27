@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/booking/create";
-import { sendBookingConfirmation, sendAdminNewBookingAlert } from "@/lib/notifications/email";
+import { sendBookingConfirmation, sendAdminNewBookingAlert, sendBookingWaiverLink } from "@/lib/notifications/email";
+import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
+import { prisma } from "@/lib/prisma/client";
+import { formatDate } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
@@ -58,7 +61,23 @@ export async function POST(req: NextRequest) {
     // Fire notifications asynchronously — don't block the response
     if (result.bookingId) {
       sendBookingConfirmation(result.bookingId).catch(console.error);
+      sendBookingWaiverLink(result.bookingId).catch(console.error);
       sendAdminNewBookingAlert(result.bookingId).catch(console.error);
+      (async () => {
+        const booking = await prisma.booking.findUnique({
+          where: { id: result.bookingId },
+          include: { customer: true, slot: true },
+        });
+        if (!booking || !result.waiverShare?.url) return;
+        await sendBookingWaiverLinkWhatsApp({
+          phone: booking.customer.phone,
+          reference: booking.reference,
+          rideDate: formatDate(booking.bookingDate, "EEEE, d MMMM yyyy"),
+          rideTime: booking.slot.startTime,
+          numberOfRiders: booking.numRiders,
+          waiverUrl: result.waiverShare.url,
+        });
+      })().catch(console.error);
     }
 
     return NextResponse.json(result, { status: 201 });

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma/client";
 import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
-import { generateWaiverToken } from "@/lib/waivers/links";
+import { buildWaiverSharePayload, generateWaiverToken } from "@/lib/waivers/links";
 import { BookingSource, BookingStatus, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
@@ -45,6 +45,13 @@ export interface CreateBookingResult {
   total?:     number;
   currency?:  string;
   qrCode?:    string;
+  waiverShare?: {
+    url: string;
+    qrCode: string;
+    maxSubmissions: number;
+    currentSubmissions: number;
+    status: string;
+  } | null;
   error?:     string;
 }
 
@@ -421,11 +428,13 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
         }
       }
 
+      const waiverRiders = Array.from({ length: input.numRiders }, (_, index) => input.riders[index] ?? { name: "", age: "", weight: "" });
+
       // Create pending waiver records for each rider
       await tx.waiver.createMany({
-        data: input.riders.map((r) => ({
+        data: waiverRiders.map((r, index) => ({
           bookingId: b.id,
-          riderName: r.name || `Rider`,
+          riderName: r.name || `Rider ${index + 1}`,
           status:    WaiverStatus.PENDING,
         })),
       });
@@ -434,7 +443,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
         data: {
           bookingId: b.id,
           token: generateWaiverToken(),
-          maxSubmissions: input.riders.length,
+          maxSubmissions: input.numRiders,
           currentSubmissions: 0,
           createdByAgentId: input.agentId ?? undefined,
         },
@@ -467,6 +476,8 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       data:  { qrCode: qrDataUrl },
     });
 
+    const waiverShare = await buildWaiverSharePayload(booking.id);
+
     return {
       success:   true,
       reference,
@@ -474,6 +485,13 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       total:     priceResult.total,
       currency:  priceResult.currency,
       qrCode:    qrDataUrl,
+      waiverShare: waiverShare && {
+        url: waiverShare.url,
+        qrCode: waiverShare.qrCode,
+        maxSubmissions: waiverShare.maxSubmissions,
+        currentSubmissions: waiverShare.currentSubmissions,
+        status: waiverShare.status,
+      },
     };
 
   } catch (err: any) {

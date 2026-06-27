@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 
 const STEP_LABELS = [
   "", "Date", "Time", "Riders", "Package",
-  "Add-ons", "Your info", "Rider details", "Safety & waiver", "Payment",
+  "Add-ons", "Your info", "Rider details", "Payment",
 ];
 
 export function BookingSidebar() {
@@ -20,7 +20,7 @@ export function BookingSidebar() {
     stepContinueDisabled, stepContinueFn, stepContinueLabel,
   } = store;
 
-  if (currentStep === 10) return null;
+  if (currentStep === 9) return null;
 
   const addOnTotal = addOnIds.reduce(
     (sum, id) => sum + (addOnPrices[id] ?? 0) * (addOnQuantities[id] ?? 0),
@@ -75,7 +75,7 @@ export function BookingSidebar() {
         </div>
 
         {/* Continue button */}
-        {currentStep < 9 && (
+        {currentStep < 8 && (
           <button
             onClick={() => stepContinueFn?.()}
             disabled={stepContinueDisabled || !stepContinueFn}
@@ -95,14 +95,13 @@ export function BookingSidebar() {
           </button>
         )}
 
-        {stepContinueDisabled && currentStep < 9 && (
+        {stepContinueDisabled && currentStep < 8 && (
           <p className="text-center text-white/30 text-xs">
             {currentStep === 1 && "Select a date to continue"}
             {currentStep === 2 && "Select a time slot to continue"}
             {currentStep === 4 && "Select a package to continue"}
             {currentStep === 6 && "Fill in your details to continue"}
-            {currentStep === 8 && "Accept all policies to continue"}
-            {currentStep === 9 && "Choose a payment method to continue"}
+            {currentStep === 8 && "Choose a payment method to continue"}
           </p>
         )}
       </div>

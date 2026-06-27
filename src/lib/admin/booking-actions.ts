@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, PaymentStatus } from "@prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
 import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
+import { sendBookingWaiverLink } from "@/lib/notifications/email";
+import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
+import { formatDate } from "@/lib/utils";
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
   const user = await requirePermission("bookings", "edit");
@@ -100,8 +103,25 @@ export async function cancelBooking(bookingId: string, reason?: string) {
   return { success: true };
 }
 
-export async function checkInBooking(bookingId: string, notes?: string) {
+export async function checkInBooking(bookingId: string, notes?: string, overrideIncompleteWaivers = false) {
   const user = await requirePermission("bookings", "edit");
+
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      numRiders: true,
+      waivers: { select: { status: true } },
+    },
+  });
+  if (!booking) return { success: false, error: "Booking not found" };
+
+  const signedWaivers = booking.waivers.filter((waiver) => waiver.status === "SIGNED").length;
+  if (signedWaivers < booking.numRiders && !overrideIncompleteWaivers) {
+    return {
+      success: false,
+      error: `Waivers incomplete: ${signedWaivers} of ${booking.numRiders} signed. Admin override is required before check-in.`,
+    };
+  }
 
   const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
   if (existing) {
@@ -126,6 +146,7 @@ export async function checkInBooking(bookingId: string, notes?: string) {
         action:   "BOOKING_CHECKED_IN",
         module:   "bookings",
         recordId: bookingId,
+        newValue: { overrideIncompleteWaivers, signedWaivers, requiredWaivers: booking.numRiders },
       },
     }),
   ]);
@@ -213,5 +234,55 @@ export async function regenerateWaiverLink(bookingId: string) {
   });
 
   revalidatePath("/admin/bookings");
+  return { success: true };
+}
+
+export async function resendWaiverEmail(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+  const result = await sendBookingWaiverLink(bookingId);
+  if (!result.sent) return { success: false, error: result.reason ?? result.error ?? "Could not send waiver email" };
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "WAIVER_LINK_EMAIL_RESENT",
+      module: "waivers",
+      recordId: bookingId,
+    },
+  });
+
+  return { success: true };
+}
+
+export async function resendWaiverWhatsApp(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { customer: true, slot: true },
+  });
+  if (!booking) return { success: false, error: "Booking not found" };
+
+  const waiverShare = await buildWaiverSharePayload(booking.id);
+  if (!waiverShare) return { success: false, error: "Waiver link not found" };
+
+  const sent = await sendBookingWaiverLinkWhatsApp({
+    phone: booking.customer.phone,
+    reference: booking.reference,
+    rideDate: formatDate(booking.bookingDate, "EEEE, d MMMM yyyy"),
+    rideTime: booking.slot.startTime,
+    numberOfRiders: booking.numRiders,
+    waiverUrl: waiverShare.url,
+  });
+  if (!sent) return { success: false, error: "Could not send WhatsApp message" };
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "WAIVER_LINK_WHATSAPP_RESENT",
+      module: "waivers",
+      recordId: bookingId,
+    },
+  });
+
   return { success: true };
 }

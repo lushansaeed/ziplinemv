@@ -102,6 +102,7 @@ export function Step9Payment() {
         setField("bookingId",        data.bookingId);
         setField("totalAmount",      data.total);
         if (data.qrCode) setField("qrCode", data.qrCode);
+        if (data.waiverShare) setField("waiverShare", data.waiverShare);
         nextStep();
       } catch (err: any) {
         setSubmitError("Network error. Please check your connection.");

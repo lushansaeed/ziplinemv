@@ -6,7 +6,16 @@ import {
   ShieldCheck, Image, User, Building2, Link2,
   CheckCircle2, Loader2, Edit2,
 } from "lucide-react";
-import { getBookingDetail, updateBookingStatus, updatePaymentStatus, checkInBooking, completeBooking, regenerateWaiverLink } from "@/lib/admin/booking-actions";
+import {
+  getBookingDetail,
+  updateBookingStatus,
+  updatePaymentStatus,
+  checkInBooking,
+  completeBooking,
+  regenerateWaiverLink,
+  resendWaiverEmail,
+  resendWaiverWhatsApp,
+} from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
@@ -83,6 +92,13 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
     URL.revokeObjectURL(url);
   }
 
+  function waiverOverrideConfirmed() {
+    if (!booking) return false;
+    const signed = booking.waivers.filter((waiver: any) => waiver.status === "SIGNED").length;
+    if (signed >= booking.numRiders) return false;
+    return window.confirm(`Waivers incomplete: ${signed} of ${booking.numRiders} signed. Check in with admin override?`);
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -127,7 +143,14 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
       <div className="flex flex-wrap gap-2">
         {booking.bookingStatus === "CONFIRMED" && (
           <button
-            onClick={() => startTransition(() => doAction(() => checkInBooking(booking.id), "Checked in!"))}
+            onClick={() => {
+              const override = waiverOverrideConfirmed();
+              if (override === false) {
+                const signed = booking.waivers.filter((waiver: any) => waiver.status === "SIGNED").length;
+                if (signed < booking.numRiders) return;
+              }
+              startTransition(() => doAction(() => checkInBooking(booking.id, undefined, override), "Checked in!"));
+            }}
             disabled={isPending}
             className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 transition-colors font-medium"
           >
@@ -262,6 +285,8 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
         waiverShare={(booking as any).waiverShare}
         canRegenerate
         onViewStatus={() => document.getElementById("admin-waiver-status")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        onResendEmail={() => startTransition(() => doAction(() => resendWaiverEmail(booking.id), "Waiver email sent"))}
+        onResendWhatsApp={() => startTransition(() => doAction(() => resendWaiverWhatsApp(booking.id), "Waiver WhatsApp sent"))}
         onRegenerate={() => {
           if (!window.confirm("Regenerate this waiver link? The old link will stop working.")) return;
           startTransition(() => doAction(() => regenerateWaiverLink(booking.id), "Waiver link regenerated"));

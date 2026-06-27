@@ -2,6 +2,7 @@ import { Resend } from "resend";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { format } from "date-fns";
+import { buildWaiverSharePayload } from "@/lib/waivers/links";
 
 // Lazy init — avoids build-time error when RESEND_API_KEY is not set
 const getResend = () => new Resend(process.env.RESEND_API_KEY ?? "placeholder");
@@ -155,6 +156,75 @@ export async function sendBookingConfirmation(bookingId: string) {
     subject:     `Booking confirmed — ${booking.reference}`,
     status:      error ? "failed" : "sent",
     error:       error?.message,
+  });
+
+  return { sent: !error, error: error?.message };
+}
+
+export async function sendBookingWaiverLink(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: { customer: true, slot: true },
+  });
+
+  if (!booking || !booking.customer.email) return { sent: false, reason: "No email" };
+
+  const waiverShare = await buildWaiverSharePayload(booking.id);
+  if (!waiverShare) return { sent: false, reason: "No waiver link" };
+
+  const rideDate = formatDate(booking.bookingDate, "EEEE, d MMMM yyyy");
+  const html = emailWrapper(`
+    <div style="margin-bottom:24px;">${badge("Waiver forms required", "#F5A623")}</div>
+    ${h2("Zipline Waiver Form for Your Booking")}
+    ${p(`Hi ${booking.customer.name},`)}
+    ${p("Thank you for your booking with Zipline Maldives.")}
+    ${p("Please ask each rider to complete the waiver form before the ride using the link below:")}
+    ${cta("Open waiver form", waiverShare.url)}
+    ${p(`You may also scan the attached QR code to open the waiver form.`, true)}
+    ${table(`
+      ${detail("Booking Reference", booking.reference)}
+      ${detail("Ride Date", rideDate)}
+      ${detail("Ride Time", booking.slot.startTime)}
+      ${detail("Number of Riders", String(booking.numRiders))}
+    `)}
+    <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:20px;margin-top:24px;">
+      <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#ffffff;">Important</p>
+      <ul style="margin:0;padding:0 0 0 20px;font-size:13px;line-height:2;color:rgba(255,255,255,0.6);">
+        <li>Each rider must complete a separate waiver form.</li>
+        <li>The waiver link will allow submissions only up to the number of riders in your booking.</li>
+        <li>The same phone or device may be used to complete waivers for multiple riders.</li>
+        <li>For children, the waiver must be completed and signed by a parent or legal guardian.</li>
+        <li>Elderly riders or riders without a phone may complete the waiver using another guest's phone or at the reception counter.</li>
+      </ul>
+    </div>
+    ${p("Thank you,<br/>Zipline Maldives Team")}
+  `, `Complete rider waivers for booking ${booking.reference}.`);
+
+  const qrBase64 = waiverShare.qrCode.includes(",")
+    ? waiverShare.qrCode.split(",")[1]
+    : waiverShare.qrCode;
+
+  const { error } = await getResend().emails.send({
+    from: FROM,
+    to: booking.customer.email,
+    subject: `Zipline Waiver Form for Your Booking - ${booking.reference}`,
+    html,
+    attachments: [
+      {
+        filename: `${booking.reference}-waiver-qr.png`,
+        content: qrBase64,
+      },
+    ],
+  });
+
+  await logNotification({
+    type: "WAIVER_LINK",
+    recipientId: booking.customerId,
+    channel: "email",
+    to: booking.customer.email,
+    subject: `Zipline Waiver Form for Your Booking - ${booking.reference}`,
+    status: error ? "failed" : "sent",
+    error: error?.message,
   });
 
   return { sent: !error, error: error?.message };

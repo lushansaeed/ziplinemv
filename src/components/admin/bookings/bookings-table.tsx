@@ -71,6 +71,12 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     return { label: "Partially Completed", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" };
   }
 
+  function checkInWaiverOverride(row: BookingRow) {
+    const signed = row.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
+    if (signed >= row.numRiders) return false;
+    return window.confirm(`Waivers incomplete: ${signed} of ${row.numRiders} signed. Check in with admin override?`) ? true : null;
+  }
+
   async function doAction(fn: () => Promise<{ success: boolean; error?: string }>, successMsg: string) {
     const result = await fn();
     if (result.success) toast.success(successMsg);
@@ -164,9 +170,11 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
             {
               label: "Mark checked-in", icon: CalendarCheck,
               disabled: r.bookingStatus !== "CONFIRMED",
-              onClick: () => startTransition(() =>
-                doAction(() => checkInBooking(r.id), "Checked in!")
-              ),
+              onClick: () => {
+                const override = checkInWaiverOverride(r);
+                if (override === null) return;
+                startTransition(() => doAction(() => checkInBooking(r.id, undefined, override), "Checked in!"));
+              },
             },
             {
               label: "Mark completed", icon: CheckSquare,

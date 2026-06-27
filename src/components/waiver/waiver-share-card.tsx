@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy, Download, Eye, ExternalLink, MessageCircle, QrCode } from "lucide-react";
+import { Copy, Download, Eye, ExternalLink, Mail, MessageCircle, QrCode } from "lucide-react";
 import { toast } from "sonner";
 
 interface WaiverShare {
@@ -15,10 +15,19 @@ interface WaiverShareCardProps {
   waiverShare: WaiverShare | null;
   onViewStatus?: () => void;
   onRegenerate?: () => void;
+  onResendEmail?: () => void;
+  onResendWhatsApp?: () => void;
   canRegenerate?: boolean;
 }
 
-export function WaiverShareCard({ waiverShare, onViewStatus, onRegenerate, canRegenerate }: WaiverShareCardProps) {
+export function WaiverShareCard({
+  waiverShare,
+  onViewStatus,
+  onRegenerate,
+  onResendEmail,
+  onResendWhatsApp,
+  canRegenerate,
+}: WaiverShareCardProps) {
   if (!waiverShare) return null;
 
   const whatsappMessage = `Hi,\n\nPlease complete the zipline waiver form using the link below before your ride:\n\n${waiverShare.url}\n\nThank you,\nZipline Maldives Team`;
@@ -74,6 +83,20 @@ export function WaiverShareCard({ waiverShare, onViewStatus, onRegenerate, canRe
               <Eye className="h-3.5 w-3.5" /> Status
             </button>
           </div>
+          {(onResendEmail || onResendWhatsApp) && (
+            <div className="grid grid-cols-2 gap-2">
+              {onResendEmail && (
+                <button onClick={onResendEmail} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+                  <Mail className="h-3.5 w-3.5" /> Email resend
+                </button>
+              )}
+              {onResendWhatsApp && (
+                <button onClick={onResendWhatsApp} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold hover:bg-muted">
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp resend
+                </button>
+              )}
+            </div>
+          )}
           {canRegenerate && (
             <div className="flex flex-wrap gap-2">
               <a
