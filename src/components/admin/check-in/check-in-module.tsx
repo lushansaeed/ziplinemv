@@ -89,6 +89,7 @@ export function CheckInModule() {
   async function handleWristbandCheckIn() {
     if (!result) return;
 
+    const missingWristbands = result.riders.filter((rider) => !riderWristbands(rider)?.wristband);
     const assignments = result.riders
       .filter((r) => {
         const hasWristband = result.rideTrackings?.find((t) => t.bookingRiderId === r.id)?.wristband;
@@ -96,8 +97,13 @@ export function CheckInModule() {
       })
       .map((r) => ({ bookingRiderId: r.id, wristbandQrCode: qrInputs[r.id].trim() }));
 
-    if (assignments.length === 0) {
-      toast.error("Enter at least one wristband QR code");
+    if (!isPaymentSettled) {
+      toast.error("Check-in blocked. Payment has not been settled for this booking.");
+      return;
+    }
+
+    if (assignments.length !== missingWristbands.length) {
+      toast.error("Check-in blocked. Please assign a wristband QR to each rider before check-in.");
       return;
     }
 
@@ -113,7 +119,7 @@ export function CheckInModule() {
         const errs: string[] = data.errors ?? [data.error ?? "Failed"];
         errs.forEach((e) => toast.error(e, { duration: 8000 }));
       } else {
-        toast.success("Wristbands linked — booking checked in");
+        toast.success(data.message ?? "Check-in completed and wristbands linked successfully.");
         // Refresh result
         const fresh = await fetch(`/api/admin/check-in/search?q=${encodeURIComponent(result.reference)}`);
         const freshData = await fresh.json();
@@ -128,13 +134,17 @@ export function CheckInModule() {
   const weightIssues   = result?.riders.filter((r) => r.weight && !isWeightEligible(r.weight).eligible) ?? [];
   const signedWaivers  = result?.waivers?.filter((w) => w.status === "SIGNED").length ?? 0;
   const allWaiversDone = result ? signedWaivers >= result.numRiders : false;
+  const isPaymentSettled = result ? ["PAID", "COMPLIMENTARY"].includes(result.paymentStatus) : false;
 
   // Per-rider wristband state
   const riderWristbands = (rider: BookingRider) =>
     result?.rideTrackings?.find((t) => t.bookingRiderId === rider.id);
 
   const allWristbandsLinked = result?.riders.every((r) => !!riderWristbands(r)?.wristband) ?? false;
-  const canLinkWristbands   = allWaiversDone && !allWristbandsLinked;
+  const missingWristbandRiders = result?.riders.filter((r) => !riderWristbands(r)?.wristband) ?? [];
+  const allMissingWristbandsEntered = missingWristbandRiders.every((r) => Boolean(qrInputs[r.id]?.trim()));
+  const canLinkWristbands   = isPaymentSettled && allWaiversDone && !allWristbandsLinked;
+  const isReadyForCheckIn = isPaymentSettled && allWaiversDone && allWristbandsLinked && weightIssues.length === 0;
 
   return (
     <div className="space-y-6">
@@ -294,7 +304,7 @@ export function CheckInModule() {
           </div>
 
           {/* Payment notice */}
-          {result.paymentStatus !== "PAID" && result.paymentStatus !== "COMPLIMENTARY" && (
+          {!isPaymentSettled && (
             <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
               <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
               <div>
@@ -332,6 +342,19 @@ export function CheckInModule() {
             </div>
           )}
 
+          {/* Wristband summary */}
+          {isPaymentSettled && allWaiversDone && !allWristbandsLinked && (
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+              <QrCode className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800 dark:text-orange-400">Wristbands required</p>
+                <p className="text-orange-700 dark:text-orange-500 text-sm mt-0.5">
+                  Reception check-in is blocked until every rider has a wristband QR assigned and locked.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Already checked in banner */}
           {result.checkIn && (
             <div className="flex items-center gap-3 p-4 rounded-xl bg-green-100 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
@@ -350,7 +373,7 @@ export function CheckInModule() {
             {canLinkWristbands && !result.checkIn && weightIssues.length === 0 && (
               <button
                 onClick={handleWristbandCheckIn}
-                disabled={linking || !result.riders.some((r) => qrInputs[r.id]?.trim())}
+                disabled={linking || !allMissingWristbandsEntered}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {linking ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
@@ -358,25 +381,13 @@ export function CheckInModule() {
               </button>
             )}
 
-            {/* If checked in but some wristbands still missing */}
-            {result.checkIn && canLinkWristbands && (
-              <button
-                onClick={handleWristbandCheckIn}
-                disabled={linking || !result.riders.some((r) => qrInputs[r.id]?.trim())}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                {linking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
-                Link Remaining Wristbands
-              </button>
-            )}
-
             {/* Fallback check-in without wristbands (if all wristbands already linked) */}
-            {allWristbandsLinked && result.bookingStatus === "CONFIRMED" && !result.checkIn && (
+            {isReadyForCheckIn && result.bookingStatus === "CONFIRMED" && !result.checkIn && (
               <button
                 onClick={() => startCheckInTransition(async () => {
                   const r = await checkInBooking(result.id);
                   if (r.success) {
-                    toast.success("Checked in!");
+                    toast.success("Check-in completed and wristbands linked successfully.");
                     setResult((p) => p ? { ...p, bookingStatus: "CHECKED_IN", checkIn: { checkedInAt: new Date() } } : p);
                   } else toast.error((r as any).error ?? "Action failed");
                 })}

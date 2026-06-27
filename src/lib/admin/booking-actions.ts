@@ -8,6 +8,7 @@ import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waiv
 import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notifications/email";
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
 import { formatDate } from "@/lib/utils";
+import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
   const user = await requirePermission("bookings", "edit");
@@ -57,26 +58,47 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
 
     const old = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { paymentStatus: true },
+      select: { paymentStatus: true, total: true, currency: true },
     });
 
-    await prisma.booking.update({
-      where: { id: bookingId },
-      data:  {
-        paymentStatus:  status,
-        paymentMethod,
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      await tx.booking.update({
+        where: { id: bookingId },
+        data:  {
+          paymentStatus:  status,
+          paymentMethod,
+        },
+      });
 
-    await prisma.auditLog.create({
-      data: {
-        userId:   user.id,
-        action:   "PAYMENT_STATUS_UPDATED",
-        module:   "payments",
-        recordId: bookingId,
-        oldValue: { paymentStatus: old?.paymentStatus },
-        newValue: { paymentStatus: status, paymentMethod },
-      },
+      if (status === PaymentStatus.PAID) {
+        const paidPayment = await tx.payment.findFirst({
+          where: { bookingId, status: PaymentStatus.PAID },
+          select: { id: true },
+        });
+        if (!paidPayment && old) {
+          await tx.payment.create({
+            data: {
+              bookingId,
+              amount: old.total,
+              currency: old.currency,
+              method: paymentMethod ?? PaymentMethod.CASH,
+              status: PaymentStatus.PAID,
+              reference: "Marked paid from admin",
+            },
+          });
+        }
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId:   user.id,
+          action:   "PAYMENT_STATUS_UPDATED",
+          module:   "payments",
+          recordId: bookingId,
+          oldValue: { paymentStatus: old?.paymentStatus },
+          newValue: { status, paymentMethod },
+        },
+      });
     });
 
     revalidatePath("/admin/bookings");
@@ -150,65 +172,36 @@ async function assertAllWaiversSigned(bookingId: string): Promise<string | null>
 }
 
 export async function checkInBooking(bookingId: string, notes?: string) {
+  let user: Awaited<ReturnType<typeof requirePermission>> | null = null;
   try {
-    const user = await requirePermission("bookings", "edit");
+    user = await requirePermission("bookings", "edit");
+    const userId = user.id;
 
-    const booking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { bookingStatus: true, numRiders: true, waivers: { select: { status: true } } },
+    await prisma.$transaction(async (tx) => {
+      await completeCheckInTransaction(tx, { bookingId, userId, notes });
     });
-    if (!booking) return { success: false, error: "Booking not found" };
-
-    // Hard waiver gate — unconditional, no override parameter accepted
-    const waiverError = await assertAllWaiversSigned(bookingId);
-    if (waiverError) {
-      await prisma.auditLog.create({
-        data: {
-          userId:   user.id,
-          action:   "CHECK_IN_BLOCKED_WAIVER_INCOMPLETE",
-          module:   "bookings",
-          recordId: bookingId,
-          newValue: {
-            reason:          "waiver_not_completed",
-            signedWaivers:   booking.waivers.filter((w) => w.status === "SIGNED").length,
-            requiredWaivers: booking.numRiders,
-            errorMessage:    waiverError,
-          },
-        },
-      });
-      return { success: false, error: waiverError };
-    }
-
-    const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
-    if (existing || booking.bookingStatus === BookingStatus.CHECKED_IN) {
-      return { success: true };
-    }
-
-    const signedWaivers = booking.waivers.filter((w) => w.status === "SIGNED").length;
-    await prisma.$transaction([
-      prisma.booking.update({
-        where: { id: bookingId },
-        data:  { bookingStatus: BookingStatus.CHECKED_IN },
-      }),
-      prisma.checkIn.create({
-        data: { bookingId, checkedInById: user.id, notes },
-      }),
-      prisma.auditLog.create({
-        data: {
-          userId:   user.id,
-          action:   "BOOKING_CHECKED_IN",
-          module:   "bookings",
-          recordId: bookingId,
-          newValue: { signedWaivers, requiredWaivers: booking.numRiders, waiverOverride: false },
-        },
-      }),
-    ]);
 
     revalidatePath("/admin/bookings");
     revalidatePath("/admin/check-in");
     return { success: true };
   } catch (error: any) {
     console.error("[checkInBooking]", error);
+    if (error instanceof CheckInGateError) {
+      await prisma.auditLog.create({
+        data: {
+          userId: user?.id,
+          action: "CHECK_IN_BLOCKED",
+          module: "bookings",
+          recordId: bookingId,
+          newValue: {
+            result: "failed",
+            reason: error.code,
+            errorMessage: error.message,
+          },
+        },
+      }).catch(() => {});
+      return { success: false, error: error.message };
+    }
     return {
       success: false,
       error: error?.message ?? "Could not check in this booking. Please try again.",
