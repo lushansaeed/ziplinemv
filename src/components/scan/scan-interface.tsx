@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert, RotateCcw, Zap, ZapOff } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import jsQR from "jsqr";
 import { cn } from "@/lib/utils";
 
@@ -47,6 +47,67 @@ const DNF_REASONS = [
   "Other",
 ];
 
+function ScanResultPanel({ result, compact = false }: { result: ScanResult; compact?: boolean }) {
+  return (
+    <div className={cn(
+      "w-full rounded-2xl border-2 transition-all",
+      compact ? "p-4 shadow-2xl backdrop-blur-md" : "p-6",
+      result.success
+        ? "bg-emerald-950/95 border-emerald-500"
+        : result.error?.toLowerCase().includes("waiver")
+          ? "bg-orange-950/95 border-orange-500"
+          : "bg-red-950/95 border-red-500"
+    )}>
+      <div className="flex items-start gap-4">
+        {result.success
+          ? <CheckCircle2 className="w-8 h-8 text-emerald-400 flex-shrink-0 mt-0.5" />
+          : <XCircle className="w-8 h-8 text-red-400 flex-shrink-0 mt-0.5" />
+        }
+        <div className="flex-1 min-w-0">
+          {result.success ? (
+            <>
+              <p className="text-emerald-300 font-bold text-lg">{result.locationLabel ?? "Scan recorded"}</p>
+              {result.riderName && (
+                <p className="text-white flex items-center gap-2 mt-1">
+                  <User className="w-4 h-4" />{result.riderName}
+                </p>
+              )}
+              {result.rideDurationSeconds && (
+                <p className="text-emerald-300 mt-2 font-bold text-xl flex items-center gap-2">
+                  <Clock className="w-5 h-5" />
+                  {result.rideDurationSeconds}s · {Number(result.rideSpeedKmph).toFixed(1)} km/h
+                </p>
+              )}
+              {result.windSpeedKmh && (
+                <p className="text-white/70 text-sm mt-1 flex items-center gap-1">
+                  <Wind className="w-4 h-4" />
+                  Wind: {Number(result.windSpeedKmh).toFixed(1)} km/h {result.windDirectionCompass}
+                </p>
+              )}
+            </>
+          ) : result.error?.toLowerCase().includes("waiver") ? (
+            <div className="flex items-start gap-3">
+              <ShieldAlert className="w-6 h-6 text-orange-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-orange-300 font-bold text-base">Waiver Not Completed</p>
+                <p className="text-orange-200/80 text-sm mt-1">{result.error}</p>
+                <p className="text-orange-300/60 text-xs mt-2">
+                  Ask the customer to sign the waiver form before proceeding. Contact reception if needed.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-red-300 font-bold text-base">Scan Failed</p>
+              <p className="text-red-100/90 text-sm mt-1">{result.error}</p>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   // Auth state
   const [pin, setPin]             = useState("");
@@ -63,7 +124,6 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraPrompt, setCameraPrompt] = useState(false);
-  const [torchOn, setTorchOn] = useState(false);
   const inputRef                  = useRef<HTMLInputElement>(null);
   const videoRef                  = useRef<HTMLVideoElement>(null);
   const canvasRef                 = useRef<HTMLCanvasElement>(null);
@@ -141,24 +201,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
     streamRef.current = null;
     setCameraActive(false);
     setCameraStarting(false);
-    setTorchOn(false);
   }, []);
-
-  const toggleTorch = useCallback(async () => {
-    const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
-    if (!capabilities?.torch) {
-      setCameraError("Torch is not available on this device.");
-      return;
-    }
-    try {
-      await track.applyConstraints({ advanced: [{ torch: !torchOn } as any] });
-      setTorchOn((value) => !value);
-    } catch {
-      setCameraError("Could not toggle torch on this device.");
-    }
-  }, [torchOn]);
 
   const startCamera = useCallback(async () => {
     if (!device || device.scanMode === "manual" || scanning) return;
@@ -412,6 +455,11 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
                   {scanning ? "Processing wristband..." : cameraActive ? "Point camera at wristband QR" : cameraPrompt ? "Tap Start Camera to scan" : "Camera is not active"}
                 </p>
               </div>
+              {result && (
+                <div className="absolute inset-x-3 bottom-16 z-20">
+                  <ScanResultPanel result={result} compact />
+                </div>
+              )}
             </div>
 
             {cameraError && (
@@ -419,81 +467,11 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
                 {cameraError}
               </div>
             )}
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => { stopCamera(); window.setTimeout(() => startCamera(), 100); }}
-                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Retry
-              </button>
-              <button
-                onClick={toggleTorch}
-                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
-              >
-                {torchOn ? <ZapOff className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                Torch
-              </button>
-            </div>
           </div>
         )}
 
         {/* Result */}
-        {result && (
-          <div className={cn(
-            "w-full rounded-2xl border-2 p-6 transition-all",
-            result.success
-              ? "bg-emerald-950 border-emerald-500"
-              : result.error?.toLowerCase().includes("waiver")
-                ? "bg-orange-950 border-orange-500"
-                : "bg-red-950 border-red-500"
-          )}>
-            <div className="flex items-start gap-4">
-              {result.success
-                ? <CheckCircle2 className="w-8 h-8 text-emerald-400 flex-shrink-0 mt-0.5" />
-                : <XCircle className="w-8 h-8 text-red-400 flex-shrink-0 mt-0.5" />
-              }
-              <div className="flex-1 min-w-0">
-                {result.success ? (
-                  <>
-                    <p className="text-emerald-300 font-bold text-lg">{result.locationLabel ?? "Scan recorded"}</p>
-                    {result.riderName && (
-                      <p className="text-white flex items-center gap-2 mt-1">
-                        <User className="w-4 h-4" />{result.riderName}
-                      </p>
-                    )}
-                    {result.rideDurationSeconds && (
-                      <p className="text-emerald-300 mt-2 font-bold text-xl flex items-center gap-2">
-                        <Clock className="w-5 h-5" />
-                        {result.rideDurationSeconds}s · {Number(result.rideSpeedKmph).toFixed(1)} km/h
-                      </p>
-                    )}
-                    {result.windSpeedKmh && (
-                      <p className="text-white/70 text-sm mt-1 flex items-center gap-1">
-                        <Wind className="w-4 h-4" />
-                        Wind: {Number(result.windSpeedKmh).toFixed(1)} km/h {result.windDirectionCompass}
-                      </p>
-                    )}
-                  </>
-                ) : result.error?.toLowerCase().includes("waiver") ? (
-                  <div className="flex items-start gap-3">
-                    <ShieldAlert className="w-6 h-6 text-orange-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-orange-300 font-bold text-base">Waiver Not Completed</p>
-                      <p className="text-orange-200/80 text-sm mt-1">{result.error}</p>
-                      <p className="text-orange-300/60 text-xs mt-2">
-                        Ask the customer to sign the waiver form before proceeding. Contact reception if needed.
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-red-300 font-medium">{result.error}</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {result && showManualInput && <ScanResultPanel result={result} />}
 
         {/* Did Not Fly button (5th floor only) */}
         {isFifthFloor && (
