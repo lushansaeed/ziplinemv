@@ -101,11 +101,19 @@ export function RideReports() {
         <div className="space-y-2">{[...Array(6)].map((_, i) => <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />)}</div>
       ) : (
         <div className="bg-card border border-border rounded-xl overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1120px]">
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 {["Date","Booking","Rider","Wristband","Status","1st Floor","3rd Floor","5th Floor","Landing","Duration","Speed","Wind","Remarks"].map((h) => (
-                  <th key={h} className="text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">{h}</th>
+                  <th
+                    key={h}
+                    className={cn(
+                      "text-left px-3 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap",
+                      h === "Status" && "min-w-[120px]"
+                    )}
+                  >
+                    {h}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -118,8 +126,8 @@ export function RideReports() {
                     <td className="px-3 py-3 font-mono text-xs font-medium text-foreground">{r.booking.reference}</td>
                     <td className="px-3 py-3 text-xs text-foreground">{r.bookingRider.name}</td>
                     <td className="px-3 py-3 font-mono text-xs text-muted-foreground">{r.wristband?.qrCode ?? "—"}</td>
-                    <td className="px-3 py-3">
-                      <span className={cn("text-xs px-2 py-0.5 rounded-full border font-medium", sc.color)}>{sc.label}</span>
+                    <td className="px-3 py-3 whitespace-nowrap">
+                      <span className={cn("inline-flex items-center whitespace-nowrap text-xs px-2.5 py-1 rounded-full border font-medium", sc.color)}>{sc.label}</span>
                     </td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.firstFloorTime)}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.thirdFloorTime)}</td>
