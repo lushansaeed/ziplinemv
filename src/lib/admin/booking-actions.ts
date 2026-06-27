@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
 import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
-import { sendBookingWaiverLink } from "@/lib/notifications/email";
+import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notifications/email";
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
 import { formatDate } from "@/lib/utils";
 
@@ -32,6 +32,12 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
       newValue: { bookingStatus: status },
     },
   });
+
+  if (status === BookingStatus.CONFIRMED) {
+    sendBookingConfirmation(bookingId).catch((error) => {
+      console.error("[updateBookingStatus:sendBookingConfirmation]", error?.message ?? error);
+    });
+  }
 
   revalidatePath("/admin/bookings");
   return { success: true };
@@ -261,6 +267,26 @@ export async function regenerateWaiverLink(bookingId: string) {
 
   revalidatePath("/admin/bookings");
   return { success: true };
+}
+
+export async function resendBookingConfirmationEmail(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+  const result = await sendBookingConfirmation(bookingId);
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "BOOKING_CONFIRMATION_EMAIL_RESENT",
+      module: "bookings",
+      recordId: bookingId,
+      newValue: result,
+    },
+  });
+
+  revalidatePath("/admin/bookings");
+  return result.sent
+    ? { success: true }
+    : { success: false, error: result.error ?? result.reason ?? "Confirmation email was not sent." };
 }
 
 export async function resendWaiverEmail(bookingId: string) {

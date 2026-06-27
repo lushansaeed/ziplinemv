@@ -763,6 +763,10 @@ model Booking {
   waiverStatus    WaiverStatus  @default(PENDING) @map("waiver_status")
   mediaStatus     MediaDeliveryStatus @default(NOT_APPLICABLE) @map("media_status")
   qrCode          String?       @map("qr_code")
+  confirmationEmailSent      Boolean   @default(false) @map("confirmation_email_sent")
+  confirmationEmailSentAt    DateTime? @map("confirmation_email_sent_at")
+  confirmationEmailError     String?   @map("confirmation_email_error") @db.Text
+  confirmationEmailRecipient String?   @map("confirmation_email_recipient")
   notes           String?
   createdById     String?       @map("created_by")
   createdBy       User?         @relation("CreatedBy", fields: [createdById], references: [id])

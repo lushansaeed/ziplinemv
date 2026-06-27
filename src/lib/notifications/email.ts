@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { format } from "date-fns";
 import { buildWaiverSharePayload } from "@/lib/waivers/links";
+import { sendBookingConfirmationEmail } from "./booking-confirmation-email";
 
 // Lazy init — avoids build-time error when RESEND_API_KEY is not set
 const getResend = () => new Resend(process.env.RESEND_API_KEY ?? "placeholder");
@@ -88,77 +89,7 @@ function badge(text: string, color = "#F5A623") {
 // ─── Email senders ────────────────────────────────────────────────────────────
 
 export async function sendBookingConfirmation(bookingId: string) {
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      customer:  true,
-      package:   true,
-      slot:      true,
-      addOns:    { include: { addOn: { select: { name: true } } } },
-      riders:    true,
-    },
-  });
-
-  if (!booking || !booking.customer.email) return { sent: false, reason: "No email" };
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://zipline.mv";
-  const confirmUrl = `${siteUrl}/book/confirmation?ref=${booking.reference}`;
-
-  const html = emailWrapper(`
-    <div style="margin-bottom:24px;">${badge("Booking Confirmed ✓", "#22c55e")}</div>
-    ${h2("You're booked! Get ready to fly.")}
-    ${p("Your zipline experience is confirmed. We'll see you on the platform.", true)}
-
-    <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.2);border-radius:12px;padding:20px;margin:20px 0;text-align:center;">
-      <p style="margin:0 0 4px;font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-transform:uppercase;">Booking reference</p>
-      <p style="margin:0;font-size:28px;font-weight:800;color:#F5A623;font-family:monospace;letter-spacing:3px;">${booking.reference}</p>
-    </div>
-
-    ${table(`
-      ${detail("Date",    formatDate(booking.bookingDate, "EEEE, d MMMM yyyy"))}
-      ${detail("Time",    booking.slot.startTime)}
-      ${detail("Package", booking.package.name)}
-      ${detail("Riders",  String(booking.numRiders))}
-      ${booking.addOns.length > 0 ? detail("Add-ons", booking.addOns.map((a) => a.addOn.name).join(", ")) : ""}
-      ${detail("Total",   formatCurrency(Number(booking.total), booking.currency))}
-      ${detail("Payment", booking.paymentStatus.replace("_", " "))}
-    `)}
-
-    ${cta("View your booking", confirmUrl)}
-
-    <div style="background:rgba(255,255,255,0.04);border-radius:12px;padding:20px;margin-top:24px;">
-      <p style="margin:0 0 12px;font-size:13px;font-weight:700;color:#ffffff;">What happens next?</p>
-      <ol style="margin:0;padding:0 0 0 20px;font-size:13px;line-height:2;color:rgba(255,255,255,0.6);">
-        <li>Report to the Zipline MV check-in point at least 15 minutes before your slot</li>
-        <li>Complete the digital waiver for each rider at check-in</li>
-        <li>Fly 428 metres across the Indian Ocean</li>
-        ${booking.addOns.length > 0 ? "<li>Your media will be delivered within 24–48 hours</li>" : ""}
-      </ol>
-    </div>
-
-    <p style="margin:24px 0 0;font-size:13px;color:rgba(255,255,255,0.3);text-align:center;">
-      Questions? WhatsApp us or visit <a href="${siteUrl}/contact" style="color:#F5A623;">zipline.mv/contact</a>
-    </p>
-  `, `Your booking ${booking.reference} is confirmed.`);
-
-  const { error } = await getResend().emails.send({
-    from:    FROM,
-    to:      booking.customer.email,
-    subject: `✓ Booking confirmed — ${booking.reference} | Zipline Maldives`,
-    html,
-  });
-
-  await logNotification({
-    type:        "BOOKING_CONFIRMATION",
-    recipientId: booking.customerId,
-    channel:     "email",
-    to:          booking.customer.email,
-    subject:     `Booking confirmed — ${booking.reference}`,
-    status:      error ? "failed" : "sent",
-    error:       error?.message,
-  });
-
-  return { sent: !error, error: error?.message };
+  return sendBookingConfirmationEmail(bookingId);
 }
 
 export async function sendBookingWaiverLink(bookingId: string) {

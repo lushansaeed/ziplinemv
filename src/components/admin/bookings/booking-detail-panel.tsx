@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import {
   Calendar, Clock, Users, Package, DollarSign,
   ShieldCheck, Image, User, Building2, Link2,
-  CheckCircle2, Loader2, Edit2,
+  CheckCircle2, Loader2, Edit2, Mail,
 } from "lucide-react";
 import {
   getBookingDetail,
@@ -13,6 +13,7 @@ import {
   checkInBooking,
   completeBooking,
   regenerateWaiverLink,
+  resendBookingConfirmationEmail,
   resendWaiverEmail,
   resendWaiverWhatsApp,
 } from "@/lib/admin/booking-actions";
@@ -298,6 +299,39 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
           </div>
         </section>
       )}
+
+      {/* Confirmation email */}
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Confirmation email</p>
+          <button
+            onClick={() => startTransition(() => doAction(() => resendBookingConfirmationEmail(booking.id), "Confirmation email sent"))}
+            disabled={isPending || !booking.customer.email}
+            className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Resend
+          </button>
+        </div>
+        <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
+          <Row
+            label="Status"
+            value={booking.confirmationEmailSent ? (
+              <span className="text-green-600">Sent</span>
+            ) : booking.confirmationEmailError ? (
+              <span className="text-red-600">Failed</span>
+            ) : (
+              <span className="text-muted-foreground">Not sent</span>
+            )}
+          />
+          {booking.confirmationEmailSentAt && <Row label="Sent at" value={formatDateTime(booking.confirmationEmailSentAt)} />}
+          {booking.confirmationEmailRecipient && <Row label="Recipient" value={booking.confirmationEmailRecipient} />}
+          {booking.confirmationEmailError && (
+            <Row label="Error" value={<span className="text-red-600 break-words">{booking.confirmationEmailError}</span>} />
+          )}
+          {!booking.customer.email && <Row label="Email" value={<span className="text-muted-foreground">No customer email provided</span>} />}
+        </div>
+      </section>
 
       <WaiverShareCard
         waiverShare={(booking as any).waiverShare}
