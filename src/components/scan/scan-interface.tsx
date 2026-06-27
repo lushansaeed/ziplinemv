@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert, Camera, Keyboard, RotateCcw, Zap, ZapOff } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert, RotateCcw, Zap, ZapOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LOCATION_LABELS: Record<string, string> = {
@@ -58,7 +58,6 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [qrInput, setQrInput]     = useState("");
   const [result, setResult]       = useState<ScanResult | null>(null);
   const [scanning, setScanning]   = useState(false);
-  const [manualMode, setManualMode] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [cameraActive, setCameraActive] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
@@ -98,7 +97,6 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
           setAuthError("This device is inactive. Contact admin.");
         } else {
           setDevice(info);
-          setManualMode(info.scanMode === "manual");
           sessionStorage.setItem(`scan-pin-${deviceCode}`, usePin);
         }
       }
@@ -158,12 +156,11 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   }, [torchOn]);
 
   const startCamera = useCallback(async () => {
-    if (!device || manualMode || scanning) return;
+    if (!device || device.scanMode === "manual" || scanning) return;
     setCameraError("");
 
     if (!("BarcodeDetector" in window)) {
-      setCameraError("Camera QR scanning is not supported in this browser. Switch this device to manual/testing mode or use Chrome on Android.");
-      setManualMode(true);
+      setCameraError("Camera QR scanning is not supported in this browser. Use Chrome on Android, or ask admin to switch this device to Manual/testing mode.");
       return;
     }
 
@@ -184,22 +181,21 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       }
       setCameraActive(true);
     } catch {
-      setCameraError("Camera access failed. Allow camera permission or switch to manual/testing mode.");
-      setManualMode(true);
+      setCameraError("Camera access failed. Allow camera permission, then press Retry.");
     }
-  }, [device, manualMode, scanning]);
+  }, [device, scanning]);
 
   useEffect(() => {
-    if (!device || manualMode) {
+    if (!device || device.scanMode === "manual") {
       stopCamera();
       return;
     }
     startCamera();
     return stopCamera;
-  }, [device, manualMode, startCamera, stopCamera]);
+  }, [device, startCamera, stopCamera]);
 
   useEffect(() => {
-    if (!cameraActive || manualMode || !device) return;
+    if (!cameraActive || device?.scanMode === "manual" || !device) return;
 
     let cancelled = false;
     async function detect() {
@@ -231,7 +227,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       cancelled = true;
       if (scanLoopRef.current) cancelAnimationFrame(scanLoopRef.current);
     };
-  }, [cameraActive, manualMode, device, scanning, processQr]);
+  }, [cameraActive, device, scanning, processQr]);
 
   // Auto-submit when scanner sends \n or \r
   function handleQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -313,7 +309,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const location  = device.assignedLocation;
   const gradient  = LOCATION_COLORS[location] ?? "from-gray-700 to-gray-900";
   const isFifthFloor = location === "FIFTH_FLOOR";
-  const showManualInput = manualMode || device.scanMode === "manual";
+  const showManualInput = device.scanMode === "manual";
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-950">
@@ -357,15 +353,6 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
             >
               {scanning ? "Processing..." : "Scan"}
             </button>
-            {device.scanMode === "camera" && (
-              <button
-                onClick={() => setManualMode(false)}
-                className="w-full py-3 rounded-2xl border border-gray-700 text-gray-300 font-semibold flex items-center justify-center gap-2"
-              >
-                <Camera className="w-4 h-4" />
-                Return to camera scanner
-              </button>
-            )}
           </div>
         ) : (
           <div className="w-full space-y-4">
@@ -387,7 +374,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
               </div>
             )}
 
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => { stopCamera(); startCamera(); }}
                 className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
@@ -401,13 +388,6 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
               >
                 {torchOn ? <ZapOff className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                 Torch
-              </button>
-              <button
-                onClick={() => setManualMode(true)}
-                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
-              >
-                <Keyboard className="w-4 h-4" />
-                Manual
               </button>
             </div>
           </div>
