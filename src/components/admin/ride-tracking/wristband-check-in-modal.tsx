@@ -100,7 +100,7 @@ export function WristbandCheckInModal({ bookingId, reference, riders, onClose, o
           )}
 
           <p className="text-sm text-muted-foreground">
-            Scan or enter the QR code printed on each rider's wristband. All waivers must be signed first.
+            Scan the QR code printed on each rider's physical wristband. All waivers must be signed first.
           </p>
 
           {riders.map((rider) => {
@@ -127,7 +127,7 @@ export function WristbandCheckInModal({ bookingId, reference, riders, onClose, o
                     type="text"
                     value={assignments[rider.id] ?? ""}
                     onChange={(e) => setAssignments((prev) => ({ ...prev, [rider.id]: e.target.value }))}
-                    placeholder={signed === false ? "Blocked — waiver not signed" : "Scan or type QR code..."}
+                    placeholder={signed === false ? "Blocked — waiver not signed" : "Scan physical wristband QR..."}
                     disabled={signed === false}
                     autoComplete="off"
                     className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-40 disabled:cursor-not-allowed"

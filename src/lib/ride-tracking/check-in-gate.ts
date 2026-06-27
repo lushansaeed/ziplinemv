@@ -222,11 +222,13 @@ export async function validateBookingCanCheckIn(
   const wristbandByQr = new Map(wristbands.map((wristband) => [wristband.qrCode, wristband]));
 
   for (const [bookingRiderId, qrCode] of Array.from(assignmentByRider.entries())) {
-    const wristband = wristbandByQr.get(qrCode);
-    if (!wristband) {
-      throw new CheckInGateError(`Wristband "${qrCode}" not found in system.`, "wristband_not_found");
+    const existing = existingByRider.get(bookingRiderId)?.wristband;
+    if (existing?.status === WristbandStatus.ACTIVE) {
+      throw new CheckInGateError("This rider already has a wristband linked.", "rider_already_has_wristband");
     }
-    if (wristband.status !== WristbandStatus.AVAILABLE || wristband.currentRiderId || wristband.currentBookingId) {
+
+    const wristband = wristbandByQr.get(qrCode);
+    if (wristband && (wristband.status !== WristbandStatus.AVAILABLE || wristband.currentRiderId || wristband.currentBookingId)) {
       throw new CheckInGateError("This wristband is already linked to another active rider.", "wristband_already_active");
     }
     if (!booking.riders.some((rider) => rider.id === bookingRiderId)) {
@@ -245,13 +247,42 @@ export async function linkWristbandToRider(
   tx: Prisma.TransactionClient,
   bookingId: string,
   bookingRiderId: string,
-  wristbandQrCode: string
+  wristbandQrCode: string,
+  userId?: string
 ) {
-  const wristband = await tx.qRWristband.findUnique({ where: { qrCode: wristbandQrCode } });
-  if (!wristband || wristband.status !== WristbandStatus.AVAILABLE || wristband.currentRiderId || wristband.currentBookingId) {
+  const qrCode = wristbandQrCode.trim();
+  const existingTracking = await tx.rideTracking.findUnique({
+    where: { bookingRiderId },
+    include: { wristband: true },
+  });
+  if (existingTracking?.wristband?.status === WristbandStatus.ACTIVE) {
+    throw new CheckInGateError("This rider already has a wristband linked.", "rider_already_has_wristband");
+  }
+
+  let wristband = await tx.qRWristband.findUnique({ where: { qrCode } });
+  if (!wristband) {
+    wristband = await tx.qRWristband.create({
+      data: {
+        qrCode,
+        status: WristbandStatus.AVAILABLE,
+        notes: "Registered automatically on first check-in scan.",
+      },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId,
+        action: "WRISTBAND_REGISTERED_FIRST_SCAN",
+        module: "ride_tracking",
+        recordId: wristband.id,
+        newValue: { action: "registered_first_scan", bookingId, riderId: bookingRiderId, wristbandQrCode: qrCode },
+      },
+    });
+  }
+
+  if (wristband.status !== WristbandStatus.AVAILABLE || wristband.currentRiderId || wristband.currentBookingId) {
     throw new CheckInGateError(
-      wristband ? "This wristband is already linked to another active rider." : `Wristband "${wristbandQrCode}" not found in system.`,
-      wristband ? "wristband_already_active" : "wristband_not_found"
+      "This wristband is already linked to another active rider.",
+      "wristband_already_active"
     );
   }
 
@@ -294,7 +325,7 @@ export async function completeCheckInTransaction(
   );
 
   for (const [bookingRiderId, wristbandQrCode] of Array.from(assignmentByRider.entries())) {
-    const wristband = await linkWristbandToRider(tx, booking.id, bookingRiderId, wristbandQrCode);
+    const wristband = await linkWristbandToRider(tx, booking.id, bookingRiderId, wristbandQrCode, input.userId);
     await tx.rideTracking.upsert({
       where: { bookingRiderId },
       update: { wristbandId: wristband.id, status: RiderTrackingStatus.CHECKED_IN },
@@ -327,13 +358,19 @@ export async function completeCheckInTransaction(
   await tx.auditLog.create({
     data: {
       userId: input.userId,
-      action: "BOOKING_CHECKED_IN",
+      action: "WRISTBANDS_LINKED_AND_BOOKING_CHECKED_IN",
       module: "bookings",
       recordId: booking.id,
       newValue: {
+        action: "linked",
         paymentStatus: booking.paymentStatus,
         requiredRiders: booking.riders.length,
         assignedWristbands: booking.riders.length,
+        wristbands: Array.from(assignmentByRider.entries()).map(([bookingRiderId, wristbandQrCode]) => ({
+          bookingId: booking.id,
+          riderId: bookingRiderId,
+          wristbandQrCode,
+        })),
         waiverStatus: "SIGNED",
         gatekeeper: "reception_check_in",
       },

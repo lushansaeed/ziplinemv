@@ -101,7 +101,7 @@ export function CheckInModule() {
     }
 
     if (assignments.length !== missingWristbands.length) {
-      toast.error("Check-in blocked. Please assign a wristband QR to each rider before check-in.");
+      toast.error("Check-in blocked. Please scan a physical wristband QR for each rider before check-in.");
       return;
     }
 
@@ -278,13 +278,13 @@ export function CheckInModule() {
                     ) : waiversOk ? (
                       <div className="space-y-1.5">
                         <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                          <QrCode className="w-3 h-3" /> Wristband QR
+                          <QrCode className="w-3 h-3" /> Physical wristband QR
                         </label>
                         <input
                           type="text"
                           value={qrInputs[rider.id] ?? ""}
                           onChange={(e) => setQrInputs((p) => ({ ...p, [rider.id]: e.target.value }))}
-                          placeholder="Scan or type wristband QR code…"
+                          placeholder="Scan physical wristband QR…"
                           autoComplete="off"
                           className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                         />
@@ -347,7 +347,7 @@ export function CheckInModule() {
               <div>
                 <p className="text-sm font-semibold text-orange-800 dark:text-orange-400">Wristbands required</p>
                 <p className="text-orange-700 dark:text-orange-500 text-sm mt-0.5">
-                  Reception check-in is blocked until every rider has a wristband QR assigned and locked.
+                  Reception check-in is blocked until every rider has a scanned physical wristband QR assigned and locked.
                 </p>
               </div>
             </div>
