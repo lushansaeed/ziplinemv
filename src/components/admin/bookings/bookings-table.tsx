@@ -31,6 +31,7 @@ interface BookingRow {
   agent: { businessName: string } | null;
   affiliate: { name: string } | null;
   addOns: Array<{ addOn: { name: string } }>;
+  waivers?: Array<{ status: string }>;
 }
 
 interface BookingsTableProps {
@@ -61,6 +62,13 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
 
   function resetFilters() {
     router.push(pathname);
+  }
+
+  function waiverStatus(row: BookingRow) {
+    const signed = row.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
+    if (signed <= 0) return { label: "Not Started", className: "bg-yellow-100 text-yellow-800" };
+    if (signed >= row.numRiders) return { label: "Completed", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" };
+    return { label: "Partially Completed", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" };
   }
 
   async function doAction(fn: () => Promise<{ success: boolean; error?: string }>, successMsg: string) {
@@ -124,6 +132,19 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     {
       key: "paymentStatus", header: "Payment",
       cell: (r) => <StatusBadge value={r.paymentStatus} type="payment" />,
+    },
+    {
+      key: "waiver", header: "Waiver", hide: "lg",
+      cell: (r) => {
+        const status = waiverStatus(r);
+        const signed = r.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
+        return (
+          <div className="space-y-1">
+            <span className={cn("status-badge text-xs", status.className)}>{status.label}</span>
+            <p className="text-[10px] text-muted-foreground">{signed} of {r.numRiders}</p>
+          </div>
+        );
+      },
     },
     {
       key: "total", header: "Total", sortable: true, hide: "sm",

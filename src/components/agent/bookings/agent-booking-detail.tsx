@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Loader2, Calendar, Clock, Package, Users, DollarSign, ExternalLink } from "lucide-react";
 import { StatusBadge } from "@/components/admin/shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
+import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
 
 export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
   const [booking, setBooking] = useState<any>(null);
@@ -121,8 +122,13 @@ export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
         )}
       </div>
 
+      <WaiverShareCard
+        waiverShare={booking.waiverShare}
+        onViewStatus={() => document.getElementById("agent-waiver-status")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      />
+
       {/* Waiver status */}
-      <div className="space-y-2">
+      <div id="agent-waiver-status" className="space-y-2 scroll-mt-4">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Waivers</p>
         <div className="space-y-1.5">
           {booking.waivers?.length > 0 ? booking.waivers.map((w: any) => (

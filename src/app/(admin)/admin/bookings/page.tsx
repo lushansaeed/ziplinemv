@@ -70,6 +70,7 @@ async function getBookings(params: SearchParams) {
         agent:    { select: { businessName: true } },
         affiliate:{ select: { name: true } },
         addOns:   { include: { addOn: { select: { name: true } } } },
+        waivers:  { select: { status: true } },
       },
     }),
     prisma.booking.count({ where }),

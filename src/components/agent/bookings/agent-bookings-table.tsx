@@ -20,6 +20,7 @@ interface AgentBookingRow {
   slot:     { startTime: string };
   addOns:   Array<{ addOn: { name: string } }>;
   agentCommission: { amount: number; status: string } | null;
+  waivers?: Array<{ status: string }>;
 }
 
 interface Props {
@@ -42,6 +43,13 @@ export function AgentBookingsTable({ bookings, total, page, perPage, searchParam
     if (value) params.set(key, value); else params.delete(key);
     params.delete("page");
     router.push(`${pathname}?${params.toString()}`);
+  }
+
+  function waiverStatus(row: AgentBookingRow) {
+    const signed = row.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
+    if (signed <= 0) return { label: "Not Started", className: "bg-yellow-100 text-yellow-800" };
+    if (signed >= row.numRiders) return { label: "Completed", className: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" };
+    return { label: "Partially Completed", className: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400" };
   }
 
   const columns: Column<AgentBookingRow>[] = [
@@ -92,15 +100,16 @@ export function AgentBookingsTable({ bookings, total, page, perPage, searchParam
     },
     {
       key: "waiver", header: "Waiver", hide: "lg",
-      cell: (r) => (
-        <span className={`status-badge text-xs ${
-          r.waiverStatus === "SIGNED"
-            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400"
-            : "bg-yellow-100 text-yellow-800"
-        }`}>
-          {r.waiverStatus.replace("_", " ")}
-        </span>
-      ),
+      cell: (r) => {
+        const status = waiverStatus(r);
+        const signed = r.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
+        return (
+          <div className="space-y-1">
+            <span className={`status-badge text-xs ${status.className}`}>{status.label}</span>
+            <p className="text-[10px] text-muted-foreground">{signed} of {r.numRiders}</p>
+          </div>
+        );
+      },
     },
     {
       key: "commission", header: "Commission", hide: "md",

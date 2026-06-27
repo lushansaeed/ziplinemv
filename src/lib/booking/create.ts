@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma/client";
 import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
+import { generateWaiverToken } from "@/lib/waivers/links";
 import { BookingSource, BookingStatus, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
@@ -368,6 +369,16 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           riderName: r.name || `Rider`,
           status:    WaiverStatus.PENDING,
         })),
+      });
+
+      await tx.bookingWaiverLink.create({
+        data: {
+          bookingId: b.id,
+          token: generateWaiverToken(),
+          maxSubmissions: input.riders.length,
+          currentSubmissions: 0,
+          createdByAgentId: input.agentId ?? undefined,
+        },
       });
 
       // Audit log

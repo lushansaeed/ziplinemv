@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, PaymentStatus } from "@prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
+import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
   const user = await requirePermission("bookings", "edit");
@@ -173,7 +174,7 @@ export async function updateBookingNotes(bookingId: string, notes: string) {
 
 export async function getBookingDetail(bookingId: string) {
   await requirePermission("bookings", "view");
-  return prisma.booking.findUnique({
+  const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
       customer:    true,
@@ -191,4 +192,26 @@ export async function getBookingDetail(bookingId: string) {
       mediaDelivery:       true,
     },
   });
+  if (!booking) return null;
+  const waiverShare = await buildWaiverSharePayload(booking.id);
+  return { ...booking, waiverShare };
+}
+
+export async function regenerateWaiverLink(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+  const link = await regenerateBookingWaiverLink(bookingId);
+  if (!link) return { success: false, error: "Booking not found" };
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "WAIVER_LINK_REGENERATED",
+      module: "waivers",
+      recordId: bookingId,
+      newValue: { token: link.token },
+    },
+  });
+
+  revalidatePath("/admin/bookings");
+  return { success: true };
 }

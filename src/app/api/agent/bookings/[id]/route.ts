@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
+import { buildWaiverSharePayload } from "@/lib/waivers/links";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -30,5 +31,6 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 
   if (!booking) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json({ booking });
+  const waiverShare = await buildWaiverSharePayload(booking.id);
+  return NextResponse.json({ booking: { ...booking, waiverShare } });
 }

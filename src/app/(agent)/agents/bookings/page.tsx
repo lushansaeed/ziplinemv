@@ -42,6 +42,7 @@ async function getAgentBookings(agentId: string, params: Record<string, string |
         slot:     { select: { startTime: true } },
         addOns:   { include: { addOn: { select: { name: true } } } },
         agentCommission: { select: { amount: true, status: true } },
+        waivers:  { select: { status: true } },
       },
     }),
     prisma.booking.count({ where }),

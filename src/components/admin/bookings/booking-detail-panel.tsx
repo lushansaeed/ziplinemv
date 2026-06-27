@@ -6,11 +6,12 @@ import {
   ShieldCheck, Image, User, Building2, Link2,
   CheckCircle2, Loader2, Edit2,
 } from "lucide-react";
-import { getBookingDetail, updateBookingStatus, updatePaymentStatus, checkInBooking, completeBooking } from "@/lib/admin/booking-actions";
+import { getBookingDetail, updateBookingStatus, updatePaymentStatus, checkInBooking, completeBooking, regenerateWaiverLink } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
 
 interface DetailRow {
   label: string;
@@ -47,6 +48,33 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
     const res = await fn();
     if (res.success) { toast.success(msg); load(); }
     else toast.error(res.error ?? "Failed");
+  }
+
+  function exportWaiversCsv() {
+    if (!booking) return;
+    const rows = booking.waivers.map((waiver: any) => ({
+      riderName: waiver.riderName,
+      status: waiver.status,
+      nationality: waiver.nationality ?? "",
+      phone: [waiver.phoneCountryCode, waiver.phoneNumber].filter(Boolean).join(" "),
+      emergencyContactName: waiver.emergencyContactName ?? "",
+      emergencyContactPhone: waiver.emergencyContactPhone ?? "",
+      weight: waiver.weight ?? "",
+      mediaConsent: waiver.mediaConsent ? "Yes" : "No",
+      signedAt: waiver.signedAt ? new Date(waiver.signedAt).toISOString() : "",
+    }));
+    const headers = Object.keys(rows[0] ?? { riderName: "", status: "" });
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) => headers.map((header) => `"${String((row as any)[header] ?? "").replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${booking.reference}-waivers.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   if (loading) {
@@ -222,22 +250,47 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
         </section>
       )}
 
+      <WaiverShareCard
+        waiverShare={(booking as any).waiverShare}
+        canRegenerate
+        onViewStatus={() => document.getElementById("admin-waiver-status")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        onRegenerate={() => {
+          if (!window.confirm("Regenerate this waiver link? The old link will stop working.")) return;
+          startTransition(() => doAction(() => regenerateWaiverLink(booking.id), "Waiver link regenerated"));
+        }}
+      />
+
       {/* Waivers */}
       {booking.waivers.length > 0 && (
-        <section>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Waivers</p>
+        <section id="admin-waiver-status" className="scroll-mt-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Waivers</p>
+            <button onClick={exportWaiversCsv} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+              Export CSV
+            </button>
+          </div>
           <div className="space-y-2">
-            {booking.waivers.map((w) => (
+            {booking.waivers.map((w: any) => (
               <div key={w.id} className="flex items-center justify-between px-4 py-2.5 bg-muted/30 rounded-xl text-sm">
-                <span>{w.riderName}</span>
-                <StatusBadge
-                  value={w.status}
-                  type="application"
-                  className={cn(
-                    w.status === "SIGNED" && "!bg-green-100 !text-green-800 dark:!bg-green-900/30 dark:!text-green-400",
-                    w.status === "PENDING" && "!bg-yellow-100 !text-yellow-800"
+                <div className="min-w-0">
+                  <p className="font-medium">{w.riderName}</p>
+                  {w.status === "SIGNED" && (
+                    <p className="text-xs text-muted-foreground">
+                      {[w.nationality, w.phoneNumber && `${w.phoneCountryCode ?? ""} ${w.phoneNumber}`, w.weight && `${w.weight} kg`].filter(Boolean).join(" · ")}
+                    </p>
                   )}
-                />
+                </div>
+                <div className="text-right">
+                  <StatusBadge
+                    value={w.status}
+                    type="application"
+                    className={cn(
+                      w.status === "SIGNED" && "!bg-green-100 !text-green-800 dark:!bg-green-900/30 dark:!text-green-400",
+                      w.status === "PENDING" && "!bg-yellow-100 !text-yellow-800"
+                    )}
+                  />
+                  {w.signedAt && <p className="mt-1 text-[10px] text-muted-foreground">{formatDateTime(w.signedAt)}</p>}
+                </div>
               </div>
             ))}
           </div>

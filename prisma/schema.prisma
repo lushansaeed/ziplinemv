@@ -764,6 +764,7 @@ model Booking {
   payments         Payment[]
   refunds          Refund[]
   waivers          Waiver[]
+  waiverLinks      BookingWaiverLink[]
   checkIn          CheckIn?
   mediaDelivery    CustomerMediaDelivery?
   agentCommission  AgentCommission?
@@ -810,18 +811,53 @@ model Waiver {
   id            String       @id @default(cuid())
   bookingId     String       @map("booking_id")
   booking       Booking      @relation(fields: [bookingId], references: [id])
+  waiverLinkId  String?      @map("waiver_link_id")
+  waiverLink    BookingWaiverLink? @relation(fields: [waiverLinkId], references: [id])
   riderId       String?      @map("rider_id")
   rider         Rider?       @relation(fields: [riderId], references: [id])
   riderName     String       @map("rider_name")
+  nationality   String?
+  dateOfBirth   DateTime?    @map("date_of_birth") @db.Date
+  phoneCountryCode String?   @map("phone_country_code")
+  phoneNumber   String?      @map("phone_number")
+  emergencyContactName String? @map("emergency_contact_name")
+  emergencyContactPhone String? @map("emergency_contact_phone")
+  weight        Decimal?     @db.Decimal(5, 2)
+  healthDeclarationAnswers Json? @map("health_declaration_answers")
+  riskAcknowledged Boolean   @default(false) @map("risk_acknowledged")
+  safetyRulesAcknowledged Boolean @default(false) @map("safety_rules_acknowledged")
+  mediaConsent  Boolean      @default(false) @map("media_consent")
   signatureData String?      @map("signature_data")
   signedAt      DateTime?    @map("signed_at")
   ipAddress     String?      @map("ip_address")
+  userAgent     String?      @map("user_agent")
   deviceInfo    String?      @map("device_info")
   status        WaiverStatus @default(PENDING)
   createdAt     DateTime     @default(now()) @map("created_at")
 
   @@index([bookingId])
+  @@index([waiverLinkId])
   @@map("waivers")
+}
+
+model BookingWaiverLink {
+  id                String   @id @default(cuid())
+  bookingId         String   @map("booking_id")
+  booking           Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  token             String   @unique
+  maxSubmissions    Int      @map("max_submissions")
+  currentSubmissions Int     @default(0) @map("current_submissions")
+  isActive          Boolean  @default(true) @map("is_active")
+  createdByAgentId  String?  @map("created_by_agent_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  regeneratedAt     DateTime? @map("regenerated_at")
+  expiresAt         DateTime? @map("expires_at")
+
+  waivers           Waiver[]
+
+  @@index([bookingId])
+  @@index([token])
+  @@map("booking_waiver_links")
 }
 
 model Payment {
