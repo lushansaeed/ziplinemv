@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
+import { parseScanDeviceSettings, serializeScanDeviceSettings } from "@/lib/ride-tracking/scan-device-settings";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireApiPermission("ride_tracking", "edit");
@@ -12,6 +13,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const body = await req.json();
   const allowed = ["deviceName", "deviceCode", "devicePin", "assignedLocation", "status", "notes"];
   const data = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+  if (data.devicePin === "") delete data.devicePin;
+  if ("notes" in body || "scanMode" in body) {
+    const currentSettings = parseScanDeviceSettings(old.notes);
+    data.notes = serializeScanDeviceSettings({
+      scanMode: body.scanMode === "manual" ? "manual" : currentSettings.scanMode,
+      notes: typeof body.notes === "string" ? body.notes : currentSettings.notes,
+    });
+  }
 
   const updated = await prisma.scanDevice.update({ where: { id: params.id }, data });
   await logAudit({ userId: auth.dbUser.id, action: "SCAN_DEVICE_UPDATED", module: "ride_tracking", recordId: params.id, oldValue: old, newValue: updated });
@@ -33,5 +42,6 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
     },
   });
   if (!device) return NextResponse.json({ error: "Device not found" }, { status: 404 });
-  return NextResponse.json(device);
+  const settings = parseScanDeviceSettings(device.notes);
+  return NextResponse.json({ ...device, notes: settings.notes, scanMode: settings.scanMode });
 }

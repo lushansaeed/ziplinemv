@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
+import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert, Camera, Keyboard, RotateCcw, Zap, ZapOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LOCATION_LABELS: Record<string, string> = {
@@ -22,6 +22,7 @@ interface DeviceInfo {
   id: string;
   deviceName: string;
   assignedLocation: string;
+  scanMode: "camera" | "manual";
   status: string;
 }
 
@@ -57,7 +58,16 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [qrInput, setQrInput]     = useState("");
   const [result, setResult]       = useState<ScanResult | null>(null);
   const [scanning, setScanning]   = useState(false);
+  const [manualMode, setManualMode] = useState(false);
+  const [cameraError, setCameraError] = useState("");
+  const [cameraActive, setCameraActive] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const inputRef                  = useRef<HTMLInputElement>(null);
+  const videoRef                  = useRef<HTMLVideoElement>(null);
+  const streamRef                 = useRef<MediaStream | null>(null);
+  const detectorRef               = useRef<any>(null);
+  const lastDetectedRef           = useRef("");
+  const scanLoopRef               = useRef<number | null>(null);
 
   // Did Not Fly modal
   const [dnfQr, setDnfQr]         = useState("");
@@ -88,6 +98,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
           setAuthError("This device is inactive. Contact admin.");
         } else {
           setDevice(info);
+          setManualMode(info.scanMode === "manual");
           sessionStorage.setItem(`scan-pin-${deviceCode}`, usePin);
         }
       }
@@ -120,6 +131,107 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       setTimeout(() => setResult(null), 8000);
     }
   }, [device, scanning, deviceCode]);
+
+  const stopCamera = useCallback(() => {
+    if (scanLoopRef.current) cancelAnimationFrame(scanLoopRef.current);
+    scanLoopRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    setCameraActive(false);
+    setTorchOn(false);
+  }, []);
+
+  const toggleTorch = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks()[0];
+    if (!track) return;
+    const capabilities = track.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean };
+    if (!capabilities?.torch) {
+      setCameraError("Torch is not available on this device.");
+      return;
+    }
+    try {
+      await track.applyConstraints({ advanced: [{ torch: !torchOn } as any] });
+      setTorchOn((value) => !value);
+    } catch {
+      setCameraError("Could not toggle torch on this device.");
+    }
+  }, [torchOn]);
+
+  const startCamera = useCallback(async () => {
+    if (!device || manualMode || scanning) return;
+    setCameraError("");
+
+    if (!("BarcodeDetector" in window)) {
+      setCameraError("Camera QR scanning is not supported in this browser. Switch this device to manual/testing mode or use Chrome on Android.");
+      setManualMode(true);
+      return;
+    }
+
+    try {
+      detectorRef.current = detectorRef.current ?? new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+      setCameraActive(true);
+    } catch {
+      setCameraError("Camera access failed. Allow camera permission or switch to manual/testing mode.");
+      setManualMode(true);
+    }
+  }, [device, manualMode, scanning]);
+
+  useEffect(() => {
+    if (!device || manualMode) {
+      stopCamera();
+      return;
+    }
+    startCamera();
+    return stopCamera;
+  }, [device, manualMode, startCamera, stopCamera]);
+
+  useEffect(() => {
+    if (!cameraActive || manualMode || !device) return;
+
+    let cancelled = false;
+    async function detect() {
+      if (cancelled || scanning) {
+        scanLoopRef.current = requestAnimationFrame(detect);
+        return;
+      }
+
+      const video = videoRef.current;
+      const detector = detectorRef.current;
+      if (video && detector && video.readyState >= 2) {
+        try {
+          const codes = await detector.detect(video);
+          const rawValue = codes?.[0]?.rawValue?.trim();
+          if (rawValue && rawValue !== lastDetectedRef.current) {
+            lastDetectedRef.current = rawValue;
+            await processQr(rawValue);
+            setTimeout(() => { lastDetectedRef.current = ""; }, 2500);
+          }
+        } catch {
+          setCameraError("Camera scanner paused. Try again or use manual/testing mode.");
+        }
+      }
+      scanLoopRef.current = requestAnimationFrame(detect);
+    }
+
+    scanLoopRef.current = requestAnimationFrame(detect);
+    return () => {
+      cancelled = true;
+      if (scanLoopRef.current) cancelAnimationFrame(scanLoopRef.current);
+    };
+  }, [cameraActive, manualMode, device, scanning, processQr]);
 
   // Auto-submit when scanner sends \n or \r
   function handleQrKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -201,6 +313,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const location  = device.assignedLocation;
   const gradient  = LOCATION_COLORS[location] ?? "from-gray-700 to-gray-900";
   const isFifthFloor = location === "FIFTH_FLOOR";
+  const showManualInput = manualMode || device.scanMode === "manual";
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-950">
@@ -219,32 +332,86 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       {/* Main */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-lg mx-auto w-full space-y-6">
 
-        {/* QR Input */}
-        <div className="w-full space-y-3">
-          <label className="text-gray-400 text-sm font-medium block text-center">
-            Scan wristband QR code
-          </label>
-          <div className="relative">
-            <input
-              ref={inputRef}
-              type="text"
-              value={qrInput}
-              onChange={(e) => setQrInput(e.target.value)}
-              onKeyDown={handleQrKeyDown}
-              placeholder="Hold QR scanner here..."
-              autoFocus
-              autoComplete="off"
-              className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl px-5 py-5 text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:border-amber-500 transition-colors"
-            />
+        {showManualInput ? (
+          <div className="w-full space-y-3">
+            <label className="text-gray-400 text-sm font-medium block text-center">
+              Manual/testing QR input
+            </label>
+            <div className="relative">
+              <input
+                ref={inputRef}
+                type="text"
+                value={qrInput}
+                onChange={(e) => setQrInput(e.target.value)}
+                onKeyDown={handleQrKeyDown}
+                placeholder="Enter or scan wristband QR..."
+                autoFocus
+                autoComplete="off"
+                className="w-full bg-gray-800 border-2 border-gray-700 rounded-2xl px-5 py-5 text-white text-center text-lg font-mono tracking-widest focus:outline-none focus:border-amber-500 transition-colors"
+              />
+            </div>
+            <button
+              onClick={() => processQr(qrInput)}
+              disabled={!qrInput.trim() || scanning}
+              className="w-full py-4 rounded-2xl bg-amber-500 text-gray-900 font-bold text-lg disabled:opacity-40 transition-opacity"
+            >
+              {scanning ? "Processing..." : "Scan"}
+            </button>
+            {device.scanMode === "camera" && (
+              <button
+                onClick={() => setManualMode(false)}
+                className="w-full py-3 rounded-2xl border border-gray-700 text-gray-300 font-semibold flex items-center justify-center gap-2"
+              >
+                <Camera className="w-4 h-4" />
+                Return to camera scanner
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => processQr(qrInput)}
-            disabled={!qrInput.trim() || scanning}
-            className="w-full py-4 rounded-2xl bg-amber-500 text-gray-900 font-bold text-lg disabled:opacity-40 transition-opacity"
-          >
-            {scanning ? "Processing..." : "Scan"}
-          </button>
-        </div>
+        ) : (
+          <div className="w-full space-y-4">
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black aspect-[3/4] shadow-2xl">
+              <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,transparent_42%,rgba(0,0,0,0.62)_43%,rgba(0,0,0,0.72)_100%)]" />
+              <div className="absolute inset-x-10 top-1/2 aspect-square -translate-y-1/2 rounded-3xl border-2 border-amber-300/90 shadow-[0_0_40px_rgba(245,166,35,0.32)]" />
+              <div className="absolute left-12 right-12 top-1/2 h-0.5 -translate-y-1/2 bg-amber-300 shadow-[0_0_18px_rgba(245,166,35,0.9)]" />
+              <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/80 to-transparent">
+                <p className="text-center text-sm font-semibold text-white">
+                  {scanning ? "Processing wristband..." : cameraActive ? "Point camera at wristband QR" : "Starting camera..."}
+                </p>
+              </div>
+            </div>
+
+            {cameraError && (
+              <div className="rounded-2xl border border-orange-500/40 bg-orange-950/70 p-4 text-sm text-orange-200">
+                {cameraError}
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => { stopCamera(); startCamera(); }}
+                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Retry
+              </button>
+              <button
+                onClick={toggleTorch}
+                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
+              >
+                {torchOn ? <ZapOff className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                Torch
+              </button>
+              <button
+                onClick={() => setManualMode(true)}
+                className="rounded-2xl border border-gray-700 py-3 text-gray-300 flex items-center justify-center gap-2"
+              >
+                <Keyboard className="w-4 h-4" />
+                Manual
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Result */}
         {result && (

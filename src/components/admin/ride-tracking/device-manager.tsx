@@ -17,13 +17,23 @@ interface Device {
   deviceName: string;
   deviceCode: string;
   assignedLocation: string;
+  scanMode: "camera" | "manual";
   status: string;
   lastScanAt: string | null;
   notes: string | null;
   _count: { scanEvents: number };
 }
 
-const BLANK = { deviceName: "", deviceCode: "", devicePin: "", assignedLocation: "FIRST_FLOOR", notes: "" };
+type DeviceForm = {
+  deviceName: string;
+  deviceCode: string;
+  devicePin: string;
+  assignedLocation: string;
+  scanMode: "camera" | "manual";
+  notes: string;
+};
+
+const BLANK: DeviceForm = { deviceName: "", deviceCode: "", devicePin: "", assignedLocation: "FIRST_FLOOR", scanMode: "camera", notes: "" };
 
 export function DeviceManager() {
   const [devices, setDevices]     = useState<Device[]>([]);
@@ -45,7 +55,7 @@ export function DeviceManager() {
 
   function openAdd() { setForm({ ...BLANK }); setEditId(null); setShowForm(true); }
   function openEdit(d: Device) {
-    setForm({ deviceName: d.deviceName, deviceCode: d.deviceCode, devicePin: "", assignedLocation: d.assignedLocation, notes: d.notes ?? "" });
+    setForm({ deviceName: d.deviceName, deviceCode: d.deviceCode, devicePin: "", assignedLocation: d.assignedLocation, scanMode: d.scanMode ?? "camera", notes: d.notes ?? "" });
     setEditId(d.id);
     setShowForm(true);
   }
@@ -125,6 +135,7 @@ export function DeviceManager() {
               </div>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p className="font-medium text-foreground/70">{LOCATION_LABELS[d.assignedLocation]}</p>
+                <p>{d.scanMode === "manual" ? "Manual/testing mode" : "Camera QR scanner"}</p>
                 <p className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
                   Last scan: {d.lastScanAt ? new Date(d.lastScanAt).toLocaleString() : "Never"}
@@ -183,6 +194,17 @@ export function DeviceManager() {
                   className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {Object.entries(LOCATION_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Scanner Mode</label>
+                <select
+                  value={form.scanMode}
+                  onChange={(e) => setForm((p) => ({ ...p, scanMode: e.target.value as "camera" | "manual" }))}
+                  className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="camera">Camera QR scanner</option>
+                  <option value="manual">Manual/testing input</option>
                 </select>
               </div>
               <div className="space-y-1.5">

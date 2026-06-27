@@ -4,6 +4,7 @@ import { ScanLocation } from "@prisma/client";
 import { fetchWindData, calculateRideMetrics } from "@/lib/ride-tracking/wind";
 import { updateBookingStatusFromTracking } from "@/lib/ride-tracking/status";
 import { checkRiderWaiver } from "@/lib/ride-tracking/waiver-check";
+import { parseScanDeviceSettings } from "@/lib/ride-tracking/scan-device-settings";
 
 // ── Scan sequence: what field must exist before this location ────────────────
 const REQUIRED_PREVIOUS: Record<ScanLocation, keyof Pick<{
@@ -263,12 +264,14 @@ export async function GET(req: NextRequest) {
   if (!device || device.devicePin !== devicePin) {
     return NextResponse.json({ error: "Invalid device credentials" }, { status: 401 });
   }
+  const settings = parseScanDeviceSettings(device.notes);
 
   return NextResponse.json({
     id:               device.id,
     deviceName:       device.deviceName,
     assignedLocation: device.assignedLocation,
     status:           device.status,
+    scanMode:         settings.scanMode,
   });
 }
 
