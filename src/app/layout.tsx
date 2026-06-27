@@ -7,7 +7,7 @@ import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  variable: "--font-body",
+  variable: "--font-body-base",
   display: "swap",
   weight: ["300", "400", "500", "600", "700", "800"],
 });

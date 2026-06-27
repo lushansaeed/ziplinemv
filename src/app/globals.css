@@ -14,6 +14,60 @@
   font-display: block;
 }
 
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-300.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-400.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-500.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-600.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-700.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
+@font-face {
+  font-family: 'Raleway Numerals';
+  src: url('/fonts/raleway/Raleway-800.ttf') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0024-0025, U+002B-002F, U+0030-003A, U+00A3, U+00A5, U+00B1, U+00D7, U+00F7, U+20A8, U+20AC, U+20B9;
+}
+
 /* ─── CSS Custom Properties ─────────────────────────────────────────── */
 @layer base {
   :root {
@@ -45,9 +99,11 @@
     --chart-5:            350 70% 60%;
 
     /* Brand fonts — matched to Vahmāfushi guidelines */
-    --font-display: 'Kindness Matters', cursive;
-    --font-body:    'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-mono:    'Menlo', 'Monaco', 'Cascadia Code', monospace;
+    --font-numbers: 'Raleway Numerals';
+    --font-body-base: 'Plus Jakarta Sans';
+    --font-display: var(--font-numbers), 'Kindness Matters', cursive;
+    --font-body:    var(--font-numbers), var(--font-body-base), system-ui, sans-serif;
+    --font-mono:    var(--font-numbers), 'Menlo', 'Monaco', 'Cascadia Code', monospace;
   }
 
   .dark {
@@ -121,6 +177,15 @@
   body {
     @apply bg-background text-foreground font-body;
     font-feature-settings: "rlig" 1, "calt" 1;
+    font-variant-numeric: lining-nums tabular-nums;
+  }
+
+  input,
+  select,
+  textarea,
+  button,
+  table {
+    font-variant-numeric: lining-nums tabular-nums;
   }
 
   h1, h2, h3, h4, h5, h6 {
