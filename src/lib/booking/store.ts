@@ -45,6 +45,9 @@ export interface BookingState {
   waiverAccepted: boolean;      // kept for legacy compatibility
   // Step 9 — payment
   paymentMethod: string;
+  transferSlipUrl: string;
+  transferSlipPath: string;
+  transferSlipFileName: string;
   promoCode: string;
   promoDiscount: number;
   // Tracking
@@ -80,7 +83,7 @@ const INITIAL: BookingState = {
   customerEmail: "", customerNationality: "", customerNationalityIso: "", customerHotel: "",
   riders: [{ name: "", age: "", weight: "" }],
   riderWaivers: [], waiverAccepted: false, termsAccepted: false, refundAccepted: false, safetyAccepted: false,
-  paymentMethod: "", promoCode: "", promoDiscount: 0,
+  paymentMethod: "", transferSlipUrl: "", transferSlipPath: "", transferSlipFileName: "", promoCode: "", promoDiscount: 0,
   affiliateCoupon: "", affiliateLinkId: "",
   bookingReference: "", bookingId: "", totalAmount: 0, currency: "USD", qrCode: "", waiverShare: null,
   currentStep: 1,

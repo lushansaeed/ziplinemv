@@ -12,6 +12,7 @@ const GROUP_LABELS: Record<string, string> = {
   safety:     "Safety rules",
   activity:   "Activity info",
   pricing:    "Pricing",
+  payments:   "Payments",
   agents:     "Agents",
   affiliates: "Affiliates",
 };

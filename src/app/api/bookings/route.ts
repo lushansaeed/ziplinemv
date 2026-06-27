@@ -32,12 +32,26 @@ const schema = z.object({
   affiliateCoupon:      z.string().optional(),
   affiliateLinkId:      z.string().optional(),
   paymentMethod:        z.string().optional(),
+  transferSlipUrl:      z.string().optional(),
+  transferSlipPath:     z.string().optional(),
+  transferSlipFileName: z.string().optional(),
   // Agent/affiliate portal fields (passed through, not validated)
   source:               z.string().optional(),
   agentId:              z.string().optional(),
   affiliateId:          z.string().optional(),
   notes:                z.string().optional(),
 });
+
+async function publicPaymentSettings() {
+  const defaults = {
+    payment_card_enabled: false,
+    payment_bank_transfer_enabled: true,
+    payment_cash_enabled: true,
+    payment_link_enabled: false,
+  };
+  const settings = await prisma.setting.findMany({ where: { key: { in: Object.keys(defaults) } } });
+  return { ...defaults, ...Object.fromEntries(settings.map((setting) => [setting.key, setting.value])) };
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -52,7 +66,30 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const result = await createBooking(parsed.data as any);
+    const data = parsed.data;
+    const isPublicBooking = !data.agentId && !data.source;
+    if (isPublicBooking) {
+      const settings = await publicPaymentSettings();
+      const paymentMethod = data.paymentMethod;
+      const enabledByMethod: Record<string, unknown> = {
+        card: settings.payment_card_enabled,
+        bank_transfer: settings.payment_bank_transfer_enabled,
+        cash: settings.payment_cash_enabled,
+        payment_link: settings.payment_link_enabled,
+      };
+
+      if (!paymentMethod || !enabledByMethod[paymentMethod]) {
+        return NextResponse.json({ error: "Selected payment method is not available." }, { status: 400 });
+      }
+      if (paymentMethod === "bank_transfer" && data.riderType !== "local") {
+        return NextResponse.json({ error: "Bank transfer is available for locals only." }, { status: 400 });
+      }
+      if (paymentMethod === "bank_transfer" && !data.transferSlipUrl) {
+        return NextResponse.json({ error: "Please attach your bank transfer slip." }, { status: 400 });
+      }
+    }
+
+    const result = await createBooking(data as any);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error }, { status: 422 });

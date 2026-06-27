@@ -8,6 +8,22 @@ import { SettingsWorkspace } from "@/components/admin/settings/settings-workspac
 export const metadata: Metadata = { title: "Settings | Admin" };
 
 async function getAllSettings() {
+  const defaults = [
+    { key: "payment_card_enabled", value: false, type: "boolean", group: "payments", label: "Credit / debit card" },
+    { key: "payment_bank_transfer_enabled", value: true, type: "boolean", group: "payments", label: "Bank transfer" },
+    { key: "payment_cash_enabled", value: true, type: "boolean", group: "payments", label: "Pay on arrival" },
+    { key: "payment_link_enabled", value: false, type: "boolean", group: "payments", label: "Payment link" },
+    { key: "payment_bank_account_name", value: "OSVANA GROUP PVT LTD", type: "string", group: "payments", label: "Bank account name" },
+    { key: "payment_mvr_account", value: "7730000840403", type: "string", group: "payments", label: "MVR account" },
+    { key: "payment_usd_account", value: "7730000840404", type: "string", group: "payments", label: "USD account" },
+  ];
+  await Promise.all(defaults.map((setting) =>
+    prisma.setting.upsert({
+      where: { key: setting.key },
+      update: {},
+      create: setting,
+    })
+  ));
   return prisma.setting.findMany({ orderBy: [{ group: "asc" }, { key: "asc" }] });
 }
 

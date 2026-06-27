@@ -5,7 +5,7 @@ import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
 import { buildWaiverSharePayload, generateWaiverToken } from "@/lib/waivers/links";
-import { BookingSource, BookingStatus, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
+import { BookingSource, BookingStatus, PaymentMethod, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
 export interface CreateBookingInput {
@@ -32,6 +32,9 @@ export interface CreateBookingInput {
   affiliateLinkId?:     string;
   // Payment
   paymentMethod?: string;
+  transferSlipUrl?: string;
+  transferSlipPath?: string;
+  transferSlipFileName?: string;
   // Attribution (set by server from middleware/cookie, not client)
   source?: BookingSource;
   agentId?: string;
@@ -55,8 +58,19 @@ export interface CreateBookingResult {
   error?:     string;
 }
 
+function normalizePaymentMethod(method?: string): PaymentMethod | null {
+  const normalized = String(method ?? "").toUpperCase();
+  if (normalized === "CASH") return PaymentMethod.CASH;
+  if (normalized === "CARD") return PaymentMethod.CARD;
+  if (normalized === "BANK_TRANSFER") return PaymentMethod.BANK_TRANSFER;
+  if (normalized === "PAYMENT_LINK") return PaymentMethod.PAYMENT_LINK;
+  if (normalized === "ONLINE") return PaymentMethod.ONLINE;
+  return null;
+}
+
 export async function createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
   try {
+    const paymentMethod = normalizePaymentMethod(input.paymentMethod);
     // 1. Validate slot availability
     const slot = await prisma.timeSlot.findUnique({
       where: { id: input.slotId },
@@ -180,6 +194,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           total:              priceResult.total,
           currency:           priceResult.currency,
           paymentStatus:      PaymentStatus.UNPAID,
+          paymentMethod,
           bookingStatus:      BookingStatus.CONFIRMED,
           waiverStatus:       WaiverStatus.PENDING,
           mediaStatus:        "NOT_APPLICABLE",
@@ -243,6 +258,23 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
         await tx.affiliateCoupon.update({
           where: { id: affiliateCouponRecord.id },
           data:  { usedCount: { increment: 1 } },
+        });
+      }
+
+      if (paymentMethod === PaymentMethod.BANK_TRANSFER) {
+        await tx.payment.create({
+          data: {
+            bookingId: b.id,
+            amount: priceResult.total,
+            currency: priceResult.currency,
+            method: PaymentMethod.BANK_TRANSFER,
+            status: PaymentStatus.UNPAID,
+            metadata: {
+              transferSlipUrl: input.transferSlipUrl ?? null,
+              transferSlipPath: input.transferSlipPath ?? null,
+              transferSlipFileName: input.transferSlipFileName ?? null,
+            },
+          },
         });
       }
 

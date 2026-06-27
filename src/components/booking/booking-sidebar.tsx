@@ -75,7 +75,7 @@ export function BookingSidebar() {
         </div>
 
         {/* Continue button */}
-        {currentStep < 8 && (
+        {currentStep < 9 && (
           <button
             onClick={() => stepContinueFn?.()}
             disabled={stepContinueDisabled || !stepContinueFn}
@@ -95,7 +95,7 @@ export function BookingSidebar() {
           </button>
         )}
 
-        {stepContinueDisabled && currentStep < 8 && (
+        {stepContinueDisabled && currentStep < 9 && (
           <p className="text-center text-white/30 text-xs">
             {currentStep === 1 && "Select a date to continue"}
             {currentStep === 2 && "Select a time slot to continue"}

@@ -112,6 +112,13 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
   }
 
   const addOnsTotal = booking.addOns.reduce((s, a) => s + Number(a.total), 0);
+  const transferPayment = booking.payments.find((payment: any) => {
+    const metadata = payment.metadata && typeof payment.metadata === "object" ? payment.metadata as any : {};
+    return metadata.transferSlipUrl;
+  });
+  const transferSlipUrl = transferPayment && typeof transferPayment.metadata === "object"
+    ? (transferPayment.metadata as any).transferSlipUrl
+    : null;
 
   return (
     <div className="space-y-6">
@@ -255,6 +262,13 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
           } />
           <Row label="Payment status" value={<StatusBadge value={booking.paymentStatus} type="payment" />} />
           {booking.paymentMethod && <Row label="Payment method" value={booking.paymentMethod.replace("_"," ")} />}
+          {transferSlipUrl && (
+            <Row label="Transfer slip" value={
+              <a href={transferSlipUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                View uploaded slip
+              </a>
+            } />
+          )}
         </div>
       </section>
 

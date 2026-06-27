@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
-  CreditCard, Banknote, Building2, Link2,
+  CreditCard, Banknote, Building2, Link2, Upload,
   Tag, Loader2, AlertCircle, Check,
 } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
@@ -12,11 +12,13 @@ import { cn } from "@/lib/utils";
 import { BookingOrderSummary } from "../booking-order-summary";
 
 const PAYMENT_METHODS = [
-  { id: "card",          label: "Credit / debit card", icon: CreditCard,  desc: "Visa, Mastercard, Amex" },
-  { id: "bank_transfer", label: "Bank transfer",        icon: Building2,   desc: "Manual transfer, reference required" },
-  { id: "cash",          label: "Pay on arrival",       icon: Banknote,    desc: "Cash at check-in — booking held for 30 min" },
-  { id: "payment_link",  label: "Payment link",         icon: Link2,       desc: "We'll send a secure link via WhatsApp" },
+  { id: "card", enabledKey: "payment_card_enabled", label: "Credit / debit card", icon: CreditCard, desc: "Visa, Mastercard, Amex" },
+  { id: "bank_transfer", enabledKey: "payment_bank_transfer_enabled", label: "Bank transfer", icon: Building2, desc: "Upload your transfer slip" },
+  { id: "cash", enabledKey: "payment_cash_enabled", label: "Pay on arrival", icon: Banknote, desc: "Pay at check-in" },
+  { id: "payment_link", enabledKey: "payment_link_enabled", label: "Payment link", icon: Link2, desc: "We'll send a secure link via WhatsApp" },
 ];
+
+type PaymentSettings = Record<string, any>;
 
 export function Step9Payment() {
   const store  = useBookingStore();
@@ -25,8 +27,37 @@ export function Step9Payment() {
   const [promoChecking, setPromoChecking] = useState(false);
   const [promoError, setPromoError]     = useState<string | null>(null);
   const [submitError, setSubmitError]   = useState<string | null>(null);
+  const [settings, setSettings]         = useState<PaymentSettings>({
+    payment_bank_transfer_enabled: true,
+    payment_cash_enabled: true,
+    payment_card_enabled: false,
+    payment_link_enabled: false,
+    payment_bank_account_name: "OSVANA GROUP PVT LTD",
+    payment_mvr_account: "7730000840403",
+    payment_usd_account: "7730000840404",
+  });
+  const [uploadingSlip, setUploadingSlip] = useState(false);
 
   const { paymentMethod, setField, nextStep } = store;
+  const isLocalBooking = store.riderType === "local";
+  const availablePaymentMethods = useMemo(() => PAYMENT_METHODS.filter((method) => {
+    if (!settings[method.enabledKey]) return false;
+    if (method.id === "bank_transfer" && !isLocalBooking) return false;
+    return true;
+  }), [settings, isLocalBooking]);
+
+  useEffect(() => {
+    fetch("/api/payments/settings")
+      .then((res) => res.json())
+      .then((data) => setSettings((prev) => ({ ...prev, ...data })))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (paymentMethod && !availablePaymentMethods.some((method) => method.id === paymentMethod)) {
+      setField("paymentMethod", "");
+    }
+  }, [availablePaymentMethods, paymentMethod, setField]);
 
   async function applyPromo() {
     if (!promoInput.trim()) return;
@@ -61,6 +92,10 @@ export function Step9Payment() {
 
   async function handleConfirm() {
     if (!paymentMethod) return;
+    if (paymentMethod === "bank_transfer" && !store.transferSlipUrl) {
+      setSubmitError("Please attach your bank transfer slip before confirming.");
+      return;
+    }
     setSubmitError(null);
 
     startTransition(async () => {
@@ -87,6 +122,9 @@ export function Step9Payment() {
             affiliateCoupon:      store.affiliateCoupon,
             affiliateLinkId:      store.affiliateLinkId,
             paymentMethod,
+            transferSlipUrl:      store.transferSlipUrl,
+            transferSlipPath:     store.transferSlipPath,
+            transferSlipFileName: store.transferSlipFileName,
           }),
         });
 
@@ -110,7 +148,41 @@ export function Step9Payment() {
     });
   }
 
+  async function uploadTransferSlip(file: File) {
+    if (file.size > 10 * 1024 * 1024) {
+      setSubmitError("Transfer slip must be 10 MB or smaller.");
+      return;
+    }
+    setSubmitError(null);
+    setUploadingSlip(true);
+    try {
+      const urlRes = await fetch("/api/payments/transfer-slip-upload-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ filename: file.name, contentType: file.type }),
+      });
+      const urlData = await urlRes.json();
+      if (!urlRes.ok || !urlData.uploadUrl) throw new Error(urlData.error ?? "Could not prepare upload.");
+
+      const uploadRes = await fetch(urlData.uploadUrl, {
+        method: "PUT",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!uploadRes.ok) throw new Error("Transfer slip upload failed.");
+
+      setField("transferSlipUrl", urlData.publicUrl);
+      setField("transferSlipPath", urlData.storagePath);
+      setField("transferSlipFileName", file.name);
+    } catch (error: any) {
+      setSubmitError(error?.message ?? "Transfer slip upload failed.");
+    } finally {
+      setUploadingSlip(false);
+    }
+  }
+
   const promoApplied = store.promoDiscount > 0;
+  const transferSlipRequired = paymentMethod === "bank_transfer" && !store.transferSlipUrl;
 
   return (
     <StepShell
@@ -118,7 +190,7 @@ export function Step9Payment() {
       subtitle="Choose how you'd like to pay."
       onNext={handleConfirm}
       nextLabel="Confirm booking"
-      nextDisabled={!paymentMethod || isPending}
+      nextDisabled={!paymentMethod || transferSlipRequired || isPending || uploadingSlip}
       isLoading={isPending}
     >
       <div className="space-y-6">
@@ -169,7 +241,7 @@ export function Step9Payment() {
         <div className="space-y-2">
           <p className="text-xs font-medium text-white/50 uppercase tracking-wider">Payment method</p>
           <div className="space-y-2">
-            {PAYMENT_METHODS.map((m) => {
+            {availablePaymentMethods.map((m) => {
               const Icon = m.icon;
               const isSelected = paymentMethod === m.id;
               return (
@@ -202,8 +274,52 @@ export function Step9Payment() {
                 </button>
               );
             })}
+            {availablePaymentMethods.length === 0 && (
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">
+                No payment methods are available right now. Please contact Zipline Maldives.
+              </div>
+            )}
           </div>
         </div>
+
+        {paymentMethod === "bank_transfer" && (
+          <div className="space-y-4 rounded-2xl border border-brand-citrus/25 bg-brand-citrus/8 p-4">
+            <div>
+              <p className="text-sm font-semibold text-white">Bank transfer details</p>
+              <p className="mt-1 text-xs text-white/45">Please transfer to the matching account and attach your transfer slip.</p>
+            </div>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-white/45">Account name</span>
+                <span className="text-right font-semibold text-white">{settings.payment_bank_account_name}</span>
+              </div>
+              <div className="flex justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-white/45">MVR account</span>
+                <span className="font-mono font-semibold text-brand-citrus">{settings.payment_mvr_account}</span>
+              </div>
+              <div className="flex justify-between gap-3 rounded-lg bg-white/5 px-3 py-2">
+                <span className="text-white/45">USD account</span>
+                <span className="font-mono font-semibold text-brand-citrus">{settings.payment_usd_account}</span>
+              </div>
+            </div>
+            <label className={cn(
+              "flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed px-4 py-4 text-sm transition-colors",
+              store.transferSlipUrl ? "border-brand-lime/40 bg-brand-lime/10 text-brand-lime" : "border-white/20 text-white/60 hover:border-brand-citrus/50"
+            )}>
+              {uploadingSlip ? <Loader2 className="h-4 w-4 animate-spin" /> : store.transferSlipUrl ? <Check className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
+              {uploadingSlip ? "Uploading transfer slip..." : store.transferSlipFileName || "Attach transfer slip"}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) uploadTransferSlip(file);
+                }}
+              />
+            </label>
+          </div>
+        )}
 
         {submitError && (
           <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
