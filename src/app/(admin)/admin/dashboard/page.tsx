@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import {
   CalendarCheck, DollarSign, Users, TrendingUp,
-  UserCheck, Handshake, Image, AlertTriangle,
+  UserCheck, Handshake, Image, AlertTriangle, Filter,
 } from "lucide-react";
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
@@ -9,19 +9,202 @@ import { requirePermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { bookingStatusColor, paymentStatusColor, sourceColor } from "@/lib/utils";
-import { BookingStatus, PaymentStatus } from "@prisma/client";
+import { BookingSource, BookingStatus, PaymentStatus, Prisma } from "@prisma/client";
 
 export const metadata: Metadata = { title: "Dashboard | Admin" };
 
-async function getDashboardData() {
+const FINAL_BOOKING_STATUSES: BookingStatus[] = [
+  BookingStatus.CANCELLED,
+  BookingStatus.NO_SHOW,
+  BookingStatus.RESCHEDULED,
+  BookingStatus.REFUNDED,
+];
+
+const REVENUE_PAYMENT_STATUSES: PaymentStatus[] = [PaymentStatus.PAID];
+const PENDING_PAYMENT_STATUSES: PaymentStatus[] = [PaymentStatus.UNPAID, PaymentStatus.PARTIALLY_PAID];
+
+type MoneyPair = { mvr: number; usd: number };
+type DashboardFilters = {
+  range: string;
+  from?: string;
+  to?: string;
+  source?: BookingSource;
+  currency?: string;
+  paymentStatus?: PaymentStatus;
+};
+
+function startOfDay(date: Date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function startOfWeek(date: Date) {
+  const d = startOfDay(date);
+  const day = d.getDay();
+  d.setDate(d.getDate() - day);
+  return d;
+}
+
+function dateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function resolveDateRange(filters: DashboardFilters) {
+  const today = startOfDay(new Date());
+  if (filters.range === "yesterday") {
+    const start = addDays(today, -1);
+    return { start, end: today, label: "Yesterday" };
+  }
+  if (filters.range === "week") {
+    return { start: startOfWeek(today), end: addDays(today, 1), label: "This week" };
+  }
+  if (filters.range === "month") {
+    return { start: startOfMonth(today), end: addDays(today, 1), label: "This month" };
+  }
+  if (filters.range === "custom" && filters.from && filters.to) {
+    const start = startOfDay(new Date(filters.from));
+    const end = addDays(startOfDay(new Date(filters.to)), 1);
+    return { start, end, label: `${formatDate(start)} - ${formatDate(addDays(end, -1))}` };
+  }
+  return { start: today, end: addDays(today, 1), label: "Today" };
+}
+
+function parseFilters(searchParams?: Record<string, string | string[] | undefined>): DashboardFilters {
+  const first = (key: string) => {
+    const value = searchParams?.[key];
+    return Array.isArray(value) ? value[0] : value;
+  };
+  const source = first("source");
+  const currency = first("currency");
+  const paymentStatus = first("paymentStatus");
+  return {
+    range: first("range") || "today",
+    from: first("from"),
+    to: first("to"),
+    source: source && source in BookingSource ? BookingSource[source as keyof typeof BookingSource] : undefined,
+    currency: currency === "MVR" || currency === "USD" ? currency : undefined,
+    paymentStatus: paymentStatus && paymentStatus in PaymentStatus ? PaymentStatus[paymentStatus as keyof typeof PaymentStatus] : undefined,
+  };
+}
+
+function numberSetting(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+async function getExchangeRate() {
+  const setting = await prisma.setting.findUnique({ where: { key: "usd_to_mvr_exchange_rate" } });
+  return numberSetting(setting?.value, 20);
+}
+
+function toMoneyPair(amount: number, currency: string, exchangeRate: number): MoneyPair {
+  if (currency === "MVR") return { mvr: amount, usd: amount / exchangeRate };
+  return { mvr: amount * exchangeRate, usd: amount };
+}
+
+function addMoney(a: MoneyPair, b: MoneyPair): MoneyPair {
+  return { mvr: a.mvr + b.mvr, usd: a.usd + b.usd };
+}
+
+function bookingWhere(filters: DashboardFilters): Prisma.BookingWhereInput {
+  return {
+    ...(filters.source ? { source: filters.source } : {}),
+    ...(filters.currency ? { currency: filters.currency } : {}),
+    ...(filters.paymentStatus ? { paymentStatus: filters.paymentStatus } : {}),
+  };
+}
+
+function paymentWhere(filters: DashboardFilters, start: Date, end: Date): Prisma.PaymentWhereInput {
+  const requestedStatus = filters.paymentStatus;
+  return {
+    createdAt: { gte: start, lt: end },
+    status: requestedStatus && REVENUE_PAYMENT_STATUSES.includes(requestedStatus) ? requestedStatus : { in: REVENUE_PAYMENT_STATUSES },
+    ...(filters.currency ? { currency: filters.currency } : {}),
+    booking: {
+      bookingStatus: { notIn: FINAL_BOOKING_STATUSES },
+      ...(filters.source ? { source: filters.source } : {}),
+    },
+  };
+}
+
+async function summarizeActualRevenue(filters: DashboardFilters, start: Date, end: Date, defaultRate: number) {
+  if (filters.paymentStatus && !REVENUE_PAYMENT_STATUSES.includes(filters.paymentStatus)) {
+    return {
+      totals: { mvr: 0, usd: 0 },
+      bySource: {} as Record<string, MoneyPair>,
+      paidBookingCount: 0,
+      paymentsIncluded: 0,
+    };
+  }
+
+  const payments = await prisma.payment.findMany({
+    where: paymentWhere(filters, start, end),
+    include: {
+      refunds: { where: { status: "PAID" }, select: { amount: true } },
+      booking: { select: { id: true, source: true, exchangeRate: true } },
+    },
+  });
+
+  const totals = payments.reduce<MoneyPair>((sum, payment) => {
+    const rate = numberSetting(payment.booking.exchangeRate, defaultRate);
+    const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
+    const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
+    return addMoney(sum, toMoneyPair(netAmount, payment.currency, rate));
+  }, { mvr: 0, usd: 0 });
+
+  const bySource = payments.reduce<Record<string, MoneyPair>>((acc, payment) => {
+    const rate = numberSetting(payment.booking.exchangeRate, defaultRate);
+    const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
+    const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
+    const source = payment.booking.source;
+    acc[source] = addMoney(acc[source] ?? { mvr: 0, usd: 0 }, toMoneyPair(netAmount, payment.currency, rate));
+    return acc;
+  }, {});
+
+  return {
+    totals,
+    bySource,
+    paidBookingCount: new Set(payments.map((payment) => payment.bookingId)).size,
+    paymentsIncluded: payments.length,
+  };
+}
+
+async function summarizeBookingTotals(where: Prisma.BookingWhereInput, defaultRate: number) {
+  const bookings = await prisma.booking.findMany({
+    where,
+    select: { id: true, total: true, currency: true, exchangeRate: true },
+  });
+  const totals = bookings.reduce<MoneyPair>((sum, booking) => {
+    const rate = numberSetting(booking.exchangeRate, defaultRate);
+    return addMoney(sum, toMoneyPair(Number(booking.total), booking.currency, rate));
+  }, { mvr: 0, usd: 0 });
+  return { totals, count: bookings.length };
+}
+
+async function getDashboardData(searchParams?: Record<string, string | string[] | undefined>) {
+  const filters = parseFilters(searchParams);
+  const { start, end, label } = resolveDateRange(filters);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
+  const monthStart = startOfMonth(today);
+  const defaultExchangeRate = await getExchangeRate();
+  const baseBookingWhere = bookingWhere(filters);
 
   const [
     todayBookings,
-    upcomingBookings,
     pendingMedia,
     recentBookings,
     agentCount,
@@ -31,12 +214,6 @@ async function getDashboardData() {
   ] = await Promise.all([
     prisma.booking.count({
       where: { bookingDate: { gte: today, lt: tomorrow } },
-    }),
-    prisma.booking.count({
-      where: {
-        bookingDate: { gte: tomorrow },
-        bookingStatus: { in: [BookingStatus.CONFIRMED] },
-      },
     }),
     prisma.booking.count({
       where: {
@@ -59,43 +236,129 @@ async function getDashboardData() {
     prisma.affiliateApplication.count({ where: { status: "PENDING" } }),
   ]);
 
-  // Revenue aggregates
-  const revenueAgg = await prisma.booking.groupBy({
-    by: ["source"],
-    _sum: { total: true },
-    where: { paymentStatus: PaymentStatus.PAID },
+  const actualRevenue = await summarizeActualRevenue(filters, start, end, defaultExchangeRate);
+  const monthRevenue = await summarizeActualRevenue(filters, monthStart, tomorrow, defaultExchangeRate);
+
+  const upcoming = await summarizeBookingTotals({
+    ...baseBookingWhere,
+    bookingDate: { gte: start > today ? start : today, lt: end },
+    bookingStatus: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.IN_PROGRESS, BookingStatus.PARTIALLY_LAUNCHED, BookingStatus.PARTIALLY_LANDED] },
+    paymentStatus: { notIn: [PaymentStatus.PAID, PaymentStatus.REFUNDED] },
+  }, defaultExchangeRate);
+
+  const pendingPayments = await summarizeBookingTotals({
+    ...baseBookingWhere,
+    bookingDate: { gte: start, lt: end },
+    bookingStatus: { notIn: FINAL_BOOKING_STATUSES },
+    paymentStatus: { in: PENDING_PAYMENT_STATUSES },
+  }, defaultExchangeRate);
+
+  const excludedUnpaid = await prisma.booking.count({
+    where: {
+      ...baseBookingWhere,
+      bookingDate: { gte: start, lt: end },
+      paymentStatus: { not: PaymentStatus.PAID },
+    },
   });
 
-  const revenueMap: Record<string, number> = {};
-  for (const r of revenueAgg) {
-    revenueMap[r.source] = Number(r._sum.total ?? 0);
-  }
-
   return {
+    filters,
+    periodLabel: label,
+    defaultExchangeRate,
     todayBookings,
-    upcomingBookings,
     pendingMedia,
     recentBookings,
     agentCount,
     affiliateCount,
     pendingAgents,
     pendingAffiliates,
-    revenue: {
-      direct:    revenueMap.DIRECT    ?? 0,
-      walkIn:    revenueMap.WALK_IN   ?? 0,
-      agent:     revenueMap.AGENT     ?? 0,
-      affiliate: revenueMap.AFFILIATE ?? 0,
+    actualRevenue: {
+      mvr: actualRevenue.totals.mvr,
+      usd: actualRevenue.totals.usd,
+    },
+    monthRevenue: {
+      mvr: monthRevenue.totals.mvr,
+      usd: monthRevenue.totals.usd,
+    },
+    upcomingSales: {
+      mvr: upcoming.totals.mvr,
+      usd: upcoming.totals.usd,
+    },
+    pendingPayments: {
+      mvr: pendingPayments.totals.mvr,
+      usd: pendingPayments.totals.usd,
+    },
+    paidBookingCount: actualRevenue.paidBookingCount,
+    upcomingBookingCount: upcoming.count,
+    pendingPaymentCount: pendingPayments.count,
+    revenueBySource: {
+      direct:    actualRevenue.bySource.DIRECT    ?? { mvr: 0, usd: 0 },
+      walkIn:    actualRevenue.bySource.WALK_IN   ?? { mvr: 0, usd: 0 },
+      agent:     actualRevenue.bySource.AGENT     ?? { mvr: 0, usd: 0 },
+      affiliate: actualRevenue.bySource.AFFILIATE ?? { mvr: 0, usd: 0 },
+    },
+    debug: {
+      bookingsIncludedInActualRevenue: actualRevenue.paidBookingCount,
+      paymentsIncluded: actualRevenue.paymentsIncluded,
+      bookingsExcludedDueToUnpaidStatus: excludedUnpaid,
+      upcomingBookingsIncluded: upcoming.count,
+      exchangeRateUsed: defaultExchangeRate,
     },
   };
 }
 
-export default async function AdminDashboardPage() {
-  await requirePermission("dashboard", "view");
-  const data = await getDashboardData();
+function formatDashboardCurrency(amount: number, currency: "MVR" | "USD", locale: string) {
+  return new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
 
-  const totalRevenue =
-    data.revenue.direct + data.revenue.walkIn +
-    data.revenue.agent + data.revenue.affiliate;
+function RevenueValue({ value }: { value: MoneyPair }) {
+  return (
+    <div>
+      <p className="text-2xl font-display font-bold text-foreground">
+        {formatDashboardCurrency(value.mvr, "MVR", "en-MV")}
+      </p>
+      <p className="text-xs font-medium text-muted-foreground">
+        {formatDashboardCurrency(value.usd, "USD", "en-US")}
+      </p>
+    </div>
+  );
+}
+
+function RevenueCard({ title, value, subtitle, icon: Icon, iconColor }: {
+  title: string;
+  value: MoneyPair;
+  subtitle: string;
+  icon: any;
+  iconColor: string;
+}) {
+  return (
+    <div className="admin-card flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-muted-foreground font-medium">{title}</p>
+        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+          <Icon className={`w-4 h-4 ${iconColor}`} />
+        </div>
+      </div>
+      <RevenueValue value={value} />
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
+    </div>
+  );
+}
+
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
+  await requirePermission("dashboard", "view");
+  const data = await getDashboardData(searchParams);
+  const customFrom = data.filters.from || dateInputValue(new Date());
+  const customTo = data.filters.to || dateInputValue(new Date());
 
   return (
     <div>
@@ -105,6 +368,63 @@ export default async function AdminDashboardPage() {
       />
 
       <div className="p-6 space-y-8">
+        <form className="admin-card flex flex-wrap items-end gap-3" action="/admin/dashboard">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mr-2">
+            <Filter className="w-4 h-4 text-primary" />
+            Dashboard filters
+          </div>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">Date range</span>
+            <select name="range" defaultValue={data.filters.range} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+              <option value="today">Today</option>
+              <option value="yesterday">Yesterday</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="custom">Custom</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">From</span>
+            <input name="from" type="date" defaultValue={customFrom} className="h-9 rounded-lg border border-border bg-background px-3 text-sm" />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">To</span>
+            <input name="to" type="date" defaultValue={customTo} className="h-9 rounded-lg border border-border bg-background px-3 text-sm" />
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">Source</span>
+            <select name="source" defaultValue={data.filters.source ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+              <option value="">All sources</option>
+              <option value="DIRECT">Public</option>
+              <option value="AGENT">Agent</option>
+              <option value="WALK_IN">Walk-in</option>
+              <option value="AFFILIATE">Affiliate</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">Currency</span>
+            <select name="currency" defaultValue={data.filters.currency ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+              <option value="">All</option>
+              <option value="MVR">MVR</option>
+              <option value="USD">USD</option>
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="block text-xs text-muted-foreground">Payment status</span>
+            <select name="paymentStatus" defaultValue={data.filters.paymentStatus ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+              <option value="">All</option>
+              <option value="PAID">Paid</option>
+              <option value="UNPAID">Unpaid</option>
+              <option value="PARTIALLY_PAID">Partially paid</option>
+              <option value="FAILED">Failed</option>
+              <option value="REFUNDED">Refunded</option>
+            </select>
+          </label>
+          <button className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+            Apply
+          </button>
+        </form>
+
         {/* KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
@@ -114,19 +434,19 @@ export default async function AdminDashboardPage() {
             iconColor="text-brand-citrus"
             subtitle="Scheduled for today"
           />
-          <StatCard
-            title="Upcoming"
-            value={data.upcomingBookings}
+          <RevenueCard
+            title={`${data.periodLabel} actual revenue`}
+            value={data.actualRevenue}
             icon={TrendingUp}
             iconColor="text-brand-ocean"
-            subtitle="Confirmed ahead"
+            subtitle={`${data.paidBookingCount} paid booking${data.paidBookingCount !== 1 ? "s" : ""}`}
           />
-          <StatCard
-            title="Total revenue"
-            value={formatCurrency(totalRevenue)}
+          <RevenueCard
+            title="This month's actual revenue"
+            value={data.monthRevenue}
             icon={DollarSign}
             iconColor="text-brand-lime"
-            subtitle="All paid bookings"
+            subtitle="Paid/settled payment records only"
           />
           <StatCard
             title="Pending media"
@@ -137,25 +457,58 @@ export default async function AdminDashboardPage() {
           />
         </div>
 
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <RevenueCard
+            title="Upcoming sales"
+            value={data.upcomingSales}
+            icon={TrendingUp}
+            iconColor="text-brand-citrus"
+            subtitle={`${data.upcomingBookingCount} expected booking${data.upcomingBookingCount !== 1 ? "s" : ""}`}
+          />
+          <RevenueCard
+            title="Pending payments"
+            value={data.pendingPayments}
+            icon={DollarSign}
+            iconColor="text-amber-500"
+            subtitle={`${data.pendingPaymentCount} pending booking${data.pendingPaymentCount !== 1 ? "s" : ""}`}
+          />
+          <StatCard title="Paid bookings count" value={data.paidBookingCount} icon={CalendarCheck} iconColor="text-green-500" subtitle={data.periodLabel} />
+          <StatCard title="Upcoming bookings count" value={data.upcomingBookingCount} icon={Users} iconColor="text-sky-500" subtitle="Expected sales" />
+        </div>
+
         {/* Revenue breakdown */}
         <div>
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-            Revenue by source
+            Actual revenue by source
           </h2>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Direct",    value: data.revenue.direct,    color: "text-brand-turquoise" },
-              { label: "Walk-in",   value: data.revenue.walkIn,    color: "text-brand-mango" },
-              { label: "Agent",     value: data.revenue.agent,     color: "text-brand-ocean" },
-              { label: "Affiliate", value: data.revenue.affiliate, color: "text-brand-citrus" },
+              { label: "Direct",    value: data.revenueBySource.direct,    color: "text-brand-turquoise" },
+              { label: "Walk-in",   value: data.revenueBySource.walkIn,    color: "text-brand-mango" },
+              { label: "Agent",     value: data.revenueBySource.agent,     color: "text-brand-ocean" },
+              { label: "Affiliate", value: data.revenueBySource.affiliate, color: "text-brand-citrus" },
             ].map((src) => (
               <div key={src.label} className="admin-card space-y-1">
                 <p className="text-xs text-muted-foreground">{src.label}</p>
                 <p className={`text-xl font-display font-bold ${src.color}`}>
-                  {formatCurrency(src.value)}
+                  {formatDashboardCurrency(src.value.mvr, "MVR", "en-MV")}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {formatDashboardCurrency(src.value.usd, "USD", "en-US")}
                 </p>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="admin-card text-xs text-muted-foreground">
+          <p className="font-semibold text-foreground mb-2">Revenue calculation debug</p>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <span>Paid bookings: {data.debug.bookingsIncludedInActualRevenue}</span>
+            <span>Paid payments: {data.debug.paymentsIncluded}</span>
+            <span>Excluded unpaid: {data.debug.bookingsExcludedDueToUnpaidStatus}</span>
+            <span>Upcoming included: {data.debug.upcomingBookingsIncluded}</span>
+            <span>USD→MVR rate: {data.debug.exchangeRateUsed}</span>
           </div>
         </div>
 

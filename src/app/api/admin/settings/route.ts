@@ -22,6 +22,7 @@ const KEY_GROUPS: Record<string, string> = {
   payment_bank_account_name: "payments",
   payment_mvr_account: "payments",
   payment_usd_account: "payments",
+  usd_to_mvr_exchange_rate: "payments",
   booking_auto_confirm:  "booking",
   min_rider_weight_kg:   "safety",
   max_rider_weight_kg:   "safety",

@@ -20,6 +20,7 @@ async function getAllSettings() {
     { key: "payment_bank_account_name", value: "OSVANA GROUP PVT LTD", type: "string", group: "payments", label: "Bank account name" },
     { key: "payment_mvr_account", value: "7730000840403", type: "string", group: "payments", label: "MVR account" },
     { key: "payment_usd_account", value: "7730000840404", type: "string", group: "payments", label: "USD account" },
+    { key: "usd_to_mvr_exchange_rate", value: 20, type: "number", group: "payments", label: "USD to MVR exchange rate" },
     { key: "email_booking_confirmation_subject", value: DEFAULT_BOOKING_CONFIRMATION_SUBJECT, type: "string", group: "email_templates", label: "Booking confirmation subject" },
     { key: "email_booking_confirmation_html", value: DEFAULT_BOOKING_CONFIRMATION_TEMPLATE, type: "string", group: "email_templates", label: "Booking confirmation HTML" },
   ];
