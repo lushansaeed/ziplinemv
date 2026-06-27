@@ -5,7 +5,7 @@ import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
 import { buildWaiverSharePayload, generateWaiverToken } from "@/lib/waivers/links";
-import { BookingSource, BookingStatus, PaymentMethod, PaymentStatus, Prisma, SlotStatus, WaiverStatus } from "@prisma/client";
+import { BookingSource, BookingStatus, CustomerType, PaymentMethod, PaymentStatus, Prisma, SlotStatus, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
 export interface CreateBookingInput {
@@ -72,6 +72,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
   try {
     const paymentMethod = normalizePaymentMethod(input.paymentMethod);
     const requestedSource: BookingSource = input.source ?? BookingSource.DIRECT;
+    const customerType = input.riderType === "local" ? CustomerType.LOCAL : CustomerType.TOURIST;
     let resolvedSlotId = input.slotId ?? "";
 
     if (!resolvedSlotId && requestedSource === BookingSource.WALK_IN) {
@@ -227,10 +228,12 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           bookingDate:        new Date(input.date),
           numRiders:          input.numRiders,
           source,
+          customerType,
           subtotal:           priceResult.subtotal,
           discountAmount:     priceResult.discountAmount,
           total:              priceResult.total,
           currency:           priceResult.currency,
+          priceType:          customerType === CustomerType.LOCAL ? "local" : "tourist",
           paymentStatus:      PaymentStatus.UNPAID,
           paymentMethod,
           bookingStatus:      BookingStatus.CONFIRMED,

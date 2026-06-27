@@ -36,6 +36,7 @@ async function getCustomers(params: Record<string, string | undefined>) {
       include: {
         agent:     { select: { businessName: true } },
         affiliate: { select: { name: true } },
+        bookings:  { orderBy: { createdAt: "desc" }, take: 1, select: { customerType: true } },
         _count:    { select: { bookings: true } },
       },
     }),

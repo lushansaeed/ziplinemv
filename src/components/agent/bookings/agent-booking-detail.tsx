@@ -35,6 +35,9 @@ export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
         <div className="flex gap-2 flex-wrap">
           <StatusBadge value={booking.bookingStatus} type="booking" />
           <StatusBadge value={booking.paymentStatus} type="payment" />
+          <span className="status-badge bg-muted text-muted-foreground capitalize">
+            {(booking.customerType ?? "TOURIST").toLowerCase()}
+          </span>
         </div>
       </div>
 
@@ -54,6 +57,7 @@ export function AgentBookingDetail({ bookingId }: { bookingId: string }) {
           { icon: Clock,    label: "Time",    value: booking.slot?.startTime },
           { icon: Package,  label: "Package", value: booking.package?.name },
           { icon: Users,    label: "Riders",  value: String(booking.numRiders) },
+          { icon: Users,    label: "Type",    value: (booking.customerType ?? "TOURIST").toLowerCase() },
         ].map((row) => {
           const Icon = row.icon;
           return (

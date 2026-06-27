@@ -12,6 +12,7 @@ interface CustomerRow {
   source: string; createdAt: Date;
   agent:     { businessName: string } | null;
   affiliate: { name: string } | null;
+  bookings?: Array<{ customerType: string }>;
   _count:    { bookings: number };
 }
 
@@ -52,6 +53,14 @@ export function CustomersTable({ customers, total, page, perPage, searchParams }
     {
       key: "nationality", header: "Nationality", hide: "lg",
       cell: (r) => <span className="text-sm">{r.nationality ?? "—"}</span>,
+    },
+    {
+      key: "customerType", header: "Type", hide: "lg",
+      cell: (r) => (
+        <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
+          {(r.bookings?.[0]?.customerType ?? "TOURIST").toLowerCase()}
+        </span>
+      ),
     },
     {
       key: "source", header: "Source",

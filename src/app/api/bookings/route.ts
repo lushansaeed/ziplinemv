@@ -68,6 +68,9 @@ export async function POST(req: NextRequest) {
 
     const data = parsed.data;
     const source = data.source ?? "DIRECT";
+    if ((source === "AGENT" || source === "WALK_IN" || source === "AFFILIATE") && !data.riderType) {
+      return NextResponse.json({ error: "Customer type is required." }, { status: 400 });
+    }
     if (source !== "WALK_IN" && !data.slotId) {
       return NextResponse.json({ error: "Time slot is required for this booking source." }, { status: 400 });
     }

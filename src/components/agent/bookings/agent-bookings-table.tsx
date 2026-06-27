@@ -14,7 +14,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 interface AgentBookingRow {
   id: string; reference: string; bookingDate: Date;
   bookingStatus: string; paymentStatus: string; waiverStatus: string;
-  numRiders: number; total: number; currency: string;
+  customerType?: string; numRiders: number; total: number; currency: string;
   customer: { name: string; phone: string; nationality: string | null };
   package:  { name: string };
   slot:     { startTime: string };
@@ -91,6 +91,14 @@ export function AgentBookingsTable({ bookings, total, page, perPage, searchParam
       cell: (r) => <span className="text-sm">{r.numRiders}</span>,
     },
     {
+      key: "customerType", header: "Type", hide: "lg",
+      cell: (r) => (
+        <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
+          {(r.customerType ?? "TOURIST").toLowerCase()}
+        </span>
+      ),
+    },
+    {
       key: "status", header: "Status",
       cell: (r) => <StatusBadge value={r.bookingStatus} type="booking" />,
     },
@@ -114,7 +122,7 @@ export function AgentBookingsTable({ bookings, total, page, perPage, searchParam
     {
       key: "commission", header: "Commission", hide: "md",
       cell: (r) => r.agentCommission
-        ? <span className="text-sm font-semibold text-primary">{formatCurrency(Number(r.agentCommission.amount))}</span>
+        ? <span className="text-sm font-semibold text-primary">{formatCurrency(Number(r.agentCommission.amount), r.currency)}</span>
         : <span className="text-muted-foreground text-sm">—</span>,
     },
     {

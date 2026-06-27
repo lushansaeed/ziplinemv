@@ -134,6 +134,9 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
           <StatusBadge value={booking.bookingStatus} type="booking" />
           <StatusBadge value={booking.paymentStatus} type="payment" />
           <StatusBadge value={booking.source} type="source" />
+          <span className="status-badge bg-muted text-muted-foreground capitalize">
+            {(booking.customerType ?? "TOURIST").toLowerCase()}
+          </span>
         </div>
       </div>
 
@@ -250,10 +253,11 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
       <section>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Financial</p>
         <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
-          <Row label="Package total" value={formatCurrency(Number(booking.subtotal) - addOnsTotal)} />
-          {addOnsTotal > 0 && <Row label="Add-ons" value={formatCurrency(addOnsTotal)} />}
+          <Row label="Customer type" value={(booking.customerType ?? "TOURIST").toLowerCase()} />
+          <Row label="Package total" value={formatCurrency(Number(booking.subtotal) - addOnsTotal, booking.currency)} />
+          {addOnsTotal > 0 && <Row label="Add-ons" value={formatCurrency(addOnsTotal, booking.currency)} />}
           {Number(booking.discountAmount) > 0 && (
-            <Row label="Discount" value={`−${formatCurrency(Number(booking.discountAmount))}`} />
+            <Row label="Discount" value={`−${formatCurrency(Number(booking.discountAmount), booking.currency)}`} />
           )}
           <Row label="Total" value={
             <span className="font-bold text-base text-primary">

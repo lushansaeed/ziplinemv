@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 interface BookingRow {
   id: string; reference: string; bookingDate: Date;
   bookingStatus: string; paymentStatus: string;
-  source: string; numRiders: number; total: number; currency: string;
+  source: string; customerType?: string; numRiders: number; total: number; currency: string;
   mediaStatus: string; waiverStatus: string;
   customer: { name: string; phone: string; email: string | null };
   package: { name: string };
@@ -120,6 +120,14 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     {
       key: "riders", header: "Riders", hide: "lg",
       cell: (r) => <span className="text-sm">{r.numRiders}</span>,
+    },
+    {
+      key: "customerType", header: "Type", hide: "lg",
+      cell: (r) => (
+        <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
+          {(r.customerType ?? "TOURIST").toLowerCase()}
+        </span>
+      ),
     },
     {
       key: "source", header: "Source",

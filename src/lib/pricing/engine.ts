@@ -99,9 +99,12 @@ export async function calculatePrice(input: PriceInput): Promise<PriceResult> {
     { label: `${pkg.name} × ${input.numRiders}`, amount: basePrice, type: "base" },
     ...addOns.map((a) => {
       const qty = input.addOnQuantities?.[a.id] ?? input.numRiders;
+      const addonPrice = isLocal && (a as any).localPriceMvr
+        ? Number((a as any).localPriceMvr)
+        : Number(a.price);
       return {
         label:  `${a.name} × ${qty}`,
-        amount: Number(a.price) * qty,
+        amount: addonPrice * qty,
         type:   "addon" as const,
       };
     }),

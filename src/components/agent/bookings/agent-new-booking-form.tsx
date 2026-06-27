@@ -39,7 +39,7 @@ export function AgentNewBookingForm({
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [result, setResult]          = useState<{ reference: string; qrCode?: string; commission: number } | null>(null);
+  const [result, setResult]          = useState<{ reference: string; qrCode?: string; commission: number; currency: string } | null>(null);
   const [error, setError]            = useState<string | null>(null);
 
   // Step state
@@ -52,6 +52,7 @@ export function AgentNewBookingForm({
   const [packageId, setPackageId]       = useState(packages[0]?.id ?? "");
   const [numRiders, setNumRiders]       = useState(1);
   const [addOnQuantities, setAddOnQuantities] = useState<Record<string, number>>({});
+  const [customerType, setCustomerType] = useState<"local" | "tourist" | "">("");
 
   // Customer
   const [customerName, setCustomerName]   = useState("");
@@ -92,7 +93,8 @@ export function AgentNewBookingForm({
 
   // Price calculation preview
   const selectedPkg    = packages.find((p) => p.id === packageId);
-  const isLocalCustomer = customerNationality.trim().toUpperCase() === "MV";
+  const isLocalCustomer = customerType === "local";
+  const displayCurrency = isLocalCustomer ? "MVR" : "USD";
   const pkgPrice       = isLocalCustomer && (selectedPkg as any)?.localPriceMvr
     ? Number((selectedPkg as any).localPriceMvr)
     : Number(selectedPkg?.touristPrice ?? 0);
@@ -132,7 +134,7 @@ export function AgentNewBookingForm({
 
   async function handleSubmit() {
     setError(null);
-    if (!slotId || !packageId || !customerName || !customerPhone) {
+    if (!customerType || !slotId || !packageId || !customerName || !customerPhone) {
       setError("Please fill in all required fields."); return;
     }
 
@@ -143,12 +145,14 @@ export function AgentNewBookingForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             slotId, packageId, addOnIds: selectedAddOns, addOnQuantities,
+            riderType: customerType,
             date, numRiders,
             customerName,
             customerPhone: customerPhone.replace(/\s/g, ""),
             customerPhoneCountry: "MV",
             customerEmail:       customerEmail || "",
-            customerNationality, customerHotel,
+            customerNationality: customerType === "local" && !customerNationality ? "MV" : customerNationality,
+            customerHotel,
             riders: [],
             paymentMethod, notes,
             source:  "AGENT",
@@ -161,6 +165,7 @@ export function AgentNewBookingForm({
           reference:  data.reference,
           qrCode:     data.qrCode,
           commission: commissionAmt,
+          currency:   data.currency ?? displayCurrency,
         });
         toast.success(`Booking ${data.reference} created`);
       } catch (err: any) {
@@ -187,7 +192,7 @@ export function AgentNewBookingForm({
         )}
         <div className="bg-muted/40 rounded-xl p-4 text-sm max-w-xs mx-auto space-y-2">
           <p className="text-muted-foreground">Your commission on this booking</p>
-          <p className="font-display font-bold text-xl text-primary">{formatCurrency(result.commission)}</p>
+          <p className="font-display font-bold text-xl text-primary">{formatCurrency(result.commission, result.currency)}</p>
           <p className="text-xs text-muted-foreground">(pending payout)</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -252,6 +257,29 @@ export function AgentNewBookingForm({
             <p className="font-semibold text-sm">Select date & time</p>
           </div>
           <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2 sm:col-span-2">
+              <label className="text-xs text-muted-foreground font-medium">Customer type *</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { value: "local" as const, label: "Local", note: "Charged in MVR" },
+                  { value: "tourist" as const, label: "Tourist", note: "Tourist pricing" },
+                ].map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setCustomerType(option.value)}
+                    className={cn(
+                      "rounded-xl border p-3 text-left transition-all",
+                      customerType === option.value ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
+                    )}
+                  >
+                    <p className="text-sm font-semibold">{option.label}</p>
+                    <p className="text-xs text-muted-foreground">{option.note}</p>
+                  </button>
+                ))}
+              </div>
+              {customerType === "local" && <p className="text-xs text-muted-foreground">Local bookings are charged in MVR.</p>}
+            </div>
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Date *</label>
               <input
@@ -309,7 +337,7 @@ export function AgentNewBookingForm({
           <div className="flex justify-end pt-2">
             <button
               onClick={() => setStep(2)}
-              disabled={!slotId}
+              disabled={!customerType || !slotId}
               className="btn-brand text-sm px-6 py-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue
@@ -347,8 +375,8 @@ export function AgentNewBookingForm({
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{pkg.description}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-bold text-sm">{formatCurrency(Number(pkg.touristPrice) * numRiders)}</p>
-                    <p className="text-[10px] text-muted-foreground">{formatCurrency(Number(pkg.touristPrice))} × {numRiders}</p>
+                    <p className="font-bold text-sm">{formatCurrency((isLocalCustomer && (pkg as any).localPriceMvr ? Number((pkg as any).localPriceMvr) : Number(pkg.touristPrice)) * numRiders, displayCurrency)}</p>
+                    <p className="text-[10px] text-muted-foreground">{formatCurrency(isLocalCustomer && (pkg as any).localPriceMvr ? Number((pkg as any).localPriceMvr) : Number(pkg.touristPrice), displayCurrency)} × {numRiders}</p>
                   </div>
                 </button>
               ))}
@@ -374,7 +402,7 @@ export function AgentNewBookingForm({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium">{addon.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatCurrency(Number(addon.price))} per rider</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(isLocalCustomer && (addon as any).localPriceMvr ? Number((addon as any).localPriceMvr) : Number(addon.price), displayCurrency)} per rider</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <button type="button" onClick={() => setAddOnQty(addon.id, qty - 1)} className="p-1.5 rounded-lg border border-border hover:bg-muted">
@@ -395,7 +423,7 @@ export function AgentNewBookingForm({
           {/* Commission preview */}
           <div className="admin-card bg-primary/5 border-primary/20 space-y-1">
             <p className="text-xs text-muted-foreground font-medium">Commission preview</p>
-            <p className="font-display font-bold text-xl text-primary">{formatCurrency(commissionAmt)}</p>
+            <p className="font-display font-bold text-xl text-primary">{formatCurrency(commissionAmt, displayCurrency)}</p>
             <p className="text-xs text-muted-foreground">based on your package and add-on rules</p>
           </div>
 
@@ -458,6 +486,8 @@ export function AgentNewBookingForm({
               <div className="font-medium">{date} · {slotTime}</div>
               <div className="text-muted-foreground">Package</div>
               <div className="font-medium">{packages.find((p) => p.id === packageId)?.name}</div>
+              <div className="text-muted-foreground">Customer type</div>
+              <div className="font-medium capitalize">{customerType}</div>
               <div className="text-muted-foreground">Riders</div>
               <div className="font-medium">{numRiders}</div>
               <div className="text-muted-foreground">Customer</div>
@@ -469,9 +499,9 @@ export function AgentNewBookingForm({
                 </>
               )}
               <div className="text-muted-foreground">Subtotal</div>
-              <div className="font-bold text-base">{formatCurrency(subtotal)}</div>
+              <div className="font-bold text-base">{formatCurrency(subtotal, displayCurrency)}</div>
               <div className="text-muted-foreground">Your commission</div>
-              <div className="font-bold text-primary">{formatCurrency(commissionAmt)}</div>
+              <div className="font-bold text-primary">{formatCurrency(commissionAmt, displayCurrency)}</div>
             </div>
           </div>
 

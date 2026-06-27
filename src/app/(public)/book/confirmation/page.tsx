@@ -79,6 +79,7 @@ export default async function ConfirmationPage({
               { icon: Clock,    label: "Time",    value: booking.slot.startTime },
               { icon: Package,  label: "Package", value: booking.package.name },
               { icon: Users,    label: "Riders",  value: `${booking.numRiders}` },
+              { icon: Users,    label: "Customer type", value: (booking.customerType ?? "TOURIST").toLowerCase() },
             ].map((row) => {
               const Icon = row.icon;
               return (
@@ -111,7 +112,7 @@ export default async function ConfirmationPage({
               {booking.addOns.map((a) => (
                 <div key={a.id} className="flex justify-between text-sm">
                   <span className="text-white/60">{a.addOn.name} × {a.quantity}</span>
-                  <span className="text-white">{formatCurrency(Number(a.total))}</span>
+                  <span className="text-white">{formatCurrency(Number(a.total), booking.currency)}</span>
                 </div>
               ))}
             </div>
