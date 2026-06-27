@@ -1,24 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Contact, Home, Image, Palette, Settings2, Type } from "lucide-react";
+import { Contact, Image, Palette, Settings2, Type } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CmsWorkspace } from "@/components/admin/cms/cms-workspace";
 import { WebsiteMediaManager } from "@/components/admin/media/website-media-manager";
 import { ThemeWorkspace } from "@/components/admin/theme/theme-workspace";
 
-type TabKey = "theme" | "homepage-media" | "page-media" | "text" | "global";
+type TabKey = "theme" | "media" | "text" | "global";
 
 const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType }> = [
   { key: "theme", label: "Theme & Branding", icon: Palette },
-  { key: "homepage-media", label: "Homepage Media", icon: Home },
-  { key: "page-media", label: "Page Media", icon: Image },
+  { key: "media", label: "Website Media", icon: Image },
   { key: "text", label: "Website Text & Captions", icon: Type },
   { key: "global", label: "Global Settings", icon: Settings2 },
 ];
-
-const HOMEPAGE_MEDIA_CATEGORIES = ["hero", "feature-hero", "drone-reels", "guest-photos", "gallery"];
-const PAGE_MEDIA_CATEGORIES = ["packages", "addons", "story", "gallery"];
 
 interface WebsiteCustomizationWorkspaceProps {
   cmsData: any;
@@ -77,19 +73,9 @@ export function WebsiteCustomizationWorkspace({
         </div>
       )}
 
-      {activeTab === "homepage-media" && (
+      {activeTab === "media" && (
         <WebsiteMediaManager
           {...mediaData}
-          categorySlugs={HOMEPAGE_MEDIA_CATEGORIES}
-          defaultLocation="hero"
-          {...permissionProps}
-        />
-      )}
-
-      {activeTab === "page-media" && (
-        <WebsiteMediaManager
-          {...mediaData}
-          categorySlugs={PAGE_MEDIA_CATEGORIES}
           defaultLocation="gallery"
           {...permissionProps}
         />

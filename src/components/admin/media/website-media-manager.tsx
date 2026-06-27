@@ -40,6 +40,7 @@ export function WebsiteMediaManager({
     : initialMedia;
   const [media, setMedia]             = useState(scopedInitialMedia);
   const [activeCategory, setActiveCat] = useState<string>("all");
+  const [activeLocation, setActiveLocation] = useState<string>("all");
   const [isPending, startTransition]   = useTransition();
   const [uploading, setUploading]      = useState(false);
   const [showUpload, setShowUpload]    = useState(false);
@@ -53,9 +54,15 @@ export function WebsiteMediaManager({
     frontendLocation: defaultLocation, displayOrder: 0,
   });
 
-  const filtered = activeCategory === "all"
-    ? media
-    : media.filter((m) => m.category?.id === activeCategory);
+  const locationOptions = Array.from(
+    new Set(media.map((item) => item.frontendLocation).filter((location): location is string => Boolean(location)))
+  ).sort();
+
+  const filtered = media.filter((item) => {
+    const categoryMatch = activeCategory === "all" || item.category?.id === activeCategory;
+    const locationMatch = activeLocation === "all" || item.frontendLocation === activeLocation;
+    return categoryMatch && locationMatch;
+  });
 
   async function handleFileUpload(file: File) {
     setUploading(true);
@@ -141,27 +148,52 @@ export function WebsiteMediaManager({
     <div className="p-6 space-y-6">
       {/* Category filter + upload button */}
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setActiveCat("all")}
-            className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-              activeCategory === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
-            )}
-          >
-            All ({media.length})
-          </button>
-          {visibleCategories.map((cat) => {
-            const count = media.filter((m) => m.category?.id === cat.id).length;
-            return (
-              <button key={cat.id} onClick={() => setActiveCat(cat.id)}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setActiveCat("all")}
+              className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                activeCategory === "all" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
+            >
+              All categories ({media.length})
+            </button>
+            {visibleCategories.map((cat) => {
+              const count = media.filter((m) => m.category?.id === cat.id).length;
+              return (
+                <button key={cat.id} onClick={() => setActiveCat(cat.id)}
+                  className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                    activeCategory === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {cat.name} ({count})
+                </button>
+              );
+            })}
+          </div>
+          {locationOptions.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setActiveLocation("all")}
                 className={cn("px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
-                  activeCategory === cat.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  activeLocation === "all" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground hover:text-foreground"
                 )}
               >
-                {cat.name} ({count})
+                All locations
               </button>
-            );
-          })}
+              {locationOptions.map((location) => (
+                <button
+                  key={location}
+                  onClick={() => setActiveLocation(location)}
+                  className={cn("px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors",
+                    activeLocation === location ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {location}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         {canCreate && (
           <button
