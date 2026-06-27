@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
+import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
 // Returns waiver signed status for each BookingRider in the booking.
 // Used by the wristband check-in modal to surface waiver state before linking.
@@ -18,15 +19,10 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
     }),
   ]);
 
-  const signedNames = new Set(waivers.map((w) => w.riderName.toLowerCase().trim()));
-  const signedRiderIds = new Set(waivers.map((w) => w.riderId).filter(Boolean));
-
   const result = riders.map((r) => ({
     riderId: r.id,
     name:    r.name,
-    signed:
-      (r.riderId ? signedRiderIds.has(r.riderId) : false) ||
-      signedNames.has(r.name.toLowerCase().trim()),
+    signed: isWaiverSignedForRider(r, waivers, riders),
   }));
 
   return NextResponse.json(result);

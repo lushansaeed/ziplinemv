@@ -5,6 +5,7 @@ import {
   RiderTrackingStatus,
   WristbandStatus,
 } from "@prisma/client";
+import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
 export const CHECK_IN_PAYMENT_STATUSES = new Set<PaymentStatus>([
   PaymentStatus.PAID,
@@ -37,24 +38,8 @@ export class CheckInGateError extends Error {
   }
 }
 
-function normalizeName(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
-}
-
 function decimalNumber(value: Prisma.Decimal | number | string | null | undefined) {
   return Number(value ?? 0);
-}
-
-function waiverSignedForRider(
-  rider: { id: string; riderId: string | null; name: string },
-  waivers: Array<{ riderId: string | null; riderName: string; status: string }>
-) {
-  const riderName = normalizeName(rider.name);
-  return waivers.some((waiver) => {
-    if (waiver.status !== "SIGNED") return false;
-    if (rider.riderId && waiver.riderId === rider.riderId) return true;
-    return normalizeName(waiver.riderName) === riderName;
-  });
 }
 
 export async function validateBookingCanCheckIn(
@@ -121,7 +106,7 @@ export async function validateBookingCanCheckIn(
     throw new CheckInGateError("Check-in blocked. No riders found for this booking.", "riders_missing");
   }
 
-  const unsignedRiders = booking.riders.filter((rider) => !waiverSignedForRider(rider, booking.waivers));
+  const unsignedRiders = booking.riders.filter((rider) => !isWaiverSignedForRider(rider, booking.waivers, booking.riders));
   if (unsignedRiders.length > 0) {
     throw new CheckInGateError(
       `Action blocked. Waiver form is not completed for rider(s): ${unsignedRiders.map((r) => `"${r.name}"`).join(", ")}.`,

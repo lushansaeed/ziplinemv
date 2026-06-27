@@ -11,6 +11,7 @@ import { checkInBooking, completeBooking, updatePaymentStatus } from "@/lib/admi
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, isWeightEligible } from "@/lib/utils";
 import { cn } from "@/lib/utils";
+import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
 interface RideTracking {
   bookingRiderId: string;
@@ -40,14 +41,11 @@ interface BookingResult {
 
 function riderWaiverSigned(
   rider: BookingRider,
-  waivers: BookingResult["waivers"]
+  waivers: BookingResult["waivers"],
+  riders: BookingRider[]
 ): boolean {
   if (!waivers) return false;
-  return waivers.some(
-    (w) =>
-      w.status === "SIGNED" &&
-      (w.riderId === rider.id || w.riderName.toLowerCase().trim() === rider.name.toLowerCase().trim())
-  );
+  return isWaiverSignedForRider(rider, waivers, riders);
 }
 
 export function CheckInModule() {
@@ -229,7 +227,7 @@ export function CheckInModule() {
             <div className="space-y-3">
               {result.riders.map((rider) => {
                 const wCheck      = rider.weight ? isWeightEligible(rider.weight) : null;
-                const waiversOk   = riderWaiverSigned(rider, result.waivers);
+                const waiversOk   = riderWaiverSigned(rider, result.waivers, result.riders);
                 const tracking    = riderWristbands(rider);
                 const wristband   = tracking?.wristband;
                 const weightBad   = wCheck?.eligible === false;

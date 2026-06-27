@@ -9,6 +9,7 @@ import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notificati
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
 import { formatDate } from "@/lib/utils";
 import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
+import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
   const user = await requirePermission("bookings", "edit");
@@ -157,14 +158,7 @@ async function assertAllWaiversSigned(bookingId: string): Promise<string | null>
     where:  { bookingId, status: "SIGNED" },
     select: { riderId: true, riderName: true },
   });
-  const signedNames     = new Set(waivers.map((w) => w.riderName.toLowerCase().trim()));
-  const signedRiderIds  = new Set(waivers.map((w) => w.riderId).filter(Boolean));
-
-  const unsigned = riders.filter(
-    (r) =>
-      !(r.riderId ? signedRiderIds.has(r.riderId) : false) &&
-      !signedNames.has(r.name.toLowerCase().trim())
-  );
+  const unsigned = riders.filter((r) => !isWaiverSignedForRider(r, waivers, riders));
 
   if (unsigned.length === 0) return null;
   const names = unsigned.map((r) => `"${r.name}"`).join(", ");

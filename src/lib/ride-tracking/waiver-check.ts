@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma/client";
+import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
 /**
  * Hard-checks whether a specific rider in a booking has a SIGNED waiver.
@@ -14,19 +15,18 @@ export async function checkRiderWaiver(
   bookingId: string,
   bookingRider: { id: string; riderId?: string | null; name: string }
 ): Promise<{ signed: true } | { signed: false; error: string }> {
-  const orClauses: object[] = [{ riderName: bookingRider.name }];
-  if (bookingRider.riderId) orClauses.unshift({ riderId: bookingRider.riderId });
+  const [riders, waivers] = await Promise.all([
+    prisma.bookingRider.findMany({
+      where: { bookingId },
+      select: { id: true, riderId: true, name: true },
+    }),
+    prisma.waiver.findMany({
+      where: { bookingId, status: "SIGNED" },
+      select: { riderId: true, riderName: true, status: true },
+    }),
+  ]);
 
-  const signed = await prisma.waiver.findFirst({
-    where: {
-      bookingId,
-      status: "SIGNED",
-      OR: orClauses,
-    },
-    select: { id: true },
-  });
-
-  if (!signed) {
+  if (!isWaiverSignedForRider(bookingRider, waivers, riders)) {
     return {
       signed: false,
       error: `Waiver form is not completed for rider "${bookingRider.name}". Wristband cannot be linked and ride flow cannot start.`,
