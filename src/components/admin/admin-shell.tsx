@@ -1,14 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, CalendarCheck, Users, Package, Plus,
   BarChart3, Settings, Tag, Clock, UserCheck, Handshake,
-  ChevronLeft, ChevronRight, Menu, X,
+  ChevronLeft, ChevronRight, Menu,
   QrCode, ShieldCheck, ClipboardList, Palette,
-  KeyRound, Wind, Radio, Scan,
+  KeyRound, Wind, Radio, Scan, Moon, Sun,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -119,11 +119,31 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
   const pathname        = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen]   = useState(false);
+  const [dark, setDark] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem("admin-theme");
+    if (stored === "dark") { document.documentElement.classList.add("dark"); setDark(true); }
+  }, []);
+
+  function toggleDark() {
+    const next = !dark;
+    setDark(next);
+    document.documentElement.classList.toggle("dark", next);
+    localStorage.setItem("admin-theme", next ? "dark" : "light");
+  }
+
+  // Find the most specific (longest) matching href so only one item is active
+  const allHrefs = NAV_SECTIONS.flatMap((s) => s.items.map((i) => i.href));
+  const bestMatch = allHrefs
+    .filter((h) => pathname === h || pathname.startsWith(h + "/"))
+    .sort((a, b) => b.length - a.length)[0];
 
   const isActive = (href: string) =>
     href === "/admin/dashboard"
       ? pathname === "/admin/dashboard" || pathname === "/admin"
-      : pathname.startsWith(href);
+      : href === bestMatch;
+
   const canView = (module: PermissionModule) => permissions.includes(`${module}.view`);
   const visibleSections = NAV_SECTIONS
     .map((section) => ({ ...section, items: section.items.filter((item) => canView(item.module)) }))
@@ -196,22 +216,31 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
 
       {/* Collapse toggle + user */}
       <div className="flex-shrink-0 border-t border-border p-3 space-y-2">
-        <button
-          onClick={() => setCollapsed((v) => !v)}
-          className={cn(
-            "flex items-center justify-center w-full rounded-lg py-1.5 px-2 text-xs",
-            "text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-          )}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-4 h-4" />
-          ) : (
-            <>
-              <ChevronLeft className="w-4 h-4 mr-1.5" />
-              <span>Collapse</span>
-            </>
-          )}
-        </button>
+        <div className={cn("flex gap-1", collapsed ? "flex-col" : "flex-row")}>
+          <button
+            onClick={() => setCollapsed((v) => !v)}
+            className={cn(
+              "flex items-center justify-center rounded-lg py-1.5 px-2 text-xs flex-1",
+              "text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+            )}
+          >
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <>
+                <ChevronLeft className="w-4 h-4 mr-1.5" />
+                <span>Collapse</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={toggleDark}
+            title={dark ? "Switch to light mode" : "Switch to dark mode"}
+            className="flex items-center justify-center rounded-lg py-1.5 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+          >
+            {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
+        </div>
         <UserMenu
           name={user.name}
           email={user.email}
