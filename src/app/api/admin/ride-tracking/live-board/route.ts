@@ -1,6 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
+import { BookingStatus, RiderTrackingStatus, WristbandStatus } from "@prisma/client";
+
+const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
+  BookingStatus.CHECKED_IN,
+  BookingStatus.IN_PROGRESS,
+  BookingStatus.PARTIALLY_LAUNCHED,
+  BookingStatus.PARTIALLY_LANDED,
+];
+
+const FINAL_RIDER_STATUSES: RiderTrackingStatus[] = [
+  RiderTrackingStatus.LANDED,
+  RiderTrackingStatus.DID_NOT_FLY,
+  RiderTrackingStatus.WEATHER_CANCELLED,
+  RiderTrackingStatus.RESCHEDULED,
+  RiderTrackingStatus.NO_SHOW,
+];
 
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "view");
@@ -12,11 +28,23 @@ export async function GET(req: NextRequest) {
 
   const bookings = await prisma.booking.findMany({
     where: {
-      bookingDate: date,
-      bookingStatus: {
-        in: ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "PARTIALLY_LAUNCHED", "PARTIALLY_LANDED",
-             "COMPLETED", "COMPLETED_WITH_REMARKS", "NO_SHOW", "WEATHER_CANCELLED", "RESCHEDULED"],
-      },
+      OR: [
+        { bookingDate: date },
+        { bookingStatus: { in: ACTIVE_BOOKING_STATUSES } },
+        { rideTrackings: { some: { status: { notIn: FINAL_RIDER_STATUSES } } } },
+        {
+          rideTrackings: {
+            some: {
+              wristband: {
+                is: {
+                  status: WristbandStatus.ACTIVE,
+                  releasedAt: null,
+                },
+              },
+            },
+          },
+        },
+      ],
     },
     include: {
       customer: { select: { name: true, phone: true } },
@@ -26,13 +54,13 @@ export async function GET(req: NextRequest) {
         include: {
           rideTracking: {
             include: {
-              wristband: { select: { qrCode: true } },
+              wristband: { select: { qrCode: true, status: true, releasedAt: true } },
             },
           },
         },
       },
     },
-    orderBy: [{ slot: { startTime: "asc" } }, { createdAt: "asc" }],
+    orderBy: [{ bookingDate: "asc" }, { slot: { startTime: "asc" } }, { createdAt: "asc" }],
   });
 
   return NextResponse.json(bookings);
