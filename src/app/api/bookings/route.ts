@@ -109,9 +109,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 422 });
     }
 
-    // Fire notifications asynchronously — don't block the response
+    // Confirmation email is awaited so delivery status is recorded on the booking.
+    // Failures are swallowed inside the sender and must not roll back booking creation.
     if (result.bookingId) {
-      sendBookingConfirmation(result.bookingId).catch(console.error);
+      await sendBookingConfirmation(result.bookingId);
       sendBookingWaiverLink(result.bookingId).catch(console.error);
       sendAdminNewBookingAlert(result.bookingId).catch(console.error);
       (async () => {

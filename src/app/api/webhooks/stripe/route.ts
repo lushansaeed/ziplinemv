@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
           return true;
         });
 
-        if (paymentCreated) sendBookingConfirmation(bookingId).catch(console.error);
+        if (paymentCreated) await sendBookingConfirmation(bookingId);
         break;
       }
 
