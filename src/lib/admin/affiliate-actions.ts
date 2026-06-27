@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
-import { ApplicationStatus, UserStatus } from "@prisma/client";
+import { ApplicationStatus, CommissionBasis, UserStatus } from "@prisma/client";
 
 export async function approveAffiliate(applicationId: string) {
   const admin = await requirePermission("affiliates", "approve");
@@ -99,10 +99,21 @@ export async function approveCoupon(couponId: string) {
   return { success: true };
 }
 
-export async function updateAffiliateCommission(affiliateId: string, rate: number) {
+export async function updateAffiliateCommission(affiliateId: string, rate: number, basis: CommissionBasis = CommissionBasis.PACKAGE_ONLY) {
   const admin = await requirePermission("affiliates", "edit");
-  await prisma.affiliate.update({ where: { id: affiliateId }, data: { commissionRate: rate } });
-  await prisma.auditLog.create({ data: { userId: admin.id, action: "AFFILIATE_COMMISSION_UPDATED", module: "affiliates", recordId: affiliateId, newValue: { rate } } });
+  if (!Object.values(CommissionBasis).includes(basis)) {
+    return { success: false, error: "Invalid commission basis" };
+  }
+  await prisma.affiliate.update({ where: { id: affiliateId }, data: { commissionRate: rate, commissionBasis: basis } });
+  await prisma.auditLog.create({
+    data: {
+      userId: admin.id,
+      action: "AFFILIATE_COMMISSION_UPDATED",
+      module: "affiliates",
+      recordId: affiliateId,
+      newValue: { rate, basis },
+    },
+  });
   revalidatePath("/admin/affiliates");
   return { success: true };
 }

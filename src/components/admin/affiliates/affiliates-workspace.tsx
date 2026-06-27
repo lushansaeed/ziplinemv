@@ -15,6 +15,7 @@ export function AffiliatesWorkspace({ affiliates, applications, pendingCoupons, 
   const [isPending, startTransition] = useTransition();
   const [editCommission, setEditCommission] = useState<string | null>(null);
   const [commissionRate, setCommissionRate] = useState("");
+  const [commissionBasis, setCommissionBasis] = useState<"PACKAGE_ONLY" | "PACKAGE_AND_ADDONS">("PACKAGE_ONLY");
 
   const TABS = [
     { key: "affiliates",   label: `Affiliates (${affiliates.length})` },
@@ -42,7 +43,7 @@ export function AffiliatesWorkspace({ affiliates, applications, pendingCoupons, 
     const rate = parseFloat(commissionRate);
     if (isNaN(rate) || rate < 0 || rate > 100) { toast.error("Invalid rate (0–100)"); return; }
     startTransition(async () => {
-      const r = await updateAffiliateCommission(affiliateId, rate);
+      const r = await updateAffiliateCommission(affiliateId, rate, commissionBasis);
       if (r.success) { toast.success("Commission updated"); setEditCommission(null); }
       else toast.error((r as any).error ?? "Action failed");
     });
@@ -156,17 +157,36 @@ export function AffiliatesWorkspace({ affiliates, applications, pendingCoupons, 
                     <td><StatusBadge value={aff.status} type="application" /></td>
                     <td>
                       {editCommission === aff.id ? (
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5 min-w-[260px]">
                           <input type="number" value={commissionRate} onChange={(e) => setCommissionRate(e.target.value)}
                             className="w-14 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none"
                             min={0} max={100} />
+                          <select
+                            value={commissionBasis}
+                            onChange={(e) => setCommissionBasis(e.target.value as "PACKAGE_ONLY" | "PACKAGE_AND_ADDONS")}
+                            className="w-36 px-2 py-1 text-xs rounded border border-border bg-background focus:outline-none"
+                          >
+                            <option value="PACKAGE_ONLY">Package only</option>
+                            <option value="PACKAGE_AND_ADDONS">Package + add-ons</option>
+                          </select>
                           <button onClick={() => doUpdateCommission(aff.id)} className="p-1 rounded bg-primary text-primary-foreground"><Check className="w-3 h-3" /></button>
                           <button onClick={() => setEditCommission(null)} className="p-1 rounded hover:bg-muted"><X className="w-3 h-3" /></button>
                         </div>
                       ) : (
-                        <button onClick={() => { setEditCommission(aff.id); setCommissionRate(String(aff.commissionRate)); }}
-                          className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
-                          {aff.commissionRate}% <Edit2 className="w-3 h-3 opacity-50" />
+                        <button
+                          onClick={() => {
+                            setEditCommission(aff.id);
+                            setCommissionRate(String(aff.commissionRate));
+                            setCommissionBasis(aff.commissionBasis === "PACKAGE_AND_ADDONS" ? "PACKAGE_AND_ADDONS" : "PACKAGE_ONLY");
+                          }}
+                          className="text-left text-sm font-semibold text-primary hover:underline"
+                        >
+                          <span className="inline-flex items-center gap-1.5">
+                            {aff.commissionRate}% <Edit2 className="w-3 h-3 opacity-50" />
+                          </span>
+                          <span className="block text-[11px] font-normal text-muted-foreground">
+                            {aff.commissionBasis === "PACKAGE_AND_ADDONS" ? "Package + add-ons" : "Package only"}
+                          </span>
                         </button>
                       )}
                     </td>
