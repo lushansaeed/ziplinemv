@@ -57,10 +57,16 @@ export async function middleware(request: NextRequest) {
   // Allow auth routes through without role check
   if (pathname.startsWith("/auth")) return response;
 
+  if (cleanHost === "agents.zipline.mv" && (pathname === "/" || pathname === "/login" || pathname === "/agents/login")) {
+    const loginUrl = new URL("/auth/login", request.url);
+    loginUrl.searchParams.set("redirect", "/agents/dashboard");
+    return NextResponse.redirect(loginUrl);
+  }
+
   // ── Not signed in → redirect to login ────────────────────────────────────
   if (!user) {
     const loginUrl = new URL("/auth/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
+    loginUrl.searchParams.set("redirect", pathname === "/" && requiredPrefix === "/agents" ? "/agents/dashboard" : pathname);
     return NextResponse.redirect(loginUrl);
   }
 
