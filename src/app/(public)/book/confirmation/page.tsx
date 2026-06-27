@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Calendar, Clock, Users, Package, MessageCircle } from "lucide-react";
+import { DEFAULT_WAIVER_CONFIRMATION_MESSAGE } from "@/lib/booking/confirmation-copy";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate, bookingStatusColor, paymentStatusColor } from "@/lib/utils";
 import { buildWaiverSharePayload } from "@/lib/waivers/links";
@@ -136,7 +137,7 @@ export default async function ConfirmationPage({
           <div className="mb-3 rounded-2xl border border-brand-citrus/20 bg-brand-citrus/8 p-4">
             <p className="text-sm font-semibold text-white">Waiver forms</p>
             <p className="mt-1 text-sm text-white/55">
-              Your booking is confirmed. The waiver form link has been sent to your WhatsApp and Email. Please ensure each rider completes the waiver before the ride.
+              Your booking is confirmed. The waiver form link has been sent to your WhatsApp and Email. {DEFAULT_WAIVER_CONFIRMATION_MESSAGE}
             </p>
           </div>
           <WaiverShareCard waiverShare={waiverShare} />

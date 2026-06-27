@@ -9,6 +9,7 @@ import {
 import { useBookingStore } from "@/lib/booking/store";
 import { formatDate } from "@/lib/utils";
 import { formatBookingPrice } from "@/lib/booking/currency";
+import { DEFAULT_WAIVER_CONFIRMATION_MESSAGE } from "@/lib/booking/confirmation-copy";
 import { parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +64,7 @@ export function Step10Confirm() {
           <div>
             <p className="text-white font-semibold">Rider waiver forms</p>
             <p className="mt-1 text-sm text-white/55">
-              Please ensure each rider completes the waiver before the ride. One phone or device can be used for multiple riders.
+              {DEFAULT_WAIVER_CONFIRMATION_MESSAGE}
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-[132px_minmax(0,1fr)]">
