@@ -104,56 +104,65 @@ export async function cancelBooking(bookingId: string, reason?: string) {
 }
 
 export async function checkInBooking(bookingId: string, notes?: string, overrideIncompleteWaivers = false) {
-  const user = await requirePermission("bookings", "edit");
+  try {
+    const user = await requirePermission("bookings", "edit");
 
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    select: {
-      numRiders: true,
-      waivers: { select: { status: true } },
-    },
-  });
-  if (!booking) return { success: false, error: "Booking not found" };
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        bookingStatus: true,
+        numRiders: true,
+        waivers: { select: { status: true } },
+      },
+    });
+    if (!booking) return { success: false, error: "Booking not found" };
 
-  const signedWaivers = booking.waivers.filter((waiver) => waiver.status === "SIGNED").length;
-  if (signedWaivers < booking.numRiders && !overrideIncompleteWaivers) {
+    const signedWaivers = booking.waivers.filter((waiver) => waiver.status === "SIGNED").length;
+    if (signedWaivers < booking.numRiders && !overrideIncompleteWaivers) {
+      return {
+        success: false,
+        error: `Waivers incomplete: ${signedWaivers} of ${booking.numRiders} signed. Admin override is required before check-in.`,
+      };
+    }
+
+    const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
+    if (existing || booking.bookingStatus === BookingStatus.CHECKED_IN) {
+      return { success: true };
+    }
+
+    await prisma.$transaction([
+      prisma.booking.update({
+        where: { id: bookingId },
+        data:  { bookingStatus: BookingStatus.CHECKED_IN },
+      }),
+      prisma.checkIn.create({
+        data: {
+          bookingId,
+          checkedInById: user.id,
+          notes,
+        },
+      }),
+      prisma.auditLog.create({
+        data: {
+          userId:   user.id,
+          action:   "BOOKING_CHECKED_IN",
+          module:   "bookings",
+          recordId: bookingId,
+          newValue: { overrideIncompleteWaivers, signedWaivers, requiredWaivers: booking.numRiders },
+        },
+      }),
+    ]);
+
+    revalidatePath("/admin/bookings");
+    revalidatePath("/admin/check-in");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[checkInBooking]", error);
     return {
       success: false,
-      error: `Waivers incomplete: ${signedWaivers} of ${booking.numRiders} signed. Admin override is required before check-in.`,
+      error: error?.message ?? "Could not check in this booking. Please try again.",
     };
   }
-
-  const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
-  if (existing) {
-    return { success: false, error: "Already checked in" };
-  }
-
-  await prisma.$transaction([
-    prisma.booking.update({
-      where: { id: bookingId },
-      data:  { bookingStatus: BookingStatus.CHECKED_IN },
-    }),
-    prisma.checkIn.create({
-      data: {
-        bookingId,
-        checkedInById: user.id,
-        notes,
-      },
-    }),
-    prisma.auditLog.create({
-      data: {
-        userId:   user.id,
-        action:   "BOOKING_CHECKED_IN",
-        module:   "bookings",
-        recordId: bookingId,
-        newValue: { overrideIncompleteWaivers, signedWaivers, requiredWaivers: booking.numRiders },
-      },
-    }),
-  ]);
-
-  revalidatePath("/admin/bookings");
-  revalidatePath("/admin/check-in");
-  return { success: true };
 }
 
 export async function completeBooking(bookingId: string) {
