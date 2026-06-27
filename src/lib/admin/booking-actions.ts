@@ -126,26 +126,57 @@ export async function cancelBooking(bookingId: string, reason?: string) {
   return { success: true };
 }
 
-export async function checkInBooking(bookingId: string, notes?: string, overrideIncompleteWaivers = false) {
+// ── Hard waiver gate — no role can bypass this ────────────────────────────────
+// Checks that every rider in the booking has a SIGNED waiver.
+// Returns null if all signed, or an error string listing unsigned riders.
+async function assertAllWaiversSigned(bookingId: string): Promise<string | null> {
+  const riders  = await prisma.bookingRider.findMany({ where: { bookingId } });
+  const waivers = await prisma.waiver.findMany({
+    where:  { bookingId, status: "SIGNED" },
+    select: { riderId: true, riderName: true },
+  });
+  const signedNames     = new Set(waivers.map((w) => w.riderName.toLowerCase().trim()));
+  const signedRiderIds  = new Set(waivers.map((w) => w.riderId).filter(Boolean));
+
+  const unsigned = riders.filter(
+    (r) =>
+      !(r.riderId ? signedRiderIds.has(r.riderId) : false) &&
+      !signedNames.has(r.name.toLowerCase().trim())
+  );
+
+  if (unsigned.length === 0) return null;
+  const names = unsigned.map((r) => `"${r.name}"`).join(", ");
+  return `Action blocked. Waiver form is not completed for rider(s): ${names}. No role can override this requirement.`;
+}
+
+export async function checkInBooking(bookingId: string, notes?: string) {
   try {
     const user = await requirePermission("bookings", "edit");
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: {
-        bookingStatus: true,
-        numRiders: true,
-        waivers: { select: { status: true } },
-      },
+      select: { bookingStatus: true, numRiders: true, waivers: { select: { status: true } } },
     });
     if (!booking) return { success: false, error: "Booking not found" };
 
-    const signedWaivers = booking.waivers.filter((waiver) => waiver.status === "SIGNED").length;
-    if (signedWaivers < booking.numRiders && !overrideIncompleteWaivers) {
-      return {
-        success: false,
-        error: `Waivers incomplete: ${signedWaivers} of ${booking.numRiders} signed. Admin override is required before check-in.`,
-      };
+    // Hard waiver gate — unconditional, no override parameter accepted
+    const waiverError = await assertAllWaiversSigned(bookingId);
+    if (waiverError) {
+      await prisma.auditLog.create({
+        data: {
+          userId:   user.id,
+          action:   "CHECK_IN_BLOCKED_WAIVER_INCOMPLETE",
+          module:   "bookings",
+          recordId: bookingId,
+          newValue: {
+            reason:          "waiver_not_completed",
+            signedWaivers:   booking.waivers.filter((w) => w.status === "SIGNED").length,
+            requiredWaivers: booking.numRiders,
+            errorMessage:    waiverError,
+          },
+        },
+      });
+      return { success: false, error: waiverError };
     }
 
     const existing = await prisma.checkIn.findUnique({ where: { bookingId } });
@@ -153,17 +184,14 @@ export async function checkInBooking(bookingId: string, notes?: string, override
       return { success: true };
     }
 
+    const signedWaivers = booking.waivers.filter((w) => w.status === "SIGNED").length;
     await prisma.$transaction([
       prisma.booking.update({
         where: { id: bookingId },
         data:  { bookingStatus: BookingStatus.CHECKED_IN },
       }),
       prisma.checkIn.create({
-        data: {
-          bookingId,
-          checkedInById: user.id,
-          notes,
-        },
+        data: { bookingId, checkedInById: user.id, notes },
       }),
       prisma.auditLog.create({
         data: {
@@ -171,7 +199,7 @@ export async function checkInBooking(bookingId: string, notes?: string, override
           action:   "BOOKING_CHECKED_IN",
           module:   "bookings",
           recordId: bookingId,
-          newValue: { overrideIncompleteWaivers, signedWaivers, requiredWaivers: booking.numRiders },
+          newValue: { signedWaivers, requiredWaivers: booking.numRiders, waiverOverride: false },
         },
       }),
     ]);
@@ -190,6 +218,21 @@ export async function checkInBooking(bookingId: string, notes?: string, override
 
 export async function completeBooking(bookingId: string) {
   const user = await requirePermission("bookings", "edit");
+
+  // Hard waiver gate — no role can complete a booking without all waivers signed
+  const waiverError = await assertAllWaiversSigned(bookingId);
+  if (waiverError) {
+    await prisma.auditLog.create({
+      data: {
+        userId:   user.id,
+        action:   "COMPLETE_BLOCKED_WAIVER_INCOMPLETE",
+        module:   "bookings",
+        recordId: bookingId,
+        newValue: { reason: "waiver_not_completed", errorMessage: waiverError },
+      },
+    });
+    return { success: false, error: waiverError };
+  }
 
   await prisma.booking.update({
     where: { id: bookingId },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
+import { checkRiderWaiver } from "@/lib/ride-tracking/waiver-check";
 
 const OPEN_STATUSES = ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "PARTIALLY_LAUNCHED", "PARTIALLY_LANDED"] as const;
 
@@ -51,6 +52,29 @@ export async function POST(req: NextRequest) {
       await tx.booking.update({ where: { id: bookingId }, data: { bookingStatus: bookingStatus as any } });
 
       for (const br of booking.riders) {
+        // Waiver gate: never mark a rider as COMPLETED via EOD if waiver not signed
+        // Only NO_SHOW and WEATHER_CANCELLED are allowed without a signed waiver
+        const allowedWithoutWaiver = ["NO_SHOW", "WEATHER_CANCELLED"];
+        if (!allowedWithoutWaiver.includes(riderStatus)) {
+          const waiverResult = await checkRiderWaiver(bookingId, br);
+          if (!waiverResult.signed) {
+            // Force to NO_SHOW instead of the requested close status
+            await logAudit({
+              userId: auth.dbUser.id, action: "EOD_WAIVER_GATE_ENFORCED", module: "ride_tracking",
+              recordId: bookingId,
+              newValue: { bookingRiderId: br.id, riderName: br.name, requestedStatus: riderStatus, forcedStatus: "NO_SHOW", reason: waiverResult.error },
+            });
+            if (!br.rideTracking) {
+              await tx.rideTracking.create({
+                data: { bookingId, bookingRiderId: br.id, rideDate: booking.bookingDate, status: "NO_SHOW", remarks: "EOD: waiver not completed — cannot close as COMPLETED_WITH_REMARKS" },
+              });
+            } else if (!["LANDED", "DID_NOT_FLY"].includes(br.rideTracking.status)) {
+              await tx.rideTracking.update({ where: { id: br.rideTracking.id }, data: { status: "NO_SHOW", remarks: "EOD: waiver not completed" } });
+            }
+            continue;
+          }
+        }
+
         if (!br.rideTracking) {
           await tx.rideTracking.create({
             data: {
@@ -60,9 +84,7 @@ export async function POST(req: NextRequest) {
             },
           });
         } else if (!["LANDED", "DID_NOT_FLY"].includes(br.rideTracking.status)) {
-          // Don't override already-finalized riders
           if (br.rideTracking.status === "LAUNCHED") {
-            // Launched but no landing — flag for review, don't auto-close
             await tx.rideTracking.update({
               where: { id: br.rideTracking.id },
               data:  { remarks: (remarks ?? "") + " [EOD: landing scan missing — flagged for review]" },

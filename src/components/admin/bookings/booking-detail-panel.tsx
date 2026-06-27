@@ -93,13 +93,6 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
     URL.revokeObjectURL(url);
   }
 
-  function waiverOverrideConfirmed() {
-    if (!booking) return false;
-    const signed = booking.waivers.filter((waiver: any) => waiver.status === "SIGNED").length;
-    if (signed >= booking.numRiders) return false;
-    return window.confirm(`Waivers incomplete: ${signed} of ${booking.numRiders} signed. Check in with admin override?`);
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -154,14 +147,7 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
       <div className="flex flex-wrap gap-2">
         {booking.bookingStatus === "CONFIRMED" && (
           <button
-            onClick={() => {
-              const override = waiverOverrideConfirmed();
-              if (override === false) {
-                const signed = booking.waivers.filter((waiver: any) => waiver.status === "SIGNED").length;
-                if (signed < booking.numRiders) return;
-              }
-              startTransition(() => doAction(() => checkInBooking(booking.id, undefined, override), "Checked in!"));
-            }}
+            onClick={() => startTransition(() => doAction(() => checkInBooking(booking.id), "Checked in!"))}
             disabled={isPending}
             className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-purple-100 text-purple-800 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 transition-colors font-medium"
           >

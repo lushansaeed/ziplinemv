@@ -206,12 +206,12 @@ export function CheckInModule() {
           )}
 
           {result.waivers && signedWaivers < result.numRiders && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-              <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-400">Waivers incomplete</p>
-                <p className="text-yellow-700 dark:text-yellow-500 text-sm">
-                  {signedWaivers} of {result.numRiders} rider waivers signed. Admin override is required to check in.
+                <p className="text-sm font-semibold text-red-800 dark:text-red-400">Waivers not completed — check-in blocked</p>
+                <p className="text-red-700 dark:text-red-500 text-sm mt-0.5">
+                  {signedWaivers} of {result.numRiders} rider waivers signed. All riders must complete the waiver form before check-in. No override is permitted.
                 </p>
               </div>
             </div>
@@ -232,19 +232,13 @@ export function CheckInModule() {
             {result.bookingStatus === "CONFIRMED" && !result.checkIn && weightIssues.length === 0 && (
               <button
                 onClick={() => startCheckInTransition(async () => {
-                  let override = false;
-                  if (signedWaivers < result.numRiders) {
-                    const confirmed = window.confirm(`Waivers incomplete: ${signedWaivers} of ${result.numRiders} signed. Check in with admin override?`);
-                    if (!confirmed) return;
-                    override = true;
-                  }
-                  const r = await checkInBooking(result.id, undefined, override);
+                  const r = await checkInBooking(result.id);
                   if (r.success) {
                     toast.success("Checked in successfully!");
                     setResult((prev) => prev ? { ...prev, bookingStatus: "CHECKED_IN", checkIn: { checkedInAt: new Date() } } : prev);
                   } else toast.error((r as any).error ?? "Action failed");
                 })}
-                disabled={isCheckingIn}
+                disabled={isCheckingIn || signedWaivers < result.numRiders}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
                 {isCheckingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
