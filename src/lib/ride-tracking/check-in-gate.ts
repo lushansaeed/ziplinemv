@@ -42,11 +42,65 @@ function decimalNumber(value: Prisma.Decimal | number | string | null | undefine
   return Number(value ?? 0);
 }
 
+export async function ensureBookingRiders(tx: Prisma.TransactionClient, bookingId: string) {
+  const booking = await tx.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      id: true,
+      numRiders: true,
+      riders: { select: { id: true } },
+      waivers: {
+        where: { status: "SIGNED" },
+        orderBy: { signedAt: "asc" },
+        select: {
+          riderName: true,
+          weight: true,
+          healthDeclarationAnswers: true,
+        },
+      },
+    },
+  });
+
+  if (!booking || booking.riders.length > 0) return;
+
+  const fallbackCount = Math.max(booking.numRiders, booking.waivers.length, 1);
+  await tx.bookingRider.createMany({
+    data: Array.from({ length: fallbackCount }, (_, index) => {
+      const waiver = booking.waivers[index];
+      const answers = waiver?.healthDeclarationAnswers && typeof waiver.healthDeclarationAnswers === "object"
+        ? waiver.healthDeclarationAnswers as Record<string, unknown>
+        : {};
+      const parsedAge = answers.age == null ? null : Number(answers.age);
+
+      return {
+        bookingId,
+        name: waiver?.riderName?.trim() || `Rider ${index + 1}`,
+        age: Number.isFinite(parsedAge) ? parsedAge : null,
+        weight: waiver?.weight ?? null,
+      };
+    }),
+  });
+
+  await tx.auditLog.create({
+    data: {
+      action: "BOOKING_RIDERS_BACKFILLED",
+      module: "bookings",
+      recordId: bookingId,
+      newValue: {
+        reason: "legacy_booking_missing_rider_rows",
+        riderCount: fallbackCount,
+      },
+    },
+  });
+}
+
 export async function validateBookingCanCheckIn(
   tx: Prisma.TransactionClient,
   bookingId: string,
   assignments: WristbandAssignmentInput[] = []
 ) {
+  await ensureBookingRiders(tx, bookingId);
+
   const booking = await tx.booking.findUnique({
     where: { id: bookingId },
     include: {

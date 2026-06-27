@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
+import { ensureBookingRiders } from "@/lib/ride-tracking/check-in-gate";
 
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("bookings", "view");
@@ -10,6 +11,22 @@ export async function GET(req: NextRequest) {
   if (!q) return NextResponse.json({ error: "query required" }, { status: 400 });
 
   try {
+    const existing = await prisma.booking.findFirst({
+      where: {
+        OR: [
+          { reference:          { equals: q.toUpperCase() } },
+          { customer: { phone:  { contains: q } } },
+          { customer: { name:   { contains: q, mode: "insensitive" } } },
+        ],
+      },
+      select: { id: true },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existing) {
+      await prisma.$transaction((tx) => ensureBookingRiders(tx, existing.id));
+    }
+
     const booking = await prisma.booking.findFirst({
       where: {
         OR: [
