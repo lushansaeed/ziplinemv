@@ -51,8 +51,7 @@ export function AgentNewBookingForm({
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [packageId, setPackageId]       = useState(packages[0]?.id ?? "");
   const [numRiders, setNumRiders]       = useState(1);
-  const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
-  const [riders, setRiders]             = useState([{ name: "", age: "", weight: "" }]);
+  const [addOnQuantities, setAddOnQuantities] = useState<Record<string, number>>({});
 
   // Customer
   const [customerName, setCustomerName]   = useState("");
@@ -62,7 +61,7 @@ export function AgentNewBookingForm({
   const [customerNationality, setCustomerNationality] = useState("");
   const [notes, setNotes]                 = useState("");
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [sendWaiverLink, setSendWaiverLink] = useState(false);
+  const selectedAddOns = Object.entries(addOnQuantities).filter(([, qty]) => qty > 0).map(([id]) => id);
 
   async function loadSlots(d: string) {
     setDate(d); setSlotId(""); setSlotsLoading(true);
@@ -76,18 +75,19 @@ export function AgentNewBookingForm({
 
   function syncRiders(n: number) {
     setNumRiders(n);
-    setRiders((prev) => {
-      if (n > prev.length) return [...prev, ...Array(n - prev.length).fill({ name: "", age: "", weight: "" })];
-      return prev.slice(0, n);
+    setAddOnQuantities((prev) => Object.fromEntries(
+      Object.entries(prev).map(([id, qty]) => [id, Math.min(qty, n)])
+    ));
+  }
+
+  function setAddOnQty(id: string, qty: number) {
+    setAddOnQuantities((prev) => {
+      const next = { ...prev };
+      const capped = Math.max(0, Math.min(numRiders, qty));
+      if (capped <= 0) delete next[id];
+      else next[id] = capped;
+      return next;
     });
-  }
-
-  function updateRider(i: number, field: string, value: string) {
-    setRiders((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
-  }
-
-  function toggleAddOn(id: string) {
-    setSelectedAddOns((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
   // Price calculation preview
@@ -99,7 +99,7 @@ export function AgentNewBookingForm({
   const addOnTotal     = selectedAddOns.reduce((sum, id) => {
     const a = addOns.find((x) => x.id === id);
     const price = isLocalCustomer && (a as any)?.localPriceMvr ? Number((a as any).localPriceMvr) : Number(a?.price ?? 0);
-    return sum + (price * numRiders);
+    return sum + (price * (addOnQuantities[id] ?? 0));
   }, 0);
   const subtotal       = pkgPrice * numRiders + addOnTotal;
   const calcCommission = (base: number, qty: number, type?: string | null, value?: number | null) => {
@@ -116,14 +116,15 @@ export function AgentNewBookingForm({
     const addon = addOns.find((x) => x.id === id);
     if (!addon || addon.agentCommissionEligible === false) return sum;
     const price = isLocalCustomer && (addon as any).localPriceMvr ? Number((addon as any).localPriceMvr) : Number(addon.price ?? 0);
-    const lineTotal = price * numRiders;
+    const qty = addOnQuantities[id] ?? 0;
+    const lineTotal = price * qty;
     const agentSpecific = addOnCommissions.find((c) => c.addOnId === id);
     const specificAmount = isLocalCustomer && agentSpecific?.localValue != null
-      ? calcCommission(lineTotal, numRiders, agentSpecific.localType, agentSpecific.localValue)
-      : calcCommission(lineTotal, numRiders, agentSpecific?.type, agentSpecific?.value);
+      ? calcCommission(lineTotal, qty, agentSpecific.localType, agentSpecific.localValue)
+      : calcCommission(lineTotal, qty, agentSpecific?.type, agentSpecific?.value);
     const amount = specificAmount
-      ?? calcCommission(lineTotal, numRiders, addOnCommissionType, addOnCommissionValue)
-      ?? calcCommission(lineTotal, numRiders, addon.agentCommissionType, addon.agentCommissionValue == null ? null : Number(addon.agentCommissionValue))
+      ?? calcCommission(lineTotal, qty, addOnCommissionType, addOnCommissionValue)
+      ?? calcCommission(lineTotal, qty, addon.agentCommissionType, addon.agentCommissionValue == null ? null : Number(addon.agentCommissionValue))
       ?? (commissionBasis === "PACKAGE_AND_ADDONS" ? (lineTotal * commissionRate) / 100 : 0);
     return sum + amount;
   }, 0);
@@ -137,25 +138,18 @@ export function AgentNewBookingForm({
 
     startTransition(async () => {
       try {
-        // Ensure riders array has required fields even if empty
-        const ridersPayload = riders.map((r) => ({
-          name:   r.name   || "",
-          age:    r.age    || "",
-          weight: r.weight || "",
-        }));
-
         const res = await fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            slotId, packageId, addOnIds: selectedAddOns,
+            slotId, packageId, addOnIds: selectedAddOns, addOnQuantities,
             date, numRiders,
             customerName,
             customerPhone: customerPhone.replace(/\s/g, ""),
             customerPhoneCountry: "MV",
             customerEmail:       customerEmail || "",
             customerNationality, customerHotel,
-            riders: ridersPayload,
+            riders: [],
             paymentMethod, notes,
             source:  "AGENT",
             agentId,
@@ -222,8 +216,7 @@ export function AgentNewBookingForm({
     { n: 1, label: "Date & slot" },
     { n: 2, label: "Package" },
     { n: 3, label: "Customer" },
-    { n: 4, label: "Riders" },
-    { n: 5, label: "Confirm" },
+    { n: 4, label: "Confirm" },
   ];
 
   return (
@@ -369,25 +362,32 @@ export function AgentNewBookingForm({
                 <p className="font-semibold text-sm">Add-ons (optional)</p>
               </div>
               <div className="space-y-2">
-                {addOns.map((addon) => (
-                  <button
-                    key={addon.id}
-                    onClick={() => toggleAddOn(addon.id)}
-                    className={cn(
-                      "w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
-                      selectedAddOns.includes(addon.id)
-                        ? "border-primary bg-primary/5"
-                        : "border-border hover:border-primary/30"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-4 h-4 rounded border-2 flex-shrink-0",
-                      selectedAddOns.includes(addon.id) ? "border-primary bg-primary" : "border-muted-foreground/40"
-                    )} />
-                    <span className="flex-1 text-sm">{addon.name}</span>
-                    <span className="text-sm font-semibold text-muted-foreground">+{formatCurrency(Number(addon.price) * numRiders)}</span>
-                  </button>
-                ))}
+                {addOns.map((addon) => {
+                  const qty = addOnQuantities[addon.id] ?? 0;
+                  return (
+                    <div
+                      key={addon.id}
+                      className={cn(
+                        "w-full flex items-center gap-3 p-3 rounded-xl border transition-all",
+                        qty > 0 ? "border-primary bg-primary/5" : "border-border"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium">{addon.name}</p>
+                        <p className="text-xs text-muted-foreground">{formatCurrency(Number(addon.price))} per rider</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setAddOnQty(addon.id, qty - 1)} className="p-1.5 rounded-lg border border-border hover:bg-muted">
+                          <Minus className="h-3.5 w-3.5" />
+                        </button>
+                        <span className="w-6 text-center text-sm font-bold">{qty}</span>
+                        <button type="button" onClick={() => setAddOnQty(addon.id, qty + 1)} disabled={qty >= numRiders} className="p-1.5 rounded-lg border border-border hover:bg-muted disabled:opacity-40">
+                          <Plus className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -448,33 +448,8 @@ export function AgentNewBookingForm({
         </div>
       )}
 
-      {/* ── STEP 4: Rider details ── */}
+      {/* ── STEP 4: Review & confirm ── */}
       {step === 4 && (
-        <div className="space-y-4">
-          <div className="space-y-3">
-            {riders.map((r, i) => (
-              <div key={i} className="admin-card space-y-3">
-                <p className="font-semibold text-sm text-muted-foreground">Rider {i + 1}</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <input value={r.name} onChange={(e) => updateRider(i, "name", e.target.value)}
-                    placeholder="Full name" className={cn(inputCls, "col-span-3 sm:col-span-1")} />
-                  <input type="number" value={r.age} onChange={(e) => updateRider(i, "age", e.target.value)}
-                    placeholder="Age" min={6} className={inputCls} />
-                  <input type="number" value={r.weight} onChange={(e) => updateRider(i, "weight", e.target.value)}
-                    placeholder="Weight (kg)" min={35} max={110} className={inputCls} />
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-3 justify-between">
-            <button onClick={() => setStep(3)} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
-            <button onClick={() => setStep(5)} className="btn-brand text-sm px-6 py-2.5">Review booking</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── STEP 5: Review & confirm ── */}
-      {step === 5 && (
         <div className="space-y-4">
           <div className="admin-card space-y-4">
             <p className="font-semibold text-sm">Booking summary</p>
@@ -490,7 +465,7 @@ export function AgentNewBookingForm({
               {selectedAddOns.length > 0 && (
                 <>
                   <div className="text-muted-foreground">Add-ons</div>
-                  <div className="font-medium">{selectedAddOns.map((id) => addOns.find((a) => a.id === id)?.name).join(", ")}</div>
+                  <div className="font-medium">{selectedAddOns.map((id) => `${addOnQuantities[id]}× ${addOns.find((a) => a.id === id)?.name}`).join(", ")}</div>
                 </>
               )}
               <div className="text-muted-foreground">Subtotal</div>
@@ -529,7 +504,7 @@ export function AgentNewBookingForm({
           </div>
 
           <div className="flex gap-3 justify-between">
-            <button onClick={() => setStep(4)} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
+            <button onClick={() => setStep(3)} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
             <button
               onClick={handleSubmit}
               disabled={isPending}

@@ -5,12 +5,12 @@ import { calculatePrice } from "@/lib/pricing/engine";
 import { generateUniqueBookingRef } from "@/lib/booking/generate-ref";
 import { isWeightEligible, isAgeEligible } from "@/lib/utils";
 import { buildWaiverSharePayload, generateWaiverToken } from "@/lib/waivers/links";
-import { BookingSource, BookingStatus, PaymentMethod, PaymentStatus, Prisma, WaiverStatus } from "@prisma/client";
+import { BookingSource, BookingStatus, PaymentMethod, PaymentStatus, Prisma, SlotStatus, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
 
 export interface CreateBookingInput {
   // Slot + package
-  slotId:          string;
+  slotId?:         string;
   packageId:       string;
   addOnIds:        string[];
   addOnQuantities?: Record<string, number>; // addOnId → qty
@@ -71,9 +71,46 @@ function normalizePaymentMethod(method?: string): PaymentMethod | null {
 export async function createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
   try {
     const paymentMethod = normalizePaymentMethod(input.paymentMethod);
+    const requestedSource: BookingSource = input.source ?? BookingSource.DIRECT;
+    let resolvedSlotId = input.slotId ?? "";
+
+    if (!resolvedSlotId && requestedSource === BookingSource.WALK_IN) {
+      const activity = await prisma.activity.findUnique({ where: { slug: "zipline" }, select: { id: true } });
+      if (!activity) return { success: false, error: "Zipline activity is not configured." };
+
+      const walkInSlot = await prisma.timeSlot.upsert({
+        where: {
+          activityId_date_startTime: {
+            activityId: activity.id,
+            date: new Date(input.date),
+            startTime: "Walk-in",
+          },
+        },
+        create: {
+          activityId: activity.id,
+          date: new Date(input.date),
+          startTime: "Walk-in",
+          endTime: "Walk-in",
+          capacity: 1000,
+          bookedCount: 0,
+          status: SlotStatus.AVAILABLE,
+          notes: "Auto-managed slot for walk-in bookings.",
+        },
+        update: {},
+        select: { id: true },
+      });
+      resolvedSlotId = walkInSlot.id;
+    }
+
+    if (!resolvedSlotId) return { success: false, error: "Time slot is required for this booking source." };
+    if (input.addOnQuantities) {
+      const invalidAddOnQty = Object.values(input.addOnQuantities).some((qty) => qty > input.numRiders);
+      if (invalidAddOnQty) return { success: false, error: "Add-on quantity cannot exceed the number of riders." };
+    }
+
     // 1. Validate slot availability
     const slot = await prisma.timeSlot.findUnique({
-      where: { id: input.slotId },
+      where: { id: resolvedSlotId },
       select: { id: true, capacity: true, bookedCount: true, status: true, date: true, startTime: true },
     });
 
@@ -120,7 +157,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       : null;
 
     // 5. Determine booking source + affiliate
-    let source: BookingSource = input.source ?? BookingSource.DIRECT;
+    let source: BookingSource = requestedSource;
     let affiliateId           = input.affiliateId ?? null;
 
     if (affiliateCouponRecord?.affiliateId) {
@@ -151,7 +188,7 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
       const claimedSlots = await tx.$queryRaw<Array<{ id: string }>>(Prisma.sql`
         UPDATE "time_slots"
         SET "booked_count" = "booked_count" + ${input.numRiders}
-        WHERE "id" = ${input.slotId}
+        WHERE "id" = ${resolvedSlotId}
           AND "status" = 'AVAILABLE'
           AND ("capacity" - "booked_count") >= ${input.numRiders}
         RETURNING "id"
@@ -185,7 +222,8 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
           affiliateCouponId:  affiliateCouponRecord?.id ?? null,
           promoCodeId:        promoRecord?.id ?? null,
           packageId:          input.packageId,
-          slotId:             input.slotId,
+          slotId:             resolvedSlotId,
+          slotLabel:          source === BookingSource.WALK_IN ? "Walk-in" : null,
           bookingDate:        new Date(input.date),
           numRiders:          input.numRiders,
           source,

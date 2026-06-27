@@ -7,10 +7,10 @@ import { formatDate } from "@/lib/utils";
 import { z } from "zod";
 
 const schema = z.object({
-  slotId:               z.string(),
+  slotId:               z.string().optional().default(""),
   packageId:            z.string(),
   addOnIds:             z.array(z.string()).default([]),
-  addOnQuantities:      z.record(z.string(), z.number()).optional(),
+  addOnQuantities:      z.record(z.string(), z.number().int().min(0)).optional(),
   riderType:            z.enum(["tourist", "local"]).optional(),
   date:                 z.string(),
   numRiders:            z.number().min(1).max(20),
@@ -67,6 +67,16 @@ export async function POST(req: NextRequest) {
     }
 
     const data = parsed.data;
+    const source = data.source ?? "DIRECT";
+    if (source !== "WALK_IN" && !data.slotId) {
+      return NextResponse.json({ error: "Time slot is required for this booking source." }, { status: 400 });
+    }
+    if (data.addOnQuantities) {
+      const invalidAddOnQty = Object.values(data.addOnQuantities).some((qty) => qty > data.numRiders);
+      if (invalidAddOnQty) {
+        return NextResponse.json({ error: "Add-on quantity cannot exceed the number of riders." }, { status: 400 });
+      }
+    }
     const isPublicBooking = !data.agentId && !data.source;
     if (isPublicBooking) {
       const settings = await publicPaymentSettings();
