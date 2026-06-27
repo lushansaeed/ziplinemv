@@ -28,7 +28,9 @@ export function CheckInModule() {
   const [result, setResult]       = useState<BookingResult | null>(null);
   const [notFound, setNotFound]   = useState(false);
   const [searching, setSearching] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isCheckingIn, startCheckInTransition] = useTransition();
+  const [isCompleting, startCompleteTransition] = useTransition();
+  const [isMarkingPaid, startMarkPaidTransition] = useTransition();
 
   async function search() {
     if (!query.trim()) return;
@@ -229,7 +231,7 @@ export function CheckInModule() {
           <div className="flex flex-wrap gap-3 pt-2 border-t border-border">
             {result.bookingStatus === "CONFIRMED" && !result.checkIn && weightIssues.length === 0 && (
               <button
-                onClick={() => startTransition(async () => {
+                onClick={() => startCheckInTransition(async () => {
                   let override = false;
                   if (signedWaivers < result.numRiders) {
                     const confirmed = window.confirm(`Waivers incomplete: ${signedWaivers} of ${result.numRiders} signed. Check in with admin override?`);
@@ -242,41 +244,42 @@ export function CheckInModule() {
                     setResult((prev) => prev ? { ...prev, bookingStatus: "CHECKED_IN", checkIn: { checkedInAt: new Date() } } : prev);
                   } else toast.error((r as any).error ?? "Action failed");
                 })}
-                disabled={isPending}
+                disabled={isCheckingIn}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-green-600 text-white font-semibold text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
               >
-                {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {isCheckingIn ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                 Check in now
               </button>
             )}
             {result.bookingStatus === "CHECKED_IN" && (
               <button
-                onClick={() => startTransition(async () => {
+                onClick={() => startCompleteTransition(async () => {
                   const r = await completeBooking(result.id);
                   if (r.success) {
                     toast.success("Booking completed!");
                     setResult((prev) => prev ? { ...prev, bookingStatus: "COMPLETED" } : prev);
                   } else toast.error((r as any).error ?? "Action failed");
                 })}
-                disabled={isPending}
+                disabled={isCompleting}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
-                {isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                {isCompleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
                 Mark completed
               </button>
             )}
             {result.paymentStatus === "UNPAID" && (
               <button
-                onClick={() => startTransition(async () => {
+                onClick={() => startMarkPaidTransition(async () => {
                   const r = await updatePaymentStatus(result.id, "PAID" as any, "cash");
                   if (r.success) {
                     toast.success("Marked as paid");
                     setResult((prev) => prev ? { ...prev, paymentStatus: "PAID" } : prev);
-                  }
+                  } else toast.error((r as any).error ?? "Could not mark payment as paid");
                 })}
-                disabled={isPending}
+                disabled={isMarkingPaid}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm font-semibold hover:bg-muted transition-colors"
               >
+                {isMarkingPaid && <Loader2 className="w-4 h-4 animate-spin" />}
                 Mark paid (cash)
               </button>
             )}
