@@ -13,10 +13,15 @@ export function Step4Package({ packages }: { packages: Package[] }) {
 
   function select(pkg: Package) {
     const isLocal   = riderType === "local";
-    const unitPrice = (isLocal && pkg.localPrice) ? Number(pkg.localPrice) : Number(pkg.touristPrice);
+    const unitPrice = isLocal && (pkg as any).localPriceMvr
+      ? Number((pkg as any).localPriceMvr)
+      : isLocal && pkg.localPrice
+      ? Number(pkg.localPrice)
+      : Number(pkg.touristPrice);
     setField("packageId",    pkg.id);
     setField("packageName",  pkg.name);
     setField("packagePrice", unitPrice);
+    setField("currency", isLocal ? "MVR" : "USD");
   }
 
   return (

@@ -72,6 +72,7 @@ export function Step9Payment() {
           addOnIds:  store.addOnIds,
           numRiders: store.numRiders,
           date:      store.date,
+          riderType: store.riderType,
           promoCode: promoInput.toUpperCase(),
         }),
       });
@@ -80,6 +81,7 @@ export function Step9Payment() {
         setField("promoCode",      promoInput.toUpperCase());
         setField("promoDiscount",  data.discountAmount);
         setField("totalAmount",    data.total);
+        setField("currency",       data.currency);
       } else {
         setPromoError("This code is invalid or has expired.");
       }
@@ -139,6 +141,7 @@ export function Step9Payment() {
         setField("bookingReference", data.reference);
         setField("bookingId",        data.bookingId);
         setField("totalAmount",      data.total);
+        setField("currency",         data.currency);
         if (data.qrCode) setField("qrCode", data.qrCode);
         if (data.waiverShare) setField("waiverShare", data.waiverShare);
         nextStep();

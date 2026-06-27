@@ -1,7 +1,8 @@
 "use client";
 
 import { useBookingStore } from "@/lib/booking/store";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { formatBookingPrice } from "@/lib/booking/currency";
 import { Calendar, Clock, Package, Users, Tag, ArrowRight, Loader2 } from "lucide-react";
 import { parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ export function BookingSidebar() {
   const {
     currentStep, date, slotTime, numRiders,
     packageName, packagePrice, addOnIds, addOnNames, addOnPrices, addOnQuantities,
-    promoDiscount, currency,
+    promoDiscount, riderType,
     stepContinueDisabled, stepContinueFn, stepContinueLabel,
   } = store;
 
@@ -69,7 +70,7 @@ export function BookingSidebar() {
           {total > 0 && (
             <div className="border-t border-white/8 pt-3 flex justify-between items-center">
               <span className="text-white/50 text-sm">Total</span>
-              <span className="text-brand-citrus font-bold text-lg">{formatCurrency(total, currency || "USD")}</span>
+              <span className="text-brand-citrus font-bold text-lg">{formatBookingPrice(total, riderType)}</span>
             </div>
           )}
         </div>

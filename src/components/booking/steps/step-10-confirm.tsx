@@ -7,7 +7,8 @@ import {
   Copy, MessageCircle, ArrowRight,
 } from "lucide-react";
 import { useBookingStore } from "@/lib/booking/store";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
+import { formatBookingPrice } from "@/lib/booking/currency";
 import { parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -143,7 +144,7 @@ export function Step10Confirm() {
           </div>
           <div className="border-t border-white/8 pt-3 flex justify-between">
             <span className="text-white/50 text-sm">Total</span>
-            <span className="text-brand-citrus font-bold">{formatCurrency(total)}</span>
+            <span className="text-brand-citrus font-bold">{formatBookingPrice(total, store.riderType)}</span>
           </div>
         </div>
       </div>

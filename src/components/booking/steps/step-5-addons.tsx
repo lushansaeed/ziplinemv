@@ -17,7 +17,10 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
 
   const totalAddOnCost = addOns.reduce((sum, a) => {
     const qty = addOnQuantities[a.id] ?? 0;
-    return sum + Number(a.price) * qty;
+    const unitPrice = isLocal && (a as any).localPriceMvr
+      ? Number((a as any).localPriceMvr)
+      : Number(a.price);
+    return sum + unitPrice * qty;
   }, 0);
 
   const anySelected = Object.values(addOnQuantities).some((q) => q > 0);

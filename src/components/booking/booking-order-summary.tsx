@@ -1,7 +1,7 @@
 "use client";
 
 import { useBookingStore } from "@/lib/booking/store";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatDate } from "@/lib/utils";
 import { formatBookingPrice } from "@/lib/booking/currency";
 import { Calendar, Clock, Package, Users } from "lucide-react";
 import { parseISO } from "date-fns";
@@ -80,7 +80,7 @@ export function BookingOrderSummary() {
         {store.promoDiscount > 0 && (
           <div className="flex justify-between text-sm text-brand-lime">
             <span>Discount ({store.promoCode})</span>
-            <span>−{formatCurrency(store.promoDiscount)}</span>
+            <span>−{formatBookingPrice(store.promoDiscount, riderType)}</span>
           </div>
         )}
 

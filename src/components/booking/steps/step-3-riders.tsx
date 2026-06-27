@@ -10,6 +10,21 @@ const MAX_RIDERS = 8;
 export function Step3Riders() {
   const { numRiders, riderType, syncRiders, setField, nextStep } = useBookingStore();
 
+  function selectRiderType(type: "tourist" | "local") {
+    if (type === riderType) return;
+    setField("riderType", type);
+    setField("currency", type === "local" ? "MVR" : "USD");
+    setField("packageId", "");
+    setField("packageName", "");
+    setField("packagePrice", 0);
+    setField("addOnIds", []);
+    setField("addOnNames", {});
+    setField("addOnPrices", {});
+    setField("addOnQuantities", {});
+    setField("promoCode", "");
+    setField("promoDiscount", 0);
+  }
+
   function change(delta: number) {
     const next = Math.max(1, Math.min(MAX_RIDERS, numRiders + delta));
     syncRiders(next);
@@ -28,7 +43,7 @@ export function Step3Riders() {
         <div className="grid grid-cols-2 gap-3">
           <button
             type="button"
-            onClick={() => setField("riderType", "tourist")}
+            onClick={() => selectRiderType("tourist")}
             className={cn(
               "flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all text-left",
               riderType === "tourist"
@@ -55,7 +70,7 @@ export function Step3Riders() {
 
           <button
             type="button"
-            onClick={() => setField("riderType", "local")}
+            onClick={() => selectRiderType("local")}
             className={cn(
               "flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all text-left",
               riderType === "local"

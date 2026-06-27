@@ -8,6 +8,7 @@ const schema = z.object({
   addOnQuantities: z.record(z.string(), z.number().int().min(0)).optional(),
   numRiders: z.number().int().min(1).max(20),
   date: z.string().min(1),
+  riderType: z.enum(["tourist", "local"]).optional(),
   nationality: z.string().optional(),
   agentId: z.string().optional(),
   promoCode: z.string().optional(),
