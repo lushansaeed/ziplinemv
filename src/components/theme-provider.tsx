@@ -141,7 +141,6 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: cssVars }} />
-      {/* Favicon handled via /api/favicon proxy — no direct Supabase URLs here */}
       {children}
     </>
   );

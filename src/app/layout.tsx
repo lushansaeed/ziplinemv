@@ -13,18 +13,12 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
+const ICON_VERSION = "v=2";
 
-// generateMetadata is the CORRECT Next.js API for dynamic favicons.
-// Unlike <link> tags rendered in components (which get removed during
-// client-side navigation reconciliation), metadata icons persist across
-// all navigations because Next.js manages them outside React's tree.
 export async function generateMetadata(): Promise<Metadata> {
-  // Use the static ICO file — it has proper 16x16/24x24 square icons.
-  // The CMS logo is wide (389x145) and not suitable as a favicon.
-  const icon = "/favicon.ico";
-
   return {
     metadataBase: new URL(BASE),
+    applicationName: "Zipline Maldives",
     title: {
       template: "%s | Zipline Maldives",
       default:  "Zipline Maldives — Maldives' First Island-to-Island Zipline",
@@ -38,10 +32,19 @@ export async function generateMetadata(): Promise<Metadata> {
     authors:   [{ name: "Zipline Maldives" }],
     creator:   "Zipline Maldives",
     publisher: "Zipline Maldives",
+    manifest:  `/site.webmanifest?${ICON_VERSION}`,
     icons: {
-      icon:             [{ url: icon }],
-      shortcut:         [{ url: icon }],
-      apple:            [{ url: icon }],
+      icon: [
+        { url: `/favicon.ico?${ICON_VERSION}` },
+        { url: `/favicon-16x16.png?${ICON_VERSION}`, sizes: "16x16", type: "image/png" },
+        { url: `/favicon-32x32.png?${ICON_VERSION}`, sizes: "32x32", type: "image/png" },
+        { url: `/android-chrome-192x192.png?${ICON_VERSION}`, sizes: "192x192", type: "image/png" },
+        { url: `/android-chrome-512x512.png?${ICON_VERSION}`, sizes: "512x512", type: "image/png" },
+      ],
+      shortcut: [{ url: `/favicon.ico?${ICON_VERSION}` }],
+      apple: [
+        { url: `/apple-touch-icon.png?${ICON_VERSION}`, sizes: "180x180", type: "image/png" },
+      ],
     },
     openGraph: {
       type:      "website",
