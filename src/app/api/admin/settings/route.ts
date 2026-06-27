@@ -29,6 +29,7 @@ const KEY_GROUPS: Record<string, string> = {
 };
 
 function groupForKey(key: string) {
+  if (key.startsWith("email_")) return "email_templates";
   if (key.startsWith("page_")) return "typography";
   if (key.startsWith("section_")) return "homepage_sections";
   if (key.startsWith("theme_")) return "theme";
