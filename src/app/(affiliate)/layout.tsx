@@ -21,5 +21,9 @@ export default async function AffiliateLayout({
     redirect("/auth/login?error=Your+affiliate+account+is+pending+approval.");
   }
 
-  return <AffiliateShell user={user} logo={logo}>{children}</AffiliateShell>;
+  return (
+    <div className="theme-backend font-body min-h-screen">
+      <AffiliateShell user={user} logo={logo}>{children}</AffiliateShell>
+    </div>
+  );
 }

@@ -23,5 +23,9 @@ export default async function AdminLayout({
 
   const permissions = await getUserPermissionSet(user.id, user.role);
 
-  return <AdminShell user={user} logo={logo} permissions={Array.from(permissions)}>{children}</AdminShell>;
+  return (
+    <div className="theme-backend font-body min-h-screen">
+      <AdminShell user={user} logo={logo} permissions={Array.from(permissions)}>{children}</AdminShell>
+    </div>
+  );
 }

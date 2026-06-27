@@ -21,5 +21,9 @@ export default async function AgentLayout({
     redirect("/auth/login?error=Your+agent+account+is+pending+approval.");
   }
 
-  return <AgentShell user={user} logo={logo}>{children}</AgentShell>;
+  return (
+    <div className="theme-backend font-body min-h-screen">
+      <AgentShell user={user} logo={logo}>{children}</AgentShell>
+    </div>
+  );
 }

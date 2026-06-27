@@ -1,13 +1,21 @@
 export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Plus_Jakarta_Sans, Raleway } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-body-base",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const raleway = Raleway({
+  subsets: ["latin"],
+  variable: "--font-raleway",
   display: "swap",
   weight: ["300", "400", "500", "600", "700", "800"],
 });
@@ -80,7 +88,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
       </head>
-      <body className={`${jakarta.variable} font-body antialiased`}>
+      <body className={`${jakarta.variable} ${raleway.variable} font-body antialiased`}>
         <ThemeProvider>
           {children}
         </ThemeProvider>

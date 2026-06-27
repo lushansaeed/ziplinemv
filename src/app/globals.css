@@ -134,6 +134,14 @@
     --chart-5:            350 70% 60%;
   }
 
+  .theme-backend {
+    --font-numbers: var(--font-raleway);
+    --font-body-base: var(--font-raleway);
+    --font-display: var(--font-raleway), system-ui, sans-serif;
+    --font-body: var(--font-raleway), system-ui, sans-serif;
+    --font-mono: var(--font-raleway), 'Menlo', 'Monaco', 'Cascadia Code', monospace;
+  }
+
   /* Public website always dark */
   .theme-public {
     --background:         221 39% 6%;
