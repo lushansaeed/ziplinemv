@@ -55,10 +55,49 @@ enum CustomerType {
 enum BookingStatus {
   CONFIRMED
   CHECKED_IN
+  IN_PROGRESS
+  PARTIALLY_LAUNCHED
+  PARTIALLY_LANDED
   COMPLETED
+  COMPLETED_WITH_REMARKS
   CANCELLED
   NO_SHOW
+  WEATHER_CANCELLED
+  RESCHEDULED
   REFUNDED
+}
+
+enum ScanLocation {
+  FIRST_FLOOR
+  THIRD_FLOOR
+  FIFTH_FLOOR
+  LANDING_TOWER
+}
+
+enum DeviceStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum WristbandStatus {
+  AVAILABLE
+  ACTIVE
+  COMPLETED
+  DAMAGED
+  LOST
+}
+
+enum RiderTrackingStatus {
+  PENDING
+  CHECKED_IN
+  FIRST_FLOOR
+  THIRD_FLOOR
+  LAUNCHED
+  LANDED
+  DID_NOT_FLY
+  WEATHER_CANCELLED
+  RESCHEDULED
+  NO_SHOW
 }
 
 enum PaymentStatus {
@@ -783,6 +822,9 @@ model Booking {
   mediaDelivery    CustomerMediaDelivery?
   agentCommission  AgentCommission?
   affiliateCommission AffiliateCommission?
+  rideTrackings    RideTracking[]
+  rescheduleHistory RescheduleHistory[]
+  scanEvents       ScanEvent[]
 
   @@index([customerId])
   @@index([agentId])
@@ -802,6 +844,8 @@ model BookingRider {
   name      String
   age       Int?
   weight    Decimal? @db.Decimal(5, 2)
+
+  rideTracking RideTracking?
 
   @@index([bookingId])
   @@map("booking_riders")
@@ -1197,4 +1241,136 @@ model ThemePreset {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("theme_presets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QR RIDE TRACKING
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ScanDevice {
+  id               String       @id @default(cuid())
+  deviceName       String       @map("device_name")
+  deviceCode       String       @unique @map("device_code")  // URL slug, e.g. "fifth-floor-1"
+  devicePin        String       @map("device_pin")           // 4-6 digit PIN for kiosk auth
+  assignedLocation ScanLocation @map("assigned_location")
+  status           DeviceStatus @default(ACTIVE)
+  lastScanAt       DateTime?    @map("last_scan_at")
+  notes            String?
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  scanEvents ScanEvent[]
+
+  @@index([assignedLocation])
+  @@map("scan_devices")
+}
+
+model QRWristband {
+  id              String          @id @default(cuid())
+  qrCode          String          @unique @map("qr_code")   // The actual QR value on the wristband
+  status          WristbandStatus @default(AVAILABLE)
+  currentBookingId String?        @map("current_booking_id")
+  currentRiderId  String?         @map("current_rider_id")  // BookingRider id
+  linkedAt        DateTime?       @map("linked_at")
+  releasedAt      DateTime?       @map("released_at")
+  notes           String?
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+
+  rideTracking RideTracking?
+
+  @@index([status])
+  @@map("qr_wristbands")
+}
+
+model RideTracking {
+  id                    String              @id @default(cuid())
+  bookingId             String              @map("booking_id")
+  booking               Booking             @relation(fields: [bookingId], references: [id])
+  bookingRiderId        String              @unique @map("booking_rider_id")
+  bookingRider          BookingRider        @relation(fields: [bookingRiderId], references: [id])
+  wristbandId           String?             @unique @map("wristband_id")
+  wristband             QRWristband?        @relation(fields: [wristbandId], references: [id])
+  rideDate              DateTime            @map("ride_date") @db.Date
+
+  // Scan timestamps
+  firstFloorTime        DateTime?           @map("first_floor_time")
+  thirdFloorTime        DateTime?           @map("third_floor_time")
+  fifthFloorTime        DateTime?           @map("fifth_floor_time")
+  landingTime           DateTime?           @map("landing_time")
+
+  // Ride metrics (calculated after landing)
+  rideDurationSeconds   Int?                @map("ride_duration_seconds")
+  rideSpeedMps          Decimal?            @map("ride_speed_mps") @db.Decimal(10, 4)
+  rideSpeedKmph         Decimal?            @map("ride_speed_kmph") @db.Decimal(10, 4)
+
+  // Wind data (captured at 5th floor scan)
+  windSpeedMs           Decimal?            @map("wind_speed_ms") @db.Decimal(10, 4)
+  windSpeedKmh          Decimal?            @map("wind_speed_kmh") @db.Decimal(10, 4)
+  windDirectionDegrees  Int?                @map("wind_direction_degrees")
+  windDirectionCompass  String?             @map("wind_direction_compass")
+  windModel             String?             @map("wind_model")
+  windApiTimestamp      DateTime?           @map("wind_api_timestamp")
+  windFetchedAt         DateTime?           @map("wind_fetched_at")
+  windApiStatus         String?             @map("wind_api_status")      // ok | failed | skipped
+  windRawResponse       Json?               @map("wind_raw_response")
+
+  // Status & outcome
+  status                RiderTrackingStatus @default(PENDING)
+  remarks               String?             @db.Text
+  didNotFlyReason       String?             @map("did_not_fly_reason")
+  didNotFlyAt           DateTime?           @map("did_not_fly_at")
+  didNotFlyByUserId     String?             @map("did_not_fly_by_user_id")
+
+  completedByUserId     String?             @map("completed_by_user_id")
+  completedAt           DateTime?           @map("completed_at")
+
+  createdAt             DateTime            @default(now()) @map("created_at")
+  updatedAt             DateTime            @updatedAt @map("updated_at")
+
+  @@index([bookingId])
+  @@index([status])
+  @@index([rideDate])
+  @@map("ride_tracking")
+}
+
+model ScanEvent {
+  id            String       @id @default(cuid())
+  bookingId     String?      @map("booking_id")
+  booking       Booking?     @relation(fields: [bookingId], references: [id])
+  bookingRiderId String?     @map("booking_rider_id")
+  wristbandQrId String?      @map("wristband_qr_id")
+  deviceId      String?      @map("device_id")
+  device        ScanDevice?  @relation(fields: [deviceId], references: [id])
+  scanLocation  ScanLocation? @map("scan_location")
+  scanTime      DateTime     @default(now()) @map("scan_time")
+  scanResult    String       @map("scan_result")    // success | error | duplicate | sequence_error
+  errorMessage  String?      @map("error_message")
+  scannedByUserId String?    @map("scanned_by_user_id")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@index([deviceId])
+  @@index([scanTime])
+  @@map("scan_events")
+}
+
+model RescheduleHistory {
+  id               String   @id @default(cuid())
+  bookingId        String   @map("booking_id")
+  booking          Booking  @relation(fields: [bookingId], references: [id])
+  originalRideDate DateTime @map("original_ride_date") @db.Date
+  newRideDate      DateTime @map("new_ride_date") @db.Date
+  originalSlotId   String?  @map("original_slot_id")
+  newSlotId        String?  @map("new_slot_id")
+  originalSlotLabel String? @map("original_slot_label")
+  newSlotLabel     String?  @map("new_slot_label")
+  reason           String
+  remarks          String?  @db.Text
+  rescheduledByUserId String? @map("rescheduled_by_user_id")
+  rescheduledAt    DateTime @default(now()) @map("rescheduled_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@map("reschedule_history")
 }

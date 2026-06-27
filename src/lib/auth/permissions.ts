@@ -26,6 +26,7 @@ export const PERMISSION_MODULES = [
   { key: "settings", label: "Settings", actions: ["view", "edit"] },
   { key: "roles", label: "Roles & Permissions", actions: ["view", "create", "edit", "delete"] },
   { key: "audit", label: "Audit Log", actions: ["view", "export"] },
+  { key: "ride_tracking", label: "Ride Tracking", actions: ["view", "create", "edit", "export", "delete"] },
 ] as const;
 
 export type PermissionModule = (typeof PERMISSION_MODULES)[number]["key"];
@@ -52,6 +53,7 @@ export const ADMIN_ROUTE_MODULES: Array<{ prefix: string; module: PermissionModu
   { prefix: "/admin/settings", module: "settings" },
   { prefix: "/admin/cms", module: "website_customization" },
   { prefix: "/admin/audit-log", module: "audit" },
+  { prefix: "/admin/ride-tracking", module: "ride_tracking" },
 ];
 
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionAction[]>> = {
@@ -62,12 +64,15 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
     affiliates: ["view", "create", "edit", "approve", "export"], media: ["view", "create", "edit", "send"],
     website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"], catalog: ["view", "create", "edit"], slots: ["view", "create", "edit"],
     payments: ["view", "create", "edit", "export"], reports: ["view", "export"], audit: ["view"],
+    ride_tracking: ["view", "create", "edit", "export"],
   },
   "Reception Staff": {
     dashboard: ["view"], bookings: ["view", "create", "edit"], customers: ["view", "create", "edit"], payments: ["view", "create"],
+    ride_tracking: ["view", "create", "edit"],
   },
   "Operations Staff": {
     dashboard: ["view"], bookings: ["view", "edit"], customers: ["view"], slots: ["view"],
+    ride_tracking: ["view", "create", "edit"],
   },
   Photographer: {
     dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"],

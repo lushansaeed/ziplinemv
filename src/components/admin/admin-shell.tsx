@@ -8,7 +8,7 @@ import {
   BarChart3, Settings, Tag, Clock, UserCheck, Handshake,
   ChevronLeft, ChevronRight, Menu, X,
   QrCode, ShieldCheck, ClipboardList, Palette,
-  KeyRound,
+  KeyRound, Wind, Radio, Scan,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -86,6 +86,15 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Website",
     items: [
       { label: "Website Customization", href: "/admin/website-customization", icon: Palette, module: "website_customization" },
+    ],
+  },
+  {
+    title: "Ride Tracking",
+    items: [
+      { label: "Live Ride Board",   href: "/admin/ride-tracking",           icon: Radio,       module: "ride_tracking" },
+      { label: "Scan Devices",      href: "/admin/ride-tracking/devices",   icon: Scan,        module: "ride_tracking" },
+      { label: "Wristbands",        href: "/admin/ride-tracking/wristbands",icon: QrCode,      module: "ride_tracking" },
+      { label: "Ride Reports",      href: "/admin/ride-tracking/reports",   icon: Wind,        module: "ride_tracking" },
     ],
   },
   {
