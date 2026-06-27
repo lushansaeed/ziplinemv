@@ -11,7 +11,6 @@ import { Step3Riders }        from "./steps/step-3-riders";
 import { Step4Package }       from "./steps/step-4-package";
 import { Step5AddOns }        from "./steps/step-5-addons";
 import { Step6Customer }      from "./steps/step-6-customer";
-import { Step7RiderDetails }  from "./steps/step-7-rider-details";
 import { Step9Payment }       from "./steps/step-9-payment";
 import { Step10Confirm }      from "./steps/step-10-confirm";
 import type { Package, AddOn } from "@prisma/client";
@@ -27,7 +26,7 @@ interface BookingWizardProps {
 
 const STEPS = [
   "Date", "Time", "Riders", "Package",
-  "Add-ons", "Your info", "Rider details", "Payment",
+  "Add-ons", "Your info", "Payment",
 ];
 
 export function BookingWizard({
@@ -57,15 +56,14 @@ export function BookingWizard({
     <Step4Package key={4} packages={packages} />,
     <Step5AddOns key={5} addOns={addOns} />,
     <Step6Customer key={6} />,
-    <Step7RiderDetails key={7} />,
-    <Step9Payment key={8} />,
-    <Step10Confirm key={9} />,
+    <Step9Payment key={7} />,
+    <Step10Confirm key={8} />,
   ];
 
-  if (currentStep === 9) {
+  if (currentStep === 8) {
     return (
       <div className="container-brand max-w-2xl animate-fade-in">
-        {stepComponent[8]}
+        {stepComponent[7]}
       </div>
     );
   }

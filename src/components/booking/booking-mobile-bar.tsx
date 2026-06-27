@@ -12,7 +12,7 @@ export function BookingMobileBar() {
     stepContinueDisabled, stepContinueFn, stepContinueLabel,
   } = useBookingStore();
 
-  if (currentStep === 9) return null;
+  if (currentStep === 8) return null;
 
   // Summary line shown above the button
   const summary = (() => {
@@ -27,7 +27,7 @@ export function BookingMobileBar() {
       if (currentStep === 2) return "Select a time slot to continue";
       if (currentStep === 4) return "Select a package to continue";
       if (currentStep === 6) return "Fill in your details to continue";
-      if (currentStep === 8) return "Choose a payment method to continue";
+      if (currentStep === 7) return "Choose a payment method to continue";
     }
     return null;
   })();

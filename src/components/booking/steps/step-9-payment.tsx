@@ -102,6 +102,10 @@ export function Step9Payment() {
 
     startTransition(async () => {
       try {
+        const completedRiders = store.riders.filter((rider) =>
+          rider.name.trim() || rider.age.trim() || rider.weight.trim()
+        );
+
         const res = await fetch("/api/bookings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -119,7 +123,7 @@ export function Step9Payment() {
             customerEmail:        store.customerEmail,
             customerNationality:  store.customerNationality,
             customerHotel:        store.customerHotel,
-            riders:               store.riders,
+            riders:               completedRiders,
             promoCode:            store.promoCode,
             affiliateCoupon:      store.affiliateCoupon,
             affiliateLinkId:      store.affiliateLinkId,

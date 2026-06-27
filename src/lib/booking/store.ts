@@ -113,7 +113,7 @@ export const useBookingStore = create<BookingState & BookingActions>()(
 
       setStep: (step) => set({ currentStep: step }),
 
-      nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 9) })),
+      nextStep: () => set((s) => ({ currentStep: Math.min(s.currentStep + 1, 8) })),
 
       prevStep: () => set((s) => ({ currentStep: Math.max(s.currentStep - 1, 1) })),
 
