@@ -41,7 +41,7 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
   const isVideo = heroMedia?.type === "VIDEO";
 
   return (
-    <section className="relative min-h-screen flex flex-col overflow-hidden">
+    <section className="theme-contrast relative min-h-screen flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0">
         {isVideo && heroMedia?.url ? (

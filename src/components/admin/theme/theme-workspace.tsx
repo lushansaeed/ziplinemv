@@ -17,7 +17,7 @@ const BRAND_DEFAULTS = {
   primaryColor:     "#00A6B4",
   secondaryColor:   "#064E5F",
   accentColor:      "#F6C85F",
-  backgroundColor:  "#F8FAF9",
+  backgroundColor:  "#c3c3c3",
   sectionBgColor:   "#FFFFFF",
   sectionAltBgColor:"#EEFAF8",
   cardBgColor:      "#FFFFFF",
@@ -99,7 +99,10 @@ function getThemeConfig(initialTheme: any): Partial<ThemeData> {
 }
 
 function isOldDefaultTheme(initialTheme: any): boolean {
-  return initialTheme?.backgroundColor === "#0A0F1A" && initialTheme?.primaryColor === "#F5A623";
+  return (
+    (initialTheme?.backgroundColor === "#0A0F1A" && initialTheme?.primaryColor === "#F5A623") ||
+    (initialTheme?.backgroundColor === "#F8FAF9" && initialTheme?.primaryColor === "#00A6B4")
+  );
 }
 
 export function ThemeWorkspace({

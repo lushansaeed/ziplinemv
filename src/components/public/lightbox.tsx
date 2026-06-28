@@ -98,7 +98,7 @@ export function Lightbox({ items, initialIndex, onClose }: LightboxProps) {
       aria-modal="true"
       aria-label="Image lightbox"
       className={cn(
-        "fixed inset-0 z-[9999] flex flex-col items-center justify-center",
+        "theme-contrast fixed inset-0 z-[9999] flex flex-col items-center justify-center",
         "transition-all duration-250 ease-out",
         visible ? "opacity-100" : "opacity-0"
       )}

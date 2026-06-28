@@ -6,7 +6,7 @@ const DEFAULTS = {
   primaryColor:     "#00A6B4",
   secondaryColor:   "#064E5F",
   accentColor:      "#F6C85F",
-  backgroundColor:  "#F8FAF9",
+  backgroundColor:  "#c3c3c3",
   sectionBgColor:   "#FFFFFF",
   sectionAltBgColor:"#EEFAF8",
   cardBgColor:      "#FFFFFF",
@@ -76,7 +76,10 @@ function readThemeConfig(theme: any): Record<string, string> {
 }
 
 function isOldDefaultTheme(theme: any): boolean {
-  return theme?.backgroundColor === "#0A0F1A" && theme?.primaryColor === "#F5A623";
+  return (
+    (theme?.backgroundColor === "#0A0F1A" && theme?.primaryColor === "#F5A623") ||
+    (theme?.backgroundColor === "#F8FAF9" && theme?.primaryColor === "#00A6B4")
+  );
 }
 
 export async function ThemeProvider({ children }: { children: React.ReactNode }) {

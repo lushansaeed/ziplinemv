@@ -49,7 +49,7 @@ export default async function PublicWaiverPage({
   const full = completed >= link.maxSubmissions || completed >= link.booking.numRiders;
 
   return (
-    <main className="min-h-screen px-4 py-8 sm:py-12" style={{ backgroundColor: "var(--site-bg, #F8FAF9)", color: "var(--body, #263238)" }}>
+    <main className="min-h-screen px-4 py-8 sm:py-12" style={{ backgroundColor: "var(--site-bg, #c3c3c3)", color: "var(--body, #263238)" }}>
       <div className="mx-auto max-w-2xl">
         <div className="site-card mb-5 rounded-2xl p-5">
           <p className="font-mono text-sm font-bold text-primary">{link.booking.reference}</p>

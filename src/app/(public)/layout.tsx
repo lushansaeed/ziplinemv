@@ -43,7 +43,7 @@ export default async function PublicLayout({ children }: { children: React.React
       {/* Logo loaded once in layout and passed directly — no async wrapper, no flash */}
       <SiteHeader logo={logo} />
       <Suspense fallback={null}><AffiliateTracker /></Suspense>
-      <main className="flex-1">{children}</main>
+      <main className="theme-light-copy flex-1">{children}</main>
       <SiteFooter />
     </div>
   );
