@@ -319,10 +319,10 @@ function formatDashboardCurrency(amount: number, currency: "MVR" | "USD", locale
 function RevenueValue({ value }: { value: MoneyPair }) {
   return (
     <div>
-      <p className="text-2xl font-display font-bold text-foreground">
+      <p className="text-xl font-display font-bold text-foreground leading-none">
         {formatDashboardCurrency(value.mvr, "MVR", "en-MV")}
       </p>
-      <p className="text-xs font-medium text-muted-foreground">
+      <p className="text-[11px] font-medium text-muted-foreground mt-1">
         {formatDashboardCurrency(value.usd, "USD", "en-US")}
       </p>
     </div>
@@ -337,15 +337,15 @@ function RevenueCard({ title, value, subtitle, icon: Icon, iconColor }: {
   iconColor: string;
 }) {
   return (
-    <div className="admin-card flex flex-col gap-3">
+    <div className="admin-card flex min-h-[120px] flex-col gap-2 p-4">
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-muted-foreground font-medium">{title}</p>
-        <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-          <Icon className={`w-4 h-4 ${iconColor}`} />
+        <p className="text-sm text-muted-foreground font-medium leading-snug">{title}</p>
+        <div className="w-7 h-7 rounded-md bg-muted flex items-center justify-center flex-shrink-0">
+          <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
         </div>
       </div>
       <RevenueValue value={value} />
-      <p className="text-xs text-muted-foreground">{subtitle}</p>
+      <p className="text-xs text-muted-foreground leading-snug">{subtitle}</p>
     </div>
   );
 }
@@ -367,15 +367,15 @@ export default async function AdminDashboardPage({
         description={`${formatDate(new Date())} · Good ${new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"}`}
       />
 
-      <div className="p-6 space-y-8">
-        <form className="admin-card flex flex-wrap items-end gap-3" action="/admin/dashboard">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mr-2">
-            <Filter className="w-4 h-4 text-primary" />
+      <div className="p-5 space-y-5">
+        <form className="admin-card flex flex-wrap items-end gap-2.5 p-4" action="/admin/dashboard">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mr-1 pb-1">
+            <Filter className="w-3.5 h-3.5 text-primary" />
             Dashboard filters
           </div>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">Date range</span>
-            <select name="range" defaultValue={data.filters.range} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+            <select name="range" defaultValue={data.filters.range} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
               <option value="week">This week</option>
@@ -383,17 +383,17 @@ export default async function AdminDashboardPage({
               <option value="custom">Custom</option>
             </select>
           </label>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">From</span>
-            <input name="from" type="date" defaultValue={customFrom} className="h-9 rounded-lg border border-border bg-background px-3 text-sm" />
+            <input name="from" type="date" defaultValue={customFrom} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm" />
           </label>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">To</span>
-            <input name="to" type="date" defaultValue={customTo} className="h-9 rounded-lg border border-border bg-background px-3 text-sm" />
+            <input name="to" type="date" defaultValue={customTo} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm" />
           </label>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">Source</span>
-            <select name="source" defaultValue={data.filters.source ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+            <select name="source" defaultValue={data.filters.source ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
               <option value="">All sources</option>
               <option value="DIRECT">Public</option>
               <option value="AGENT">Agent</option>
@@ -401,17 +401,17 @@ export default async function AdminDashboardPage({
               <option value="AFFILIATE">Affiliate</option>
             </select>
           </label>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">Currency</span>
-            <select name="currency" defaultValue={data.filters.currency ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+            <select name="currency" defaultValue={data.filters.currency ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
               <option value="">All</option>
               <option value="MVR">MVR</option>
               <option value="USD">USD</option>
             </select>
           </label>
-          <label className="space-y-1">
+          <label className="space-y-0.5">
             <span className="block text-xs text-muted-foreground">Payment status</span>
-            <select name="paymentStatus" defaultValue={data.filters.paymentStatus ?? ""} className="h-9 rounded-lg border border-border bg-background px-3 text-sm">
+            <select name="paymentStatus" defaultValue={data.filters.paymentStatus ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
               <option value="">All</option>
               <option value="PAID">Paid</option>
               <option value="UNPAID">Unpaid</option>
@@ -420,19 +420,20 @@ export default async function AdminDashboardPage({
               <option value="REFUNDED">Refunded</option>
             </select>
           </label>
-          <button className="h-9 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
+          <button className="h-8 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
             Apply
           </button>
         </form>
 
         {/* KPI cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
             title="Today's bookings"
             value={data.todayBookings}
             icon={CalendarCheck}
             iconColor="text-brand-citrus"
             subtitle="Scheduled for today"
+            compact
           />
           <RevenueCard
             title={`${data.periodLabel} actual revenue`}
@@ -454,10 +455,11 @@ export default async function AdminDashboardPage({
             icon={Image}
             iconColor="text-brand-coral"
             subtitle="Awaiting delivery"
+            compact
           />
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <RevenueCard
             title="Upcoming sales"
             value={data.upcomingSales}
@@ -472,8 +474,8 @@ export default async function AdminDashboardPage({
             iconColor="text-amber-500"
             subtitle={`${data.pendingPaymentCount} pending booking${data.pendingPaymentCount !== 1 ? "s" : ""}`}
           />
-          <StatCard title="Paid bookings count" value={data.paidBookingCount} icon={CalendarCheck} iconColor="text-green-500" subtitle={data.periodLabel} />
-          <StatCard title="Upcoming bookings count" value={data.upcomingBookingCount} icon={Users} iconColor="text-sky-500" subtitle="Expected sales" />
+          <StatCard title="Paid bookings count" value={data.paidBookingCount} icon={CalendarCheck} iconColor="text-green-500" subtitle={data.periodLabel} compact />
+          <StatCard title="Upcoming bookings count" value={data.upcomingBookingCount} icon={Users} iconColor="text-sky-500" subtitle="Expected sales" compact />
         </div>
 
         {/* Revenue breakdown */}

@@ -12,6 +12,7 @@ interface StatCardProps {
     label?: string;
   };
   className?: string;
+  compact?: boolean;
 }
 
 export function StatCard({
@@ -22,24 +23,25 @@ export function StatCard({
   iconColor = "text-brand-citrus",
   trend,
   className,
+  compact = false,
 }: StatCardProps) {
   const isPositive = (trend?.value ?? 0) >= 0;
 
   return (
-    <div className={cn("admin-card flex flex-col gap-3", className)}>
+    <div className={cn("admin-card flex flex-col gap-3", compact && "p-4 gap-2 min-h-[120px]", className)}>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-sm text-muted-foreground font-medium">{title}</p>
+        <p className="text-sm text-muted-foreground font-medium leading-snug">{title}</p>
         {Icon && (
-          <div className={cn("w-8 h-8 rounded-lg bg-muted flex items-center justify-center flex-shrink-0", iconColor.replace("text-", "bg-").replace(/\/([\d]+)$/, "/10"))}>
-            <Icon className={cn("w-4 h-4", iconColor)} />
+          <div className={cn(compact ? "w-7 h-7 rounded-md" : "w-8 h-8 rounded-lg", "bg-muted flex items-center justify-center flex-shrink-0", iconColor.replace("text-", "bg-").replace(/\/([\d]+)$/, "/10"))}>
+            <Icon className={cn(compact ? "w-3.5 h-3.5" : "w-4 h-4", iconColor)} />
           </div>
         )}
       </div>
 
       <div className="space-y-1">
-        <p className="text-2xl font-display font-bold text-foreground">{value}</p>
+        <p className={cn(compact ? "text-xl" : "text-2xl", "font-display font-bold text-foreground leading-none")}>{value}</p>
         {subtitle && (
-          <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <p className="text-xs text-muted-foreground leading-snug">{subtitle}</p>
         )}
       </div>
 
