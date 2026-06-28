@@ -98,19 +98,10 @@ function parseFilters(searchParams?: Record<string, string | string[] | undefine
   };
 }
 
-function numberSetting(value: unknown, fallback: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-async function getExchangeRate() {
-  const setting = await prisma.setting.findUnique({ where: { key: "usd_to_mvr_exchange_rate" } });
-  return numberSetting(setting?.value, 20);
-}
-
-function toMoneyPair(amount: number, currency: string, exchangeRate: number): MoneyPair {
-  if (currency === "MVR") return { mvr: amount, usd: amount / exchangeRate };
-  return { mvr: amount * exchangeRate, usd: amount };
+function toMoneyPair(amount: number, currency: string): MoneyPair {
+  if (currency === "MVR") return { mvr: amount, usd: 0 };
+  if (currency === "USD") return { mvr: 0, usd: amount };
+  return { mvr: 0, usd: 0 };
 }
 
 function addMoney(a: MoneyPair, b: MoneyPair): MoneyPair {
@@ -138,7 +129,7 @@ function paymentWhere(filters: DashboardFilters, start: Date, end: Date): Prisma
   };
 }
 
-async function summarizeActualRevenue(filters: DashboardFilters, start: Date, end: Date, defaultRate: number) {
+async function summarizeActualRevenue(filters: DashboardFilters, start: Date, end: Date) {
   if (filters.paymentStatus && !REVENUE_PAYMENT_STATUSES.includes(filters.paymentStatus)) {
     return {
       totals: { mvr: 0, usd: 0 },
@@ -152,23 +143,21 @@ async function summarizeActualRevenue(filters: DashboardFilters, start: Date, en
     where: paymentWhere(filters, start, end),
     include: {
       refunds: { where: { status: "PAID" }, select: { amount: true } },
-      booking: { select: { id: true, source: true, exchangeRate: true } },
+      booking: { select: { id: true, source: true } },
     },
   });
 
   const totals = payments.reduce<MoneyPair>((sum, payment) => {
-    const rate = numberSetting(payment.booking.exchangeRate, defaultRate);
     const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
     const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
-    return addMoney(sum, toMoneyPair(netAmount, payment.currency, rate));
+    return addMoney(sum, toMoneyPair(netAmount, payment.currency));
   }, { mvr: 0, usd: 0 });
 
   const bySource = payments.reduce<Record<string, MoneyPair>>((acc, payment) => {
-    const rate = numberSetting(payment.booking.exchangeRate, defaultRate);
     const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
     const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
     const source = payment.booking.source;
-    acc[source] = addMoney(acc[source] ?? { mvr: 0, usd: 0 }, toMoneyPair(netAmount, payment.currency, rate));
+    acc[source] = addMoney(acc[source] ?? { mvr: 0, usd: 0 }, toMoneyPair(netAmount, payment.currency));
     return acc;
   }, {});
 
@@ -180,14 +169,13 @@ async function summarizeActualRevenue(filters: DashboardFilters, start: Date, en
   };
 }
 
-async function summarizeBookingTotals(where: Prisma.BookingWhereInput, defaultRate: number) {
+async function summarizeBookingTotals(where: Prisma.BookingWhereInput) {
   const bookings = await prisma.booking.findMany({
     where,
-    select: { id: true, total: true, currency: true, exchangeRate: true },
+    select: { id: true, total: true, currency: true },
   });
   const totals = bookings.reduce<MoneyPair>((sum, booking) => {
-    const rate = numberSetting(booking.exchangeRate, defaultRate);
-    return addMoney(sum, toMoneyPair(Number(booking.total), booking.currency, rate));
+    return addMoney(sum, toMoneyPair(Number(booking.total), booking.currency));
   }, { mvr: 0, usd: 0 });
   return { totals, count: bookings.length };
 }
@@ -200,7 +188,6 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const monthStart = startOfMonth(today);
-  const defaultExchangeRate = await getExchangeRate();
   const baseBookingWhere = bookingWhere(filters);
 
   const [
@@ -236,22 +223,22 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
     prisma.affiliateApplication.count({ where: { status: "PENDING" } }),
   ]);
 
-  const actualRevenue = await summarizeActualRevenue(filters, start, end, defaultExchangeRate);
-  const monthRevenue = await summarizeActualRevenue(filters, monthStart, tomorrow, defaultExchangeRate);
+  const actualRevenue = await summarizeActualRevenue(filters, start, end);
+  const monthRevenue = await summarizeActualRevenue(filters, monthStart, tomorrow);
 
   const upcoming = await summarizeBookingTotals({
     ...baseBookingWhere,
     bookingDate: { gte: start > today ? start : today, lt: end },
     bookingStatus: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN, BookingStatus.IN_PROGRESS, BookingStatus.PARTIALLY_LAUNCHED, BookingStatus.PARTIALLY_LANDED] },
     paymentStatus: { notIn: [PaymentStatus.PAID, PaymentStatus.REFUNDED] },
-  }, defaultExchangeRate);
+  });
 
   const pendingPayments = await summarizeBookingTotals({
     ...baseBookingWhere,
     bookingDate: { gte: start, lt: end },
     bookingStatus: { notIn: FINAL_BOOKING_STATUSES },
     paymentStatus: { in: PENDING_PAYMENT_STATUSES },
-  }, defaultExchangeRate);
+  });
 
   const excludedUnpaid = await prisma.booking.count({
     where: {
@@ -264,7 +251,6 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
   return {
     filters,
     periodLabel: label,
-    defaultExchangeRate,
     todayBookings,
     pendingMedia,
     recentBookings,
@@ -302,7 +288,6 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
       paymentsIncluded: actualRevenue.paymentsIncluded,
       bookingsExcludedDueToUnpaidStatus: excludedUnpaid,
       upcomingBookingsIncluded: upcoming.count,
-      exchangeRateUsed: defaultExchangeRate,
     },
   };
 }
@@ -510,7 +495,7 @@ export default async function AdminDashboardPage({
             <span>Paid payments: {data.debug.paymentsIncluded}</span>
             <span>Excluded unpaid: {data.debug.bookingsExcludedDueToUnpaidStatus}</span>
             <span>Upcoming included: {data.debug.upcomingBookingsIncluded}</span>
-            <span>USD→MVR rate: {data.debug.exchangeRateUsed}</span>
+            <span>No currency conversion applied</span>
           </div>
         </div>
 
