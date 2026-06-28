@@ -9,21 +9,25 @@ export interface LogoData {
   text: string;
 }
 
+const DEFAULT_LOGO_URL = "/images/zipline-logo-black.png";
+
 export async function getLogoData(): Promise<LogoData> {
   noStore();
   try {
     const settings = await prisma.setting.findMany({
       where: { key: { in: ["site_logo_url", "site_logo_size", "site_logo_text"] } },
     });
-    const get = (k: string, d = "") =>
-      (settings.find((s) => s.key === k)?.value as string) ?? d;
+    const get = (k: string, d = "") => {
+      const value = settings.find((s) => s.key === k)?.value;
+      return typeof value === "string" && value.trim() ? value : d;
+    };
     return {
-      url:  get("site_logo_url", ""),
+      url:  get("site_logo_url", DEFAULT_LOGO_URL),
       size: get("site_logo_size", "md"),
       text: get("site_logo_text", "Zipline Maldives"),
     };
   } catch {
-    return { url: "", size: "md", text: "Zipline Maldives" };
+    return { url: DEFAULT_LOGO_URL, size: "md", text: "Zipline Maldives" };
   }
 }
 
@@ -36,7 +40,7 @@ export function LogoMark({ logo, className }: { logo: LogoData; className?: stri
         alt={logo.text}
         className={cn(
           "object-contain flex-shrink-0",
-          logo.size === "sm" ? "h-8" : logo.size === "lg" ? "h-14" : "h-10",
+          logo.size === "sm" ? "h-9 w-auto max-w-[170px]" : logo.size === "lg" ? "h-16 w-auto max-w-[260px]" : "h-12 w-auto max-w-[220px]",
           className
         )}
       />
@@ -59,16 +63,18 @@ export function LogoLockup({
   href = "/",
   textClassName,
   subtitleClassName,
+  markClassName,
 }: {
   logo: LogoData;
   subtitle?: string;
   href?: string;
   textClassName?: string;
   subtitleClassName?: string;
+  markClassName?: string;
 }) {
   return (
     <Link href={href} className="flex items-center gap-2.5 group">
-      <LogoMark logo={logo} />
+      <LogoMark logo={logo} className={markClassName} />
       {/* Only show text when using the default SVG icon, not with a custom logo */}
       {!logo.url && (
         <div className="leading-tight">

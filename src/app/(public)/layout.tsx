@@ -24,7 +24,7 @@ async function getLayoutData() {
     ]);
     return { announcement, logo };
   } catch {
-    return { announcement: null, logo: { url: "", size: "md", text: "Zipline Maldives" } };
+    return { announcement: null, logo: { url: "/images/zipline-logo-black.png", size: "md", text: "Zipline Maldives" } };
   }
 }
 

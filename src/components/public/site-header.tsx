@@ -50,6 +50,7 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
             subtitle="Vahmāfushi Island"
             textClassName={scrolled || !isHome ? "site-heading" : undefined}
             subtitleClassName={scrolled || !isHome ? "site-text-muted" : undefined}
+            markClassName={!scrolled && isHome ? "brightness-0 invert drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]" : undefined}
           />
 
           {/* Desktop nav */}
