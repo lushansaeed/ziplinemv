@@ -97,16 +97,15 @@ export function Step1Date() {
                     key={d.toISOString()}
                     onClick={() => select(d)}
                     disabled={!selectable}
+                    style={isSelected ? { background: "linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%)", boxShadow: "0 4px 12px rgba(245,123,46,0.35)" } : undefined}
                     className={cn(
                       "relative h-10 w-full rounded-xl text-sm font-medium transition-all duration-150 flex items-center justify-center",
                       isSelected
-                        ? "bg-[var(--site-primary,#00A6B4)] text-white font-bold shadow-sm"
+                        ? "text-white font-bold"
                         : isTodayD && selectable
-                        ? "border border-[var(--site-primary,#00A6B4)] text-[var(--site-primary,#00A6B4)] font-semibold hover:bg-[var(--site-primary,#00A6B4)]/10"
+                        ? "border-2 border-[#FF7B2E] text-[#FF7B2E] font-semibold hover:bg-orange-50"
                         : selectable
                         ? "text-gray-800 hover:bg-gray-100 hover:text-gray-900"
-                        : isPast
-                        ? "text-gray-300 cursor-not-allowed"
                         : "text-gray-300 cursor-not-allowed"
                     )}
                   >
@@ -123,11 +122,11 @@ export function Step1Date() {
           {/* Legend */}
           <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-4 text-[11px] text-gray-400">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-[var(--site-primary,#00A6B4)] inline-block" />
+              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: "linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%)" }} />
               Selected
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm border border-[var(--site-primary,#00A6B4)] inline-block" />
+              <span className="w-3 h-3 rounded-sm border-2 border-[#FF7B2E] inline-block" />
               Today
             </span>
             <span className="flex items-center gap-1.5">
@@ -140,7 +139,7 @@ export function Step1Date() {
         {/* Selected date confirmation */}
         {date && (
           <div className="mt-3 flex items-center gap-2 text-sm px-1">
-            <div className="w-2 h-2 rounded-full bg-[var(--site-primary,#00A6B4)] flex-shrink-0" />
+            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: "linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%)" }} />
             <span className="text-gray-500">
               <span className="text-gray-900 font-medium">{format(parseISO(date), "EEEE, d MMMM yyyy")}</span>
             </span>
