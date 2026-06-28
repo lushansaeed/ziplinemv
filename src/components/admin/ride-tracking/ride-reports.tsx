@@ -42,30 +42,41 @@ function fmt(ts: string | null) {
   return new Date(ts).toLocaleTimeString("en-MV", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+function offsetDate(days: number) {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split("T")[0];
+}
+
 export function RideReports() {
   const [rows, setRows]         = useState<TrackingRow[]>([]);
   const [loading, setLoading]   = useState(false);
-  const [dateFrom, setDateFrom] = useState(new Date().toISOString().split("T")[0]);
-  const [dateTo, setDateTo]     = useState(new Date().toISOString().split("T")[0]);
+  // Default: 3 days back → 3 days forward so nearby bookings always show
+  const [dateFrom, setDateFrom] = useState(() => offsetDate(-3));
+  const [dateTo, setDateTo]     = useState(() => offsetDate(3));
   const [status, setStatus]     = useState("");
 
-  async function load() {
+  async function load(from: string, to: string, st: string) {
     setLoading(true);
-    const params = new URLSearchParams({ dateFrom, dateTo });
-    if (status) params.set("status", status);
+    const params = new URLSearchParams({ dateFrom: from, dateTo: to });
+    if (st) params.set("status", st);
     const res  = await fetch(`/api/admin/ride-tracking/reports?${params}`);
     const data = await res.json();
     setRows(data);
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []); // eslint-disable-line
+  // Auto-load whenever any filter changes
+  useEffect(() => { load(dateFrom, dateTo, status); }, [dateFrom, dateTo, status]); // eslint-disable-line
 
   function handleExport() {
     const params = new URLSearchParams({ dateFrom, dateTo, csv: "1" });
     if (status) params.set("status", status);
     window.open(`/api/admin/ride-tracking/reports?${params}`, "_blank");
   }
+
+  function handleDateFrom(v: string) { setDateFrom(v); if (v > dateTo) setDateTo(v); }
+  function handleDateTo(v: string)   { setDateTo(v);   if (v < dateFrom) setDateFrom(v); }
 
   return (
     <div className="space-y-4">
@@ -75,20 +86,17 @@ export function RideReports() {
           <Filter className="w-4 h-4 text-muted-foreground" />
           <span className="text-sm font-medium text-foreground">Filters</span>
         </div>
-        <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
+        <input type="date" value={dateFrom} onChange={(e) => handleDateFrom(e.target.value)}
           className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background" />
         <span className="text-muted-foreground text-sm">to</span>
-        <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
+        <input type="date" value={dateTo} onChange={(e) => handleDateTo(e.target.value)}
           className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background" />
         <select value={status} onChange={(e) => setStatus(e.target.value)}
           className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background">
           <option value="">All rider statuses</option>
           {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-        <button onClick={load} disabled={loading}
-          className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
-          {loading ? "Loading..." : "Apply"}
-        </button>
+        {loading && <span className="text-xs text-muted-foreground animate-pulse">Loading…</span>}
         <button onClick={handleExport}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted ml-auto">
           <Download className="w-4 h-4" />Export CSV
