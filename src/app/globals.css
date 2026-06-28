@@ -186,8 +186,8 @@
   box-shadow: 0 20px 58px color-mix(in srgb, var(--site-primary, #00A6B4) 20%, transparent);
 }
 .site-button {
-  background: var(--button-bg, var(--site-button, #00A6B4));
-  color: var(--button-text, var(--site-button-text, #FFFFFF));
+  background: linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%);
+  color: #FFFFFF;
   box-shadow: 0 10px 28px color-mix(in srgb, var(--site-primary, #00A6B4) 24%, transparent);
 }
 .site-button:hover {
@@ -382,13 +382,16 @@ html:has(.theme-public) {
   /* Brand button base */
   .btn-brand {
     @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3
-           font-semibold text-sm
+           font-semibold text-sm text-white
            transition-all duration-200
            active:scale-[0.98] focus-visible:outline-none
            focus-visible:ring-2 focus-visible:ring-brand-citrus focus-visible:ring-offset-2;
-    background: var(--button-bg, var(--site-button, #F5A623));
-    color: var(--button-text, var(--site-button-text, #0A0F1A));
-    box-shadow: 0 8px 24px color-mix(in srgb, var(--site-primary, #F5A623) 22%, transparent);
+    background: linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%);
+    box-shadow: 0 8px 24px rgba(245, 123, 46, 0.35);
+  }
+  .btn-brand:hover {
+    box-shadow: 0 12px 32px rgba(245, 123, 46, 0.45);
+    filter: brightness(1.06);
   }
 
   .btn-brand-outline {
@@ -396,8 +399,13 @@ html:has(.theme-public) {
            border font-semibold text-sm
            transition-all duration-200
            active:scale-[0.98];
-    border-color: color-mix(in srgb, var(--site-primary, #F5A623) 55%, transparent);
-    color: var(--site-primary, #F5A623);
+    border-color: #F5A623;
+    color: #FF7B2E;
+  }
+  .btn-brand-outline:hover {
+    background: linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%);
+    color: #ffffff;
+    border-color: transparent;
   }
 
   .btn-ghost-white {
