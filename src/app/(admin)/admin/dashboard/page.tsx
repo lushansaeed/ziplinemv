@@ -116,17 +116,20 @@ function bookingWhere(filters: DashboardFilters): Prisma.BookingWhereInput {
   };
 }
 
-function paymentWhere(filters: DashboardFilters, start: Date, end: Date): Prisma.PaymentWhereInput {
-  const requestedStatus = filters.paymentStatus;
-  return {
-    createdAt: { gte: start, lt: end },
-    status: requestedStatus && REVENUE_PAYMENT_STATUSES.includes(requestedStatus) ? requestedStatus : { in: REVENUE_PAYMENT_STATUSES },
-    ...(filters.currency ? { currency: filters.currency } : {}),
-    booking: {
-      bookingStatus: { notIn: FINAL_BOOKING_STATUSES },
-      ...(filters.source ? { source: filters.source } : {}),
-    },
-  };
+function rawActualRevenueFilters(filters: DashboardFilters, start: Date, end: Date) {
+  return Prisma.sql`
+    p."created_at" >= ${start}
+    AND p."created_at" < ${end}
+    AND p."status" = 'PAID'::"PaymentStatus"
+    AND b."booking_status" NOT IN (
+      'CANCELLED'::"BookingStatus",
+      'NO_SHOW'::"BookingStatus",
+      'RESCHEDULED'::"BookingStatus",
+      'REFUNDED'::"BookingStatus"
+    )
+    ${filters.currency ? Prisma.sql`AND p."currency" = ${filters.currency}` : Prisma.empty}
+    ${filters.source ? Prisma.sql`AND b."source" = ${filters.source}::"BookingSource"` : Prisma.empty}
+  `;
 }
 
 async function summarizeActualRevenue(filters: DashboardFilters, start: Date, end: Date) {
@@ -139,45 +142,65 @@ async function summarizeActualRevenue(filters: DashboardFilters, start: Date, en
     };
   }
 
-  const payments = await prisma.payment.findMany({
-    where: paymentWhere(filters, start, end),
-    include: {
-      refunds: { where: { status: "PAID" }, select: { amount: true } },
-      booking: { select: { id: true, source: true } },
-    },
-  });
+  const whereSql = rawActualRevenueFilters(filters, start, end);
+  const [summaryRows, countRows] = await Promise.all([
+    prisma.$queryRaw<Array<{ source: string; currency: string; total: Prisma.Decimal | number | string }>>(Prisma.sql`
+      SELECT
+        b."source"::text AS source,
+        p."currency" AS currency,
+        SUM(GREATEST(p."amount" - COALESCE(r."refunded_amount", 0), 0)) AS total
+      FROM "payments" p
+      INNER JOIN "bookings" b ON b."id" = p."booking_id"
+      LEFT JOIN (
+        SELECT "payment_id", SUM("amount") AS "refunded_amount"
+        FROM "refunds"
+        WHERE "status" = 'PAID'::"PayoutStatus"
+        GROUP BY "payment_id"
+      ) r ON r."payment_id" = p."id"
+      WHERE ${whereSql}
+      GROUP BY b."source", p."currency"
+    `),
+    prisma.$queryRaw<Array<{ paid_booking_count: number; payments_included: number }>>(Prisma.sql`
+      SELECT
+        COUNT(DISTINCT p."booking_id")::int AS paid_booking_count,
+        COUNT(p."id")::int AS payments_included
+      FROM "payments" p
+      INNER JOIN "bookings" b ON b."id" = p."booking_id"
+      WHERE ${whereSql}
+    `),
+  ]);
 
-  const totals = payments.reduce<MoneyPair>((sum, payment) => {
-    const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
-    const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
-    return addMoney(sum, toMoneyPair(netAmount, payment.currency));
-  }, { mvr: 0, usd: 0 });
+  const totals = summaryRows.reduce<MoneyPair>((sum, row) => (
+    addMoney(sum, toMoneyPair(Number(row.total ?? 0), row.currency))
+  ), { mvr: 0, usd: 0 });
 
-  const bySource = payments.reduce<Record<string, MoneyPair>>((acc, payment) => {
-    const refundAmount = payment.refunds.reduce((refundSum, refund) => refundSum + Number(refund.amount), 0);
-    const netAmount = Math.max(0, Number(payment.amount) - refundAmount);
-    const source = payment.booking.source;
-    acc[source] = addMoney(acc[source] ?? { mvr: 0, usd: 0 }, toMoneyPair(netAmount, payment.currency));
+  const bySource = summaryRows.reduce<Record<string, MoneyPair>>((acc, row) => {
+    acc[row.source] = addMoney(acc[row.source] ?? { mvr: 0, usd: 0 }, toMoneyPair(Number(row.total ?? 0), row.currency));
     return acc;
   }, {});
+  const counts = countRows[0] ?? { paid_booking_count: 0, payments_included: 0 };
 
   return {
     totals,
     bySource,
-    paidBookingCount: new Set(payments.map((payment) => payment.bookingId)).size,
-    paymentsIncluded: payments.length,
+    paidBookingCount: Number(counts.paid_booking_count ?? 0),
+    paymentsIncluded: Number(counts.payments_included ?? 0),
   };
 }
 
 async function summarizeBookingTotals(where: Prisma.BookingWhereInput) {
-  const bookings = await prisma.booking.findMany({
-    where,
-    select: { id: true, total: true, currency: true },
-  });
-  const totals = bookings.reduce<MoneyPair>((sum, booking) => {
-    return addMoney(sum, toMoneyPair(Number(booking.total), booking.currency));
-  }, { mvr: 0, usd: 0 });
-  return { totals, count: bookings.length };
+  const [currencyRows, count] = await Promise.all([
+    prisma.booking.groupBy({
+      by: ["currency"],
+      where,
+      _sum: { total: true },
+    }),
+    prisma.booking.count({ where }),
+  ]);
+  const totals = currencyRows.reduce<MoneyPair>((sum, row) => (
+    addMoney(sum, toMoneyPair(Number(row._sum.total ?? 0), row.currency))
+  ), { mvr: 0, usd: 0 });
+  return { totals, count };
 }
 
 async function getDashboardData(searchParams?: Record<string, string | string[] | undefined>) {
