@@ -59,7 +59,7 @@ export default async function AddOnsPage() {
         </div>
 
         {/* Add-on cards */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-20">
+        <div className="mb-20 flex flex-wrap justify-center gap-8">
           {displayAddOns.map((addon, i) => {
             const Icon  = ICONS[i] ?? Camera;
             const color = COLORS[i] ?? COLORS[0];
@@ -69,7 +69,7 @@ export default async function AddOnsPage() {
               <div
                 key={addon.id}
                 className={cn(
-                  "relative rounded-2xl border p-8 flex flex-col gap-6 transition-all duration-300 hover:-translate-y-1",
+                  "relative w-full sm:flex-[0_1_360px] rounded-2xl border p-8 flex flex-col gap-6 transition-all duration-300 hover:-translate-y-1",
                   isHighlighted && "shadow-[0_0_60px_rgba(245,166,35,0.08)]",
                   color.border
                 )}

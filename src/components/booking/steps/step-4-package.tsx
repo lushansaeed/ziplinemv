@@ -31,7 +31,7 @@ export function Step4Package({ packages }: { packages: Package[] }) {
       onNext={nextStep}
       nextDisabled={!packageId}
     >
-      <div className="space-y-3">
+      <div className="flex flex-wrap justify-center gap-3">
         {packages.map((pkg) => {
           const isSelected  = packageId === pkg.id;
           const isLocal     = riderType === "local";
@@ -51,7 +51,7 @@ export function Step4Package({ packages }: { packages: Package[] }) {
               key={pkg.id}
               onClick={() => select(pkg)}
               className={cn(
-                "w-full flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-200",
+                "w-full sm:flex-[0_1_380px] flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-200",
                 isSelected
                   ? "border-brand-citrus/60 bg-brand-citrus/8 shadow-brand-sm"
                   : "border-white/10 bg-white/3 hover:border-brand-citrus/30 hover:bg-white/5"

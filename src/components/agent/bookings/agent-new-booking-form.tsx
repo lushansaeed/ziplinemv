@@ -391,13 +391,13 @@ export function AgentNewBookingForm({
               <Package className="w-4 h-4 text-muted-foreground" />
               <p className="font-semibold text-sm">Select package</p>
             </div>
-            <div className="space-y-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {packages.map((pkg) => (
                 <button
                   key={pkg.id}
                   onClick={() => setPackageId(pkg.id)}
                   className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
+                    "w-full sm:flex-[0_1_340px] flex items-center gap-4 p-4 rounded-xl border text-left transition-all",
                     packageId === pkg.id
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/30"
@@ -426,14 +426,14 @@ export function AgentNewBookingForm({
                 <Tag className="w-4 h-4 text-muted-foreground" />
                 <p className="font-semibold text-sm">Add-ons (optional)</p>
               </div>
-              <div className="space-y-2">
+              <div className="flex flex-wrap justify-center gap-2">
                 {addOns.map((addon) => {
                   const qty = addOnQuantities[addon.id] ?? 0;
                   return (
                     <div
                       key={addon.id}
                       className={cn(
-                        "w-full flex items-center gap-3 p-3 rounded-xl border transition-all",
+                        "w-full sm:flex-[0_1_320px] flex items-center gap-3 p-3 rounded-xl border transition-all",
                         qty > 0 ? "border-primary bg-primary/5" : "border-border"
                       )}
                     >

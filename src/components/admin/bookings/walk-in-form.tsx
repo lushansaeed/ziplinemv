@@ -225,12 +225,12 @@ export function WalkInBookingForm({ packages, addOns }: WalkInBookingFormProps) 
         {addOns.length > 0 && (
           <div className="space-y-1.5">
             <label className="text-xs text-muted-foreground font-medium">Add-ons (optional)</label>
-            <div className="space-y-2">
+            <div className="flex flex-wrap justify-center gap-2">
               {addOns.map((a) => {
                 const qty = addOnQuantities[a.id] ?? 0;
                 return (
                   <div key={a.id} className={cn(
-                    "flex items-center gap-3 rounded-xl border p-3",
+                    "w-full sm:flex-[0_1_320px] flex items-center gap-3 rounded-xl border p-3",
                     qty > 0 ? "border-primary bg-primary/5" : "border-border"
                   )}>
                     <div className="flex-1 min-w-0">

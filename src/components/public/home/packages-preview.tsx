@@ -27,7 +27,7 @@ export function PackagesPreview({ packages, content }: { packages: any[]; conten
         </div>
 
         {/* Package cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {packages.length === 0 ? (
             // Placeholder cards shown before admin adds packages
             [
@@ -84,7 +84,7 @@ function PackageCard({
 }) {
   return (
     <div className={cn(
-      "relative flex flex-col rounded-2xl border overflow-hidden transition-all duration-300",
+      "relative w-full sm:flex-[0_1_340px] flex flex-col rounded-2xl border overflow-hidden transition-all duration-300",
       "hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]",
       featured
         ? "border-brand-citrus/40 bg-gradient-to-b from-brand-citrus/5 to-transparent"

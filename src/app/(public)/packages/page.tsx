@@ -84,12 +84,12 @@ export default async function PackagesPage() {
         </div>
 
         {/* Package cards */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="flex flex-wrap justify-center gap-8">
           {displayPackages.map((pkg) => (
             <div
               key={pkg.id}
               className={cn(
-                "flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1",
+                "w-full sm:flex-[0_1_360px] flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1",
                 pkg.featured
                   ? "border-brand-citrus/40 shadow-[0_0_60px_rgba(245,166,35,0.1)]"
                   : "border-white/10"

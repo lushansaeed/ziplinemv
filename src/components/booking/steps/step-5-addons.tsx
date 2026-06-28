@@ -32,7 +32,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
       onNext={nextStep}
       nextLabel={anySelected ? "Continue with media" : "Skip — no media"}
     >
-      <div className="space-y-4">
+      <div className="flex flex-wrap justify-center gap-4">
         {addOns.map((addon, i) => {
           const qty           = addOnQuantities[addon.id] ?? 0;
           const isRecommended = i === RECOMMENDED_INDEX;
@@ -46,7 +46,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
             <div
               key={addon.id}
               className={cn(
-                "rounded-2xl border p-5 transition-all duration-200",
+                "w-full sm:flex-[0_1_380px] rounded-2xl border p-5 transition-all duration-200",
                 qty > 0
                   ? "border-brand-citrus/50 bg-brand-citrus/6 shadow-brand-sm"
                   : "border-white/10 bg-white/3"

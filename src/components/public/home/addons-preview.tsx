@@ -38,7 +38,7 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {items.slice(0, 3).map((addon, i) => {
             const Icon  = ADDON_ICONS[i] ?? Camera;
             const color = ADDON_COLORS[i] ?? ADDON_COLORS[0];
@@ -48,7 +48,7 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
               <div
                 key={addon.id ?? i}
                 className={cn(
-                  "relative rounded-2xl border p-6 flex flex-col gap-5 transition-all duration-300 hover:-translate-y-1",
+                  "relative w-full sm:flex-[0_1_340px] rounded-2xl border p-6 flex flex-col gap-5 transition-all duration-300 hover:-translate-y-1",
                   isHighlighted
                     ? `bg-gradient-to-b ${color.bg} border-brand-citrus/30`
                     : `bg-gradient-to-b ${color.bg} ${color.border}`
