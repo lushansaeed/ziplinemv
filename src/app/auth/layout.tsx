@@ -70,14 +70,14 @@ export default async function AuthLayout({
 
       {/* Right — light form panel */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 sm:p-10">
-        {/* Mobile logo */}
-        <div className="lg:hidden mb-8 flex items-center gap-3">
-          <LogoMark logo={logo} />
-          {!logo.url && (
-            <p className="font-display font-bold text-lg" style={{ color: "var(--heading, #083344)" }}>
-              {logo.text}
-            </p>
-          )}
+        {/* Mobile logo — dark pill so white logo stays visible on light bg */}
+        <div className="lg:hidden mb-8">
+          <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-brand-deep">
+            <LogoMark logo={logo} />
+            {!logo.url && (
+              <p className="text-white font-display font-bold text-lg">{logo.text}</p>
+            )}
+          </div>
         </div>
 
         <div className="w-full max-w-[400px]">
