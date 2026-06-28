@@ -235,7 +235,10 @@
   color: #64748b;
   opacity: 1;
 }
-.theme-contrast :where(.text-white) {
+/* Restore white text inside theme-contrast, even when nested under theme-light-copy.
+   Specificity must beat .theme-light-copy :where():not():not():not() = 0-4-0 */
+.theme-contrast :where(.text-white),
+.theme-light-copy .theme-contrast :where(.text-white):not(.site-button):not(.btn-brand):not(.bg-brand-gradient) {
   color: #ffffff !important;
 }
 .theme-contrast :where(.text-white\/80) { color: rgba(255, 255, 255, 0.80) !important; }
