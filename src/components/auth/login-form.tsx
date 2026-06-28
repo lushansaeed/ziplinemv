@@ -143,7 +143,7 @@ export function LoginForm() {
           type="submit"
           disabled={isPending || !email || !password}
           className="w-full flex items-center justify-center gap-2 rounded-xl py-3.5 px-6 text-sm font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-          style={{ background: "var(--button-bg, #00A6B4)", boxShadow: "0 8px 24px color-mix(in srgb, var(--site-primary, #00A6B4) 22%, transparent)" }}
+          style={{ background: "linear-gradient(135deg, #F5A623 0%, #FF7B2E 50%, #C4451C 100%)", boxShadow: "0 8px 24px rgba(245,123,46,0.35)" }}
         >
           {isPending ? <><Loader2 className="w-4 h-4 animate-spin" />Signing in…</> : "Sign in"}
         </button>
