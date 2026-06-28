@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 
 // ─── Video background (client-only) ──────────────────────────────────────────
 
@@ -71,8 +71,10 @@ export function BackgroundApplier(props: BackgroundApplierProps) {
  * We identify page-background <style> tags by a data attribute.
  */
 export function PageBackgroundResetter({ pageKey }: { pageKey: string }) {
-  useEffect(() => {
-    // Remove style tags from any OTHER page's background
+  // useLayoutEffect fires synchronously before paint — removes stale dark
+  // background style tags from the previous page before the browser renders
+  // the new page, preventing the navy flash during navigation.
+  useLayoutEffect(() => {
     document.querySelectorAll("style[data-page-bg]").forEach((el) => {
       if (el.getAttribute("data-page-bg") !== pageKey) el.remove();
     });
