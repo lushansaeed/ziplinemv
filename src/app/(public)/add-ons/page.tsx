@@ -50,10 +50,10 @@ export default async function AddOnsPage() {
         </div>
 
         {/* Important note */}
-        <div className="flex items-start gap-3 bg-brand-citrus/8 border border-brand-citrus/20 rounded-2xl p-5 max-w-2xl mx-auto mb-16">
+        <div className="flex items-start gap-3 site-card rounded-2xl p-5 max-w-2xl mx-auto mb-16">
           <AlertTriangle className="w-5 h-5 text-brand-citrus flex-shrink-0 mt-0.5" />
-          <p className="text-white/75 text-sm leading-relaxed">
-            <strong className="text-white">No personal devices allowed</strong> during the zipline ride for safety reasons.
+          <p className="site-body text-sm leading-relaxed">
+            <strong className="site-heading">No personal devices allowed</strong> during the zipline ride for safety reasons.
             Add media to your booking and we'll capture it all. You can add these to any package.
           </p>
         </div>
@@ -69,11 +69,9 @@ export default async function AddOnsPage() {
               <div
                 key={addon.id}
                 className={cn(
-                  "relative w-full sm:flex-[0_1_360px] rounded-2xl border p-8 flex flex-col gap-6 transition-all duration-300 hover:-translate-y-1",
-                  isHighlighted && "shadow-[0_0_60px_rgba(245,166,35,0.08)]",
-                  color.border
+                  "relative w-full sm:flex-[0_1_360px] site-card rounded-2xl p-8 flex flex-col gap-6 transition-all duration-300 hover:-translate-y-1",
+                  isHighlighted && "site-card-selected"
                 )}
-                style={{ background: `radial-gradient(ellipse at top right, ${color.glow}, transparent 70%)` }}
               >
                 {isHighlighted && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
@@ -91,39 +89,39 @@ export default async function AddOnsPage() {
                   </div>
                 ) : (
                   <div className={cn(
-                    "aspect-video rounded-xl flex items-center justify-center border border-white/6",
-                    "bg-gradient-to-br from-white/4 to-transparent"
+                    "aspect-video rounded-xl flex items-center justify-center border site-subtle-border",
+                    "bg-white/60"
                   )}>
                     <Icon className={cn("w-12 h-12", `text-${color.accent}`)} style={{ opacity: 0.3 }} />
                   </div>
                 )}
 
                 <div className="space-y-3">
-                  <div className={cn("w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center")}>
+                  <div className={cn("w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center")}>
                     <Icon className={cn("w-5 h-5", `text-${color.accent}`)} />
                   </div>
-                  <h2 className="font-display font-bold text-2xl text-white">{addon.name}</h2>
-                  <p className="text-white/60 leading-relaxed">{addon.description}</p>
+                  <h2 className="font-display font-bold text-2xl site-heading">{addon.name}</h2>
+                  <p className="site-text-muted leading-relaxed">{addon.description}</p>
                 </div>
 
                 {addon.bestFor && (
-                  <div className="flex items-center gap-2 text-sm text-white/45">
-                    <span className="text-white/25">Best for:</span>
+                  <div className="flex items-center gap-2 text-sm site-text-muted">
+                    <span>Best for:</span>
                     {addon.bestFor}
                   </div>
                 )}
 
                 {addon.rules && (
-                  <div className="flex items-start gap-2 text-xs text-white/35">
+                  <div className="flex items-start gap-2 text-xs site-text-muted">
                     <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
                     {addon.rules}
                   </div>
                 )}
 
-                <div className="pt-5 border-t border-white/8 flex items-center justify-between mt-auto">
+                <div className="pt-5 border-t site-subtle-border flex items-center justify-between mt-auto">
                   <div>
-                    <p className="text-white/40 text-xs">Add for</p>
-                    <p className={cn("font-display font-bold text-3xl", `text-${color.accent}`)}>
+                    <p className="site-text-muted text-xs">Add for</p>
+                    <p className="font-display font-bold text-3xl site-accent">
                       +{formatCurrency(Number(addon.price), (addon as any).currency ?? "USD")}
                     </p>
                   </div>
@@ -132,8 +130,8 @@ export default async function AddOnsPage() {
                     className={cn(
                       "flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-xl border transition-all",
                       isHighlighted
-                        ? "bg-brand-gradient border-transparent text-white shadow-brand-md hover:shadow-brand-lg"
-                        : "border-white/15 text-white/80 hover:bg-white/8 hover:text-white"
+                        ? "site-button border-transparent"
+                        : "site-button-outline"
                     )}
                   >
                     Add to booking
@@ -146,12 +144,12 @@ export default async function AddOnsPage() {
         </div>
 
         {/* Bundle callout */}
-        <div className="bg-gradient-to-r from-brand-citrus/10 via-brand-mango/5 to-transparent border border-brand-citrus/20 rounded-2xl p-8 text-center space-y-4 max-w-2xl mx-auto">
-          <h3 className="font-display font-bold text-2xl text-white">Get them all with The Full Story</h3>
-          <p className="text-white/55 text-sm leading-relaxed">
+        <div className="site-card rounded-2xl p-8 text-center space-y-4 max-w-2xl mx-auto">
+          <h3 className="font-display font-bold text-2xl site-heading">Get them all with The Full Story</h3>
+          <p className="site-text-muted text-sm leading-relaxed">
             Photography + 360° Video + Drone Footage bundled into one package. Save compared to adding individually.
           </p>
-          <Link href="/packages" className="inline-flex items-center gap-2 text-brand-citrus font-semibold text-sm hover:text-brand-mango transition-colors group">
+          <Link href="/packages" className="inline-flex items-center gap-2 site-accent font-semibold text-sm transition-colors group">
             View The Full Story package
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

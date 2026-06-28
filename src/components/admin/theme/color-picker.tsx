@@ -19,6 +19,7 @@ interface ColorPickerProps {
 export function ColorPicker({ label, description, value, onChange }: ColorPickerProps) {
   const [showSwatches, setShowSwatches] = useState(false);
   const [hex, setHex] = useState(value);
+  const colorInputValue = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : "#ffffff";
 
   function handleHexInput(v: string) {
     setHex(v);
@@ -50,7 +51,7 @@ export function ColorPicker({ label, description, value, onChange }: ColorPicker
       <div className="flex items-center gap-2">
         <input
           type="color"
-          value={value}
+          value={colorInputValue}
           onChange={(e) => handleColorWheel(e.target.value)}
           className="w-9 h-9 rounded-lg border-0 bg-transparent cursor-pointer p-0"
           title="Pick colour"
@@ -62,7 +63,7 @@ export function ColorPicker({ label, description, value, onChange }: ColorPicker
           onBlur={() => setHex(value)} // reset if invalid
           placeholder="#F5A623"
           className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-ring uppercase"
-          maxLength={7}
+          maxLength={32}
         />
       </div>
 

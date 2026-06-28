@@ -24,14 +24,14 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
   ] as unknown as Partial<AddOn>[];
 
   return (
-    <section className="section-y bg-brand-deep">
+    <section className="section-y site-section-alt">
       <div className="container-brand">
         <div className="text-center mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-mango/10 border border-brand-mango/20">
-            <span className="text-brand-mango text-xs font-semibold tracking-wider uppercase">Add-ons</span>
+            <span className="site-accent text-xs font-semibold tracking-wider uppercase">Add-ons</span>
           </div>
-          <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-            {(content?.heading || "Add the shot.\nKeep the memory.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
+          <h2 className="font-display font-bold text-4xl lg:text-5xl site-heading leading-[1.1]">
+            {(content?.heading || "Add the shot.\nKeep the memory.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="site-accent">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
           <p className="text-white/50 text-lg max-w-md mx-auto site-text-muted">
             {content?.description || "No phones allowed on the ride. Our team captures every second instead."}
@@ -48,10 +48,10 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
               <div
                 key={addon.id ?? i}
                 className={cn(
-                  "relative w-full sm:flex-[0_1_340px] rounded-2xl border p-6 flex flex-col gap-5 transition-all duration-300 hover:-translate-y-1",
+                  "relative w-full sm:flex-[0_1_340px] site-card rounded-2xl p-6 flex flex-col gap-5 transition-all duration-300 hover:-translate-y-1",
                   isHighlighted
-                    ? `bg-gradient-to-b ${color.bg} border-brand-citrus/30`
-                    : `bg-gradient-to-b ${color.bg} ${color.border}`
+                    ? "site-card-selected"
+                    : ""
                 )}
               >
                 {isHighlighted && (
@@ -69,17 +69,17 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
                 </div>
 
                 <div className="flex-1 space-y-2">
-                  <h3 className="font-display font-bold text-xl text-white">{addon.name}</h3>
+                  <h3 className="font-display font-bold text-xl site-heading">{addon.name}</h3>
                   <p className="text-white/55 text-sm leading-relaxed site-text-muted">{addon.description}</p>
                   {addon.bestFor && (
-                    <p className="text-xs text-white/30 italic">Best for: {addon.bestFor}</p>
+                    <p className="text-xs site-text-muted italic">Best for: {addon.bestFor}</p>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between pt-4 border-t border-white/8">
+                <div className="flex items-center justify-between pt-4 border-t site-subtle-border">
                   <div>
-                    <p className="text-white/40 text-xs">Add for</p>
-                    <p className={cn("font-display font-bold text-xl", color.accent)}>
+                    <p className="site-text-muted text-xs">Add for</p>
+                    <p className="font-display font-bold text-xl site-accent">
                       +{formatCurrency(Number(addon.price ?? 0), (addon as any).currency ?? "USD")}
                     </p>
                   </div>
@@ -88,8 +88,8 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
                     className={cn(
                       "text-xs font-semibold px-4 py-2 rounded-xl border transition-all",
                       isHighlighted
-                        ? "border-brand-citrus/40 text-brand-citrus hover:bg-brand-citrus/10"
-                        : "border-white/15 text-white/70 hover:bg-white/6 hover:text-white"
+                        ? "site-button"
+                        : "site-button-outline"
                     )}
                   >
                     Add to booking
@@ -101,7 +101,7 @@ export function AddOnsPreview({ addOns, content }: { addOns: any[]; content?: Se
         </div>
 
         <div className="text-center mt-10">
-          <Link href="/add-ons" className="inline-flex items-center gap-2 text-brand-citrus hover:text-brand-mango font-semibold transition-colors group">
+          <Link href="/add-ons" className="inline-flex items-center gap-2 site-accent font-semibold transition-colors group">
             Learn more about add-ons
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

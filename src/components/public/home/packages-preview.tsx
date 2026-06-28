@@ -11,15 +11,15 @@ interface PackagesPreviewProps {
 
 export function PackagesPreview({ packages, content }: { packages: any[]; content?: SectionContent }) {
   return (
-    <section className="section-y bg-[#050a10]">
+    <section className="section-y site-section">
       <div className="container-brand">
         {/* Header */}
         <div className="text-center mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
-            <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">Packages</span>
+            <span className="site-accent text-xs font-semibold tracking-wider uppercase">Packages</span>
           </div>
-          <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-            {(content?.heading || "Book the ride.\nChoose your vibe.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
+          <h2 className="font-display font-bold text-4xl lg:text-5xl site-heading leading-[1.1]">
+            {(content?.heading || "Book the ride.\nChoose your vibe.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="site-accent">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
           </h2>
           <p className="text-white/50 text-lg max-w-md mx-auto site-text-muted">
             {content?.description || "Every package includes the full zipline experience and speedboat return."}
@@ -64,7 +64,7 @@ export function PackagesPreview({ packages, content }: { packages: any[]; conten
 
         {/* CTA */}
         <div className="text-center mt-10">
-          <Link href="/packages" className="inline-flex items-center gap-2 text-brand-citrus hover:text-brand-mango font-semibold transition-colors group">
+          <Link href="/packages" className="inline-flex items-center gap-2 site-accent font-semibold transition-colors group">
             Compare all packages
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -84,11 +84,11 @@ function PackageCard({
 }) {
   return (
     <div className={cn(
-      "relative w-full sm:flex-[0_1_340px] flex flex-col rounded-2xl border overflow-hidden transition-all duration-300",
-      "hover:-translate-y-1 hover:shadow-[0_16px_48px_rgba(0,0,0,0.4)]",
+      "relative w-full sm:flex-[0_1_340px] site-card flex flex-col rounded-2xl overflow-hidden transition-all duration-300",
+      "hover:-translate-y-1",
       featured
-        ? "border-brand-citrus/40 bg-gradient-to-b from-brand-citrus/5 to-transparent"
-        : "border-white/10 bg-white/3"
+        ? "site-card-selected"
+        : ""
     )}>
       {/* Featured badge */}
       {featured && (
@@ -123,7 +123,7 @@ function PackageCard({
       {/* Content */}
       <div className="flex flex-col flex-1 p-6 space-y-4">
         <div>
-          <h3 className="font-display font-bold text-xl text-white">{name}</h3>
+          <h3 className="font-display font-bold text-xl site-heading">{name}</h3>
           {description && (
             <p className="text-white/50 text-sm mt-1.5 leading-relaxed line-clamp-2 site-text-muted">{description}</p>
           )}
@@ -132,34 +132,34 @@ function PackageCard({
         {/* Included */}
         <ul className="space-y-2 flex-1">
           {included.slice(0, 4).map((item, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-sm text-white/70">
-              <Check className={cn("w-3.5 h-3.5 mt-0.5 flex-shrink-0", featured ? "text-brand-citrus" : "text-brand-lime")} />
+            <li key={i} className="flex items-start gap-2.5 text-sm site-body">
+              <Check className={cn("w-3.5 h-3.5 mt-0.5 flex-shrink-0", featured ? "site-accent" : "text-brand-lime")} />
               {item}
             </li>
           ))}
         </ul>
 
         {/* Price + CTA */}
-        <div className="pt-4 border-t border-white/8">
+        <div className="pt-4 border-t site-subtle-border">
           <div className="flex items-end justify-between mb-4">
             <div>
-              <p className="text-white/40 text-xs">from</p>
-              <p className="font-display font-bold text-2xl text-white">
+              <p className="site-text-muted text-xs">from</p>
+              <p className="font-display font-bold text-2xl site-heading">
                 {formatCurrency(touristPrice)}
               </p>
               {localPrice && (
-                <p className="text-white/35 text-xs">Local: {formatCurrency(localPrice)}</p>
+                <p className="site-text-muted text-xs">Local: {formatCurrency(localPrice)}</p>
               )}
             </div>
-            <p className="text-white/30 text-xs">per person</p>
+            <p className="site-text-muted text-xs">per person</p>
           </div>
           <Link
             href={`/book?package=${slug}`}
             className={cn(
               "w-full flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold transition-all duration-200",
               featured
-                ? "bg-brand-gradient text-white shadow-brand-md hover:shadow-brand-lg"
-                : "border border-white/15 text-white hover:bg-white/8"
+                ? "site-button"
+                : "site-button-outline"
             )}
           >
             Book this package

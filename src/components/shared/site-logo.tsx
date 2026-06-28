@@ -53,15 +53,27 @@ export function LogoMark({ logo, className }: { logo: LogoData; className?: stri
 }
 
 /** Full logo lockup: mark + text (used in header / auth pages) */
-export function LogoLockup({ logo, subtitle, href = "/" }: { logo: LogoData; subtitle?: string; href?: string }) {
+export function LogoLockup({
+  logo,
+  subtitle,
+  href = "/",
+  textClassName,
+  subtitleClassName,
+}: {
+  logo: LogoData;
+  subtitle?: string;
+  href?: string;
+  textClassName?: string;
+  subtitleClassName?: string;
+}) {
   return (
     <Link href={href} className="flex items-center gap-2.5 group">
       <LogoMark logo={logo} />
       {/* Only show text when using the default SVG icon, not with a custom logo */}
       {!logo.url && (
         <div className="leading-tight">
-          <p className="font-display font-bold text-white text-[15px] leading-none">{logo.text}</p>
-          {subtitle && <p className="text-white/40 text-[10px] tracking-wide">{subtitle}</p>}
+          <p className={cn("font-display font-bold text-white text-[15px] leading-none", textClassName)}>{logo.text}</p>
+          {subtitle && <p className={cn("text-white/40 text-[10px] tracking-wide", subtitleClassName)}>{subtitle}</p>}
         </div>
       )}
     </Link>

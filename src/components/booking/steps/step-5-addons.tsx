@@ -46,10 +46,10 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
             <div
               key={addon.id}
               className={cn(
-                "w-full sm:flex-[0_1_380px] rounded-2xl border p-5 transition-all duration-200",
+                "w-full sm:flex-[0_1_380px] site-card rounded-2xl p-5 transition-all duration-200",
                 qty > 0
-                  ? "border-brand-citrus/50 bg-brand-citrus/6 shadow-brand-sm"
-                  : "border-white/10 bg-white/3"
+                  ? "site-card-selected"
+                  : ""
               )}
             >
               <div className="flex items-start gap-4">
@@ -64,7 +64,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
                 {/* Info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-white text-sm">{addon.name}</p>
+                    <p className="font-semibold site-heading text-sm">{addon.name}</p>
                     {isRecommended && (
                       <span className="inline-flex items-center gap-1 bg-brand-citrus/15 border border-brand-citrus/30 text-brand-citrus text-[10px] font-bold px-2 py-0.5 rounded-full">
                         <Star className="w-2.5 h-2.5" /> Recommended
@@ -72,22 +72,22 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
                     )}
                   </div>
                   {addon.description && (
-                    <p className="text-white/50 text-xs mt-0.5 line-clamp-2">{addon.description}</p>
+                    <p className="site-text-muted text-xs mt-0.5 line-clamp-2">{addon.description}</p>
                   )}
                   {addon.bestFor && (
-                    <p className="text-white/30 text-xs mt-1">Best for: {addon.bestFor}</p>
+                    <p className="site-text-muted text-xs mt-1">Best for: {addon.bestFor}</p>
                   )}
                 </div>
 
                 {/* Price + quantity */}
                 <div className="flex flex-col items-end gap-2 flex-shrink-0">
                   <div className="text-right">
-                    <p className="text-white font-bold text-sm">
+                    <p className="site-heading font-bold text-sm">
                       {qty > 0
                         ? `+${formatBookingPrice(lineTotal, riderType)}`
                         : formatBookingPrice(unitPrice, riderType)}
                     </p>
-                    <p className="text-white/30 text-[10px]">
+                    <p className="site-text-muted text-[10px]">
                       {qty > 0
                         ? `${formatBookingPrice(unitPrice, riderType)} × ${qty}`
                         : isLocal ? "per person · MVR" : "per person · USD"}
@@ -168,7 +168,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
                       />
                     ))}
                   </div>
-                  <span className="text-[10px] text-white/30 flex-shrink-0">
+                    <span className="text-[10px] site-text-muted flex-shrink-0">
                     {qty}/{numRiders} riders
                   </span>
                 </div>
@@ -182,10 +182,10 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
       {anySelected && (
         <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-brand-citrus/8 border border-brand-citrus/20">
           <div>
-            <p className="text-white text-sm font-medium">
+          <p className="site-heading text-sm font-medium">
               {Object.values(addOnQuantities).filter(Boolean).length} media type{Object.values(addOnQuantities).filter(Boolean).length > 1 ? "s" : ""} selected
             </p>
-            <p className="text-white/40 text-xs">
+            <p className="site-text-muted text-xs">
               {addOns.filter((a) => (addOnQuantities[a.id] ?? 0) > 0)
                 .map((a) => `${addOnQuantities[a.id]}× ${a.name}`).join(" · ")}
             </p>
@@ -194,7 +194,7 @@ export function Step5AddOns({ addOns }: { addOns: AddOn[] }) {
         </div>
       )}
 
-      <p className="text-[11px] text-white/25 text-center">
+      <p className="text-[11px] site-text-muted text-center">
         Max {numRiders} per add-on · matches your group size · default is zero
       </p>
     </StepShell>

@@ -48,28 +48,28 @@ export function BookingSidebar() {
     <div className="hidden lg:flex flex-col gap-4 w-[300px] xl:w-[320px] flex-shrink-0">
       <div className="sticky top-6 space-y-3">
         {/* Summary card */}
-        <div className="bg-white/4 border border-white/10 rounded-2xl p-4 space-y-3">
-          <p className="text-xs font-semibold text-white/40 uppercase tracking-wider">Your booking</p>
+        <div className="site-card rounded-2xl p-4 space-y-3">
+          <p className="text-xs font-semibold site-text-muted uppercase tracking-wider">Your booking</p>
 
           <div className="space-y-2.5">
             {summaryItems.map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-start gap-2.5">
                 <Icon className="w-3.5 h-3.5 text-brand-citrus flex-shrink-0 mt-0.5" />
                 <div className="min-w-0">
-                  <p className="text-[11px] text-white/35">{label}</p>
-                  <p className="text-sm text-white font-medium leading-tight truncate">{value}</p>
+                  <p className="text-[11px] site-text-muted">{label}</p>
+                  <p className="text-sm site-heading font-medium leading-tight truncate">{value}</p>
                 </div>
               </div>
             ))}
 
             {summaryItems.length === 0 && (
-              <p className="text-white/30 text-sm">Select options to see your summary</p>
+              <p className="site-text-muted text-sm">Select options to see your summary</p>
             )}
           </div>
 
           {total > 0 && (
-            <div className="border-t border-white/8 pt-3 flex justify-between items-center">
-              <span className="text-white/50 text-sm">Total</span>
+            <div className="border-t site-subtle-border pt-3 flex justify-between items-center">
+              <span className="site-text-muted text-sm">Total</span>
               <span className="text-brand-citrus font-bold text-lg">{formatBookingPrice(total, riderType)}</span>
             </div>
           )}
@@ -83,7 +83,7 @@ export function BookingSidebar() {
             className={cn(
               "w-full flex items-center justify-center gap-2",
               "rounded-xl py-3.5 px-6 text-sm font-semibold",
-              "bg-brand-gradient text-white",
+              "site-button",
               "shadow-brand-md hover:shadow-brand-lg",
               "transition-all duration-200 active:scale-[0.98]",
               "disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100",
@@ -97,7 +97,7 @@ export function BookingSidebar() {
         )}
 
         {stepContinueDisabled && currentStep < 8 && (
-          <p className="text-center text-white/30 text-xs">
+          <p className="text-center site-text-muted text-xs">
             {currentStep === 1 && "Select a date to continue"}
             {currentStep === 2 && "Select a time slot to continue"}
             {currentStep === 4 && "Select a package to continue"}

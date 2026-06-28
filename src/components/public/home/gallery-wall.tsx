@@ -52,18 +52,18 @@ export function GalleryWall({ items, content }: GalleryWallProps) {
   let lbIndex = -1;
 
   return (
-    <section className="section-y bg-[#050a10]">
+    <section className="section-y site-section-alt">
       <div className="container-brand">
         <div className="flex items-end justify-between mb-10">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-turquoise/10 border border-brand-turquoise/20">
-              <span className="text-brand-turquoise text-xs font-semibold tracking-wider uppercase">Gallery</span>
+              <span className="site-accent text-xs font-semibold tracking-wider uppercase">Gallery</span>
             </div>
-            <h2 className="font-display font-bold text-4xl text-white leading-tight">
-              {(content?.heading || "428 metres of\nstories told.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="text-brand-citrus">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
+            <h2 className="font-display font-bold text-4xl site-heading leading-tight">
+              {(content?.heading || "428 metres of\nstories told.").split("\n").map((l,i,arr)=>(<span key={i}>{i===1?<span className="site-accent">{l}</span>:l}{i<arr.length-1&&<br/>}</span>))}
             </h2>
           </div>
-          <Link href="/gallery" className="hidden sm:inline-flex items-center gap-2 text-white/50 hover:text-brand-citrus font-medium text-sm transition-colors group">
+          <Link href="/gallery" className="hidden sm:inline-flex items-center gap-2 site-accent font-medium text-sm transition-colors group">
             View all
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

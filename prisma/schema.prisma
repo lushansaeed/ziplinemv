@@ -1229,16 +1229,16 @@ model WebsiteTheme {
   isActive Boolean @default(false) @map("is_active")
 
   // Brand colors
-  primaryColor    String @default("#F5A623") @map("primary_color")
-  secondaryColor  String @default("#FF7B2E") @map("secondary_color")
-  accentColor     String @default("#06B6D4") @map("accent_color")
-  backgroundColor String @default("#0A0F1A") @map("background_color")
-  textColor       String @default("#FFFFFF") @map("text_color")
-  textMutedColor  String @default("#8B9CB3") @map("text_muted_color")
-  buttonColor     String @default("#F5A623") @map("button_color")
-  buttonTextColor String @default("#0A0F1A") @map("button_text_color")
-  headerBgColor   String @default("#0A0F1A") @map("header_bg_color")
-  footerBgColor   String @default("#050A10") @map("footer_bg_color")
+  primaryColor    String @default("#00A6B4") @map("primary_color")
+  secondaryColor  String @default("#064E5F") @map("secondary_color")
+  accentColor     String @default("#F6C85F") @map("accent_color")
+  backgroundColor String @default("#F8FAF9") @map("background_color")
+  textColor       String @default("#263238") @map("text_color")
+  textMutedColor  String @default("#6B7280") @map("text_muted_color")
+  buttonColor     String @default("#00A6B4") @map("button_color")
+  buttonTextColor String @default("#FFFFFF") @map("button_text_color")
+  headerBgColor   String @default("#FFFFFF") @map("header_bg_color")
+  footerBgColor   String @default("#052F3F") @map("footer_bg_color")
 
   // Button style
   buttonRadius String @default("rounded-full") @map("button_radius")

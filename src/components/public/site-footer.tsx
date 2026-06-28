@@ -59,7 +59,7 @@ const SOCIALS = [
 
 export function SiteFooter() {
   return (
-    <footer className="bg-[#060b12] border-t border-white/6">
+    <footer className="border-t border-white/10" style={{ backgroundColor: "var(--footer-bg, var(--site-footer-bg, #052F3F))" }}>
       <div className="container-brand py-16 lg:py-20">
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
           {/* Brand column */}

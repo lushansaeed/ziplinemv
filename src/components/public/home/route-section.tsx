@@ -23,7 +23,7 @@ export function RouteSection({ content }: { content?: SectionContent }) {
   }, []);
 
   return (
-    <section ref={ref} className="section-y bg-brand-deep">
+    <section ref={ref} className="section-y site-section">
       <div className="container-brand">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Text */}
@@ -32,10 +32,10 @@ export function RouteSection({ content }: { content?: SectionContent }) {
             vis ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-8"
           )}>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
-              <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">The route</span>
+              <span className="site-accent text-xs font-semibold tracking-wider uppercase">The route</span>
             </div>
-            <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
-              {headingLines.map((line, i) => (<span key={i}>{i===1?<span className="text-brand-citrus">{line}</span>:line}{i<headingLines.length-1&&<br/>}</span>))}
+            <h2 className="font-display font-bold text-4xl lg:text-5xl site-heading leading-[1.1]">
+              {headingLines.map((line, i) => (<span key={i}>{i===1?<span className="site-accent">{line}</span>:line}{i<headingLines.length-1&&<br/>}</span>))}
             </h2>
             <p className="text-white/55 text-lg leading-relaxed site-text-muted">
               {description}
@@ -47,9 +47,9 @@ export function RouteSection({ content }: { content?: SectionContent }) {
                 { label: "Full journey",value: "15–30 minutes" },
                 { label: "Return",      value: "Speedboat included" },
               ].map((s) => (
-                <div key={s.label} className="bg-white/4 rounded-xl p-4 border border-white/6">
-                  <p className="text-white/40 text-xs uppercase tracking-wider">{s.label}</p>
-                  <p className="text-white font-semibold mt-1">{s.value}</p>
+                <div key={s.label} className="site-card rounded-xl p-4">
+                  <p className="site-text-muted text-xs uppercase tracking-wider">{s.label}</p>
+                  <p className="site-heading font-semibold mt-1">{s.value}</p>
                 </div>
               ))}
             </div>
@@ -60,7 +60,7 @@ export function RouteSection({ content }: { content?: SectionContent }) {
             "transition-all duration-700 delay-200",
             vis ? "opacity-100 translate-x-0" : "opacity-0 translate-x-8"
           )}>
-            <div className="relative bg-gradient-to-br from-brand-ocean/10 via-brand-turquoise/5 to-transparent rounded-3xl p-8 border border-white/6 overflow-hidden">
+            <div className="relative site-card rounded-3xl p-8 overflow-hidden">
               {/* Ocean background shimmer */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-950/40 via-cyan-950/20 to-transparent rounded-3xl" />
 

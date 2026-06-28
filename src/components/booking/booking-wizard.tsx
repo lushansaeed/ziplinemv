@@ -80,10 +80,10 @@ export function BookingWizard({
       <div className="container-brand max-w-5xl">
         {/* Compact header */}
         <div className="text-center mb-5">
-          <h1 className="font-display font-bold text-3xl sm:text-4xl text-white">
+          <h1 className="font-display font-bold text-3xl sm:text-4xl site-heading">
             Book your flight
           </h1>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="site-text-muted text-sm mt-1">
             Maafushi → Vahmāfushi · 428m · ~60 seconds
           </p>
         </div>

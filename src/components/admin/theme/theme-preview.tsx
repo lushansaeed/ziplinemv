@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 interface ThemePreviewProps {
   theme: {
     primaryColor: string; secondaryColor: string; accentColor: string;
-    backgroundColor: string; textColor: string;
+    backgroundColor: string; sectionBgColor?: string; sectionAltBgColor?: string;
+    cardBgColor?: string; cardBorderColor?: string;
+    textColor: string; headingColor?: string; textMutedColor?: string;
     buttonColor: string; buttonTextColor: string;
     headerBgColor: string; footerBgColor: string;
     buttonRadius: string;
@@ -59,11 +61,11 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
             <div className="inline-flex px-3 py-1 rounded-full text-[10px] font-bold" style={{ backgroundColor: `${t.accentColor}20`, color: t.accentColor }}>
               MALDIVES' FIRST ISLAND ZIPLINE
             </div>
-            <h1 className="font-bold text-xl leading-tight" style={{ color: t.textColor }}>
+            <h1 className="font-bold text-xl leading-tight" style={{ color: t.headingColor ?? t.textColor }}>
               Drop in by zipline.<br />
               <span style={{ color: t.primaryColor }}>Leave with a story.</span>
             </h1>
-            <p className="text-xs" style={{ color: t.textColor, opacity: 0.6 }}>
+            <p className="text-xs" style={{ color: t.textMutedColor ?? t.textColor }}>
               428 metres · Maafushi → Vahmāfushi
             </p>
             <div className="flex gap-2 justify-center flex-wrap">
@@ -79,21 +81,21 @@ export function ThemePreview({ theme }: ThemePreviewProps) {
           </div>
 
           {/* Package cards */}
-          <div className="px-4 py-4 space-y-2" style={{ backgroundColor: t.backgroundColor }}>
-            <p className="text-xs font-bold" style={{ color: t.textColor }}>Packages</p>
+          <div className="px-4 py-4 space-y-2" style={{ backgroundColor: t.sectionBgColor ?? t.backgroundColor }}>
+            <p className="text-xs font-bold" style={{ color: t.headingColor ?? t.textColor }}>Packages</p>
             {["The Classic Flight — $75", "The Adventure Pack — $120", "The Full Story — $195"].map((pkg) => (
-              <div key={pkg} className="rounded-xl p-3 border" style={{ borderColor: `${t.primaryColor}30`, backgroundColor: `${t.primaryColor}08` }}>
-                <p className="text-xs font-medium" style={{ color: t.textColor }}>{pkg}</p>
+              <div key={pkg} className="rounded-xl p-3 border shadow-sm" style={{ borderColor: t.cardBorderColor ?? `${t.primaryColor}30`, backgroundColor: t.cardBgColor ?? "#FFFFFF" }}>
+                <p className="text-xs font-medium" style={{ color: t.headingColor ?? t.textColor }}>{pkg}</p>
               </div>
             ))}
           </div>
 
           {/* Stats bar */}
-          <div className="grid grid-cols-3 gap-0" style={{ backgroundColor: `${t.primaryColor}15` }}>
+          <div className="grid grid-cols-3 gap-0" style={{ backgroundColor: t.sectionAltBgColor ?? `${t.primaryColor}15` }}>
             {[["428m", "Over ocean"],["60s","Pure flight"],["↩","Return incl."]].map(([v, l]) => (
               <div key={l} className="text-center py-3 px-2">
                 <p className="font-bold text-sm" style={{ color: t.primaryColor }}>{v}</p>
-                <p className="text-[10px]" style={{ color: t.textColor, opacity: 0.6 }}>{l}</p>
+                <p className="text-[10px]" style={{ color: t.textMutedColor ?? t.textColor }}>{l}</p>
               </div>
             ))}
           </div>

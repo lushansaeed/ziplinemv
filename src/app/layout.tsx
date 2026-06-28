@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, Raleway } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -18,6 +19,12 @@ const raleway = Raleway({
   variable: "--font-raleway",
   display: "swap",
   weight: ["300", "400", "500", "600", "700", "800"],
+});
+
+const agrandir = localFont({
+  src: "./fonts/AgrandirVariable.ttf",
+  variable: "--font-agrandir",
+  display: "swap",
 });
 
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? "https://zipline.mv";
@@ -79,16 +86,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <link
-          rel="preload"
-          href="/fonts/Kindness-Matters.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
-      </head>
-      <body className={`${jakarta.variable} ${raleway.variable} font-body antialiased`}>
+      <body className={`${jakarta.variable} ${raleway.variable} ${agrandir.variable} font-body antialiased`}>
         <ThemeProvider>
           {children}
         </ThemeProvider>

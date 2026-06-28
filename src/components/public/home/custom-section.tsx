@@ -10,22 +10,22 @@ export function CustomSection({ sectionKey, content }: CustomSectionProps) {
   const headingLines = (content.heading || "").split("\n");
 
   return (
-    <section className="section-y bg-brand-deep">
+    <section className="section-y site-section">
       <div className="container-brand">
         <div className="text-center max-w-3xl mx-auto space-y-6">
 
           {content.badge && (
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
-              <span className="text-brand-citrus text-xs font-semibold tracking-wider uppercase">{content.badge}</span>
+              <span className="site-accent text-xs font-semibold tracking-wider uppercase">{content.badge}</span>
             </div>
           )}
 
           {content.heading && (
-            <h2 className="font-display font-bold text-4xl lg:text-5xl text-white leading-[1.1]">
+            <h2 className="font-display font-bold text-4xl lg:text-5xl site-heading leading-[1.1]">
               {headingLines.map((line, i) => (
                 <span key={i}>
                   {i === 1
-                    ? <span className="text-brand-citrus">{line}</span>
+                    ? <span className="site-accent">{line}</span>
                     : line
                   }
                   {i < headingLines.length - 1 && <br />}

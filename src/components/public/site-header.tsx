@@ -38,13 +38,19 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
           scrolled || !isHome
-            ? "bg-brand-deep/95 backdrop-blur-md border-b border-white/8 py-3"
+            ? "backdrop-blur-md border-b py-3"
             : "py-5 bg-transparent"
         )}
+        style={scrolled || !isHome ? { backgroundColor: "var(--header-bg, var(--site-header-bg, rgba(255,255,255,0.92)))", borderColor: "var(--card-border, rgba(0,128,160,0.18))" } : undefined}
       >
         <div className="container-brand flex items-center justify-between">
           {/* Logo */}
-          <LogoLockup logo={logo} subtitle="Vahmāfushi Island" />
+          <LogoLockup
+            logo={logo}
+            subtitle="Vahmāfushi Island"
+            textClassName={scrolled || !isHome ? "site-heading" : undefined}
+            subtitleClassName={scrolled || !isHome ? "site-text-muted" : undefined}
+          />
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1">
@@ -55,8 +61,10 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
                 className={cn(
                   "px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
                   pathname === item.href
-                    ? "text-brand-citrus bg-brand-citrus/8"
-                    : "text-white/70 hover:text-white hover:bg-white/6"
+                    ? "site-accent bg-white/20"
+                    : scrolled || !isHome
+                    ? "site-body hover:bg-white/30"
+                    : "text-white/80 hover:text-white hover:bg-white/6"
                 )}
               >
                 {item.label}
@@ -68,7 +76,10 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
           <div className="hidden md:flex items-center gap-3">
             <Link
               href="/auth/login"
-              className="text-white/60 hover:text-white text-sm font-medium transition-colors px-3 py-2"
+              className={cn(
+                "text-sm font-medium transition-colors px-3 py-2",
+                scrolled || !isHome ? "site-body" : "text-white/70 hover:text-white"
+              )}
             >
               Sign in
             </Link>
@@ -79,7 +90,10 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
 
           {/* Mobile menu button */}
           <button
-            className="md:hidden p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/8 transition-colors"
+            className={cn(
+              "md:hidden p-2 rounded-lg transition-colors",
+              scrolled || !isHome ? "site-body hover:bg-white/30" : "text-white/70 hover:text-white hover:bg-white/8"
+            )}
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Toggle menu"
           >
@@ -98,10 +112,11 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
         <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMenuOpen(false)} />
         <div
           className={cn(
-            "absolute top-0 right-0 h-full w-[280px] bg-brand-deep border-l border-white/8",
+            "absolute top-0 right-0 h-full w-[280px] border-l",
             "flex flex-col pt-20 pb-8 px-6 transition-transform duration-300",
             menuOpen ? "translate-x-0" : "translate-x-full"
           )}
+          style={{ backgroundColor: "var(--header-bg, var(--site-header-bg, rgba(255,255,255,0.96)))", borderColor: "var(--card-border, rgba(0,128,160,0.18))" }}
         >
           <nav className="flex-1 space-y-1">
             {NAV.map((item) => (
@@ -111,8 +126,8 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
                 className={cn(
                   "flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-colors",
                   pathname === item.href
-                    ? "text-brand-citrus bg-brand-citrus/10"
-                    : "text-white/70 hover:text-white hover:bg-white/6"
+                    ? "site-accent bg-white/30"
+                    : "site-body hover:bg-white/30"
                 )}
               >
                 {item.label}

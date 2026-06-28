@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 
@@ -26,6 +27,8 @@ export async function PATCH(req: NextRequest) {
   } else {
     theme = await prisma.websiteTheme.create({ data: { ...body, isActive: true } });
   }
+
+  revalidatePath("/", "layout");
 
   return NextResponse.json(theme);
 }

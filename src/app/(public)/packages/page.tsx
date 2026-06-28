@@ -71,11 +71,11 @@ export default async function PackagesPage() {
         </div>
 
         {/* Included in all packages */}
-        <div className="bg-white/3 border border-white/8 rounded-2xl p-6 mb-14 max-w-2xl mx-auto">
-          <p className="text-white/50 text-xs font-semibold uppercase tracking-wider mb-4 text-center">Included in every package</p>
+        <div className="site-card rounded-2xl p-6 mb-14 max-w-2xl mx-auto">
+          <p className="site-text-muted text-xs font-semibold uppercase tracking-wider mb-4 text-center">Included in every package</p>
           <div className="grid grid-cols-2 gap-3">
             {["Full 428m zipline ride", "Professional safety briefing", "All safety equipment", "Return speedboat to Maafushi", "Minimum age 6 years", "Weight 35–110 kg"].map((item) => (
-              <div key={item} className="flex items-center gap-2.5 text-sm text-white/70">
+              <div key={item} className="flex items-center gap-2.5 text-sm site-body">
                 <Check className="w-3.5 h-3.5 text-brand-lime flex-shrink-0" />
                 {item}
               </div>
@@ -89,10 +89,10 @@ export default async function PackagesPage() {
             <div
               key={pkg.id}
               className={cn(
-                "w-full sm:flex-[0_1_360px] flex flex-col rounded-2xl border overflow-hidden transition-all duration-300 hover:-translate-y-1",
+                "w-full sm:flex-[0_1_360px] site-card flex flex-col rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1",
                 pkg.featured
-                  ? "border-brand-citrus/40 shadow-[0_0_60px_rgba(245,166,35,0.1)]"
-                  : "border-white/10"
+                  ? "site-card-selected"
+                  : ""
               )}
             >
               {/* Image header */}
@@ -120,21 +120,21 @@ export default async function PackagesPage() {
                     </span>
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-brand-deep to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
               </div>
 
               <div className="flex flex-col flex-1 p-7 space-y-5">
                 <div>
-                  <h2 className="font-display font-bold text-2xl text-white">{pkg.name}</h2>
-                  <p className="text-white/55 text-sm mt-2 leading-relaxed">{pkg.description}</p>
+                  <h2 className="font-display font-bold text-2xl site-heading">{pkg.name}</h2>
+                  <p className="site-text-muted text-sm mt-2 leading-relaxed">{pkg.description}</p>
                 </div>
 
                 {/* Included */}
                 {pkg.included.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">What's included</p>
+                    <p className="text-xs site-text-muted uppercase tracking-wider font-semibold">What's included</p>
                     {pkg.included.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-sm text-white/75">
+                      <div key={i} className="flex items-start gap-2.5 text-sm site-body">
                         <Check className={cn("w-3.5 h-3.5 mt-0.5 flex-shrink-0", pkg.featured ? "text-brand-citrus" : "text-brand-lime")} />
                         {item}
                       </div>
@@ -145,9 +145,9 @@ export default async function PackagesPage() {
                 {/* Excluded */}
                 {pkg.excluded.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Not included</p>
+                    <p className="text-xs site-text-muted uppercase tracking-wider font-semibold">Not included</p>
                     {pkg.excluded.map((item, i) => (
-                      <div key={i} className="flex items-start gap-2.5 text-sm text-white/40">
+                      <div key={i} className="flex items-start gap-2.5 text-sm site-text-muted">
                         <X className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-white/25" />
                         {item}
                       </div>
@@ -156,28 +156,28 @@ export default async function PackagesPage() {
                 )}
 
                 {/* Price + CTA */}
-                <div className="pt-4 border-t border-white/8 mt-auto">
+                <div className="pt-4 border-t site-subtle-border mt-auto">
                   <div className="flex items-end justify-between mb-4">
                     <div>
-                      <p className="text-white/40 text-xs">Tourist price from</p>
-                      <p className="font-display font-bold text-3xl text-white">
+                      <p className="site-text-muted text-xs">Tourist price from</p>
+                      <p className="font-display font-bold text-3xl site-heading">
                         {formatCurrency(Number(pkg.touristPrice), pkg.currency)}
                       </p>
                       {pkg.localPrice && (
-                        <p className="text-white/35 text-xs mt-0.5">
+                        <p className="site-text-muted text-xs mt-0.5">
                           Maldivian residents: {formatCurrency(Number(pkg.localPrice), pkg.currency)}
                         </p>
                       )}
                     </div>
-                    <p className="text-white/30 text-xs">per person</p>
+                    <p className="site-text-muted text-xs">per person</p>
                   </div>
                   <Link
                     href={`/book?package=${pkg.slug}`}
                     className={cn(
                       "w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold transition-all duration-200",
                       pkg.featured
-                        ? "bg-brand-gradient text-white shadow-brand-md hover:shadow-brand-lg"
-                        : "border border-white/15 text-white hover:bg-white/8"
+                        ? "site-button"
+                        : "site-button-outline"
                     )}
                   >
                     Book this package
@@ -190,12 +190,12 @@ export default async function PackagesPage() {
         </div>
 
         {/* Custom / group note */}
-        <div className="mt-16 text-center bg-white/3 rounded-2xl border border-white/8 p-8 max-w-xl mx-auto space-y-3">
-          <p className="text-white font-semibold">Need something custom?</p>
-          <p className="text-white/50 text-sm">
+        <div className="mt-16 text-center site-card rounded-2xl p-8 max-w-xl mx-auto space-y-3">
+          <p className="site-heading font-semibold">Need something custom?</p>
+          <p className="site-text-muted text-sm">
             Group bookings, corporate events, or special occasions — we'll work with you.
           </p>
-          <Link href="/contact" className="inline-flex items-center gap-2 text-brand-citrus hover:text-brand-mango font-semibold text-sm transition-colors group">
+          <Link href="/contact" className="inline-flex items-center gap-2 site-accent font-semibold text-sm transition-colors group">
             Get in touch
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

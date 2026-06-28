@@ -1,18 +1,23 @@
 import { unstable_noStore as noStore } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 
-// ─── Defaults (Vahmāfushi brand) ─────────────────────────────────────────────
+// ─── Defaults (premium Maldives website theme) ───────────────────────────────
 const DEFAULTS = {
-  primaryColor:     "#F5A623",
-  secondaryColor:   "#FF7B2E",
-  accentColor:      "#06B6D4",
-  backgroundColor:  "#0A0F1A",
-  textColor:        "#FFFFFF",
-  buttonColor:      "#F5A623",
-  buttonTextColor:  "#0A0F1A",
-  headerBgColor:    "#0A0F1A",
-  footerBgColor:    "#050A10",
-  textMutedColor:   "#8B9CB3",
+  primaryColor:     "#00A6B4",
+  secondaryColor:   "#064E5F",
+  accentColor:      "#F6C85F",
+  backgroundColor:  "#F8FAF9",
+  sectionBgColor:   "#FFFFFF",
+  sectionAltBgColor:"#EEFAF8",
+  cardBgColor:      "#FFFFFF",
+  cardBorderColor:  "#00A6B4",
+  textColor:        "#263238",
+  headingColor:     "#083344",
+  buttonColor:      "#00A6B4",
+  buttonTextColor:  "#FFFFFF",
+  headerBgColor:    "#FFFFFF",
+  footerBgColor:    "#052F3F",
+  textMutedColor:   "#6B7280",
   buttonRadius:     "rounded-full",
   // Legacy theme settings keys
   theme_primary:    "#F5A623",
@@ -65,6 +70,15 @@ function hexToHsl(hex: string): string {
   } catch { return "38 91% 55%"; }
 }
 
+function readThemeConfig(theme: any): Record<string, string> {
+  if (!theme?.config || typeof theme.config !== "object" || Array.isArray(theme.config)) return {};
+  return theme.config as Record<string, string>;
+}
+
+function isOldDefaultTheme(theme: any): boolean {
+  return theme?.backgroundColor === "#0A0F1A" && theme?.primaryColor === "#F5A623";
+}
+
 export async function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme, settingOverrides } = await getActiveTheme();
 
@@ -72,10 +86,12 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   const logoUrl = settingOverrides["site_logo_url"] as string | undefined ?? "";
 
   // Merge: DB theme > settings overrides > defaults
+  const themeConfig = readThemeConfig(theme);
   const colors = {
     ...DEFAULTS,
     ...settingOverrides,
-    ...(theme ? {
+    ...themeConfig,
+    ...(theme && !isOldDefaultTheme(theme) ? {
       primaryColor:    theme.primaryColor,
       secondaryColor:  theme.secondaryColor,
       accentColor:     theme.accentColor,
@@ -97,6 +113,17 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
       --site-secondary:       ${colors.secondaryColor};
       --site-accent:          ${colors.accentColor};
       --site-bg:              ${colors.backgroundColor};
+      --section-bg:           ${colors.sectionBgColor};
+      --section-alt-bg:       ${colors.sectionAltBgColor};
+      --card-bg:              ${colors.cardBgColor};
+      --card-border:          ${colors.cardBorderColor};
+      --heading:              ${colors.headingColor};
+      --body:                 ${colors.textColor};
+      --muted:                ${colors.textMutedColor ?? "#6B7280"};
+      --button-bg:            ${colors.buttonColor};
+      --button-text:          ${colors.buttonTextColor};
+      --header-bg:            ${colors.headerBgColor};
+      --footer-bg:            ${colors.footerBgColor};
       --site-text:            ${colors.textColor};
       --site-text-muted:      ${colors.textMutedColor ?? "#8B9CB3"};
       --site-button:          ${colors.buttonColor};

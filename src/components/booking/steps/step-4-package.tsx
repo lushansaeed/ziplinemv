@@ -51,10 +51,10 @@ export function Step4Package({ packages }: { packages: Package[] }) {
               key={pkg.id}
               onClick={() => select(pkg)}
               className={cn(
-                "w-full sm:flex-[0_1_380px] flex items-start gap-4 p-5 rounded-2xl border text-left transition-all duration-200",
+                "w-full sm:flex-[0_1_380px] site-card flex items-start gap-4 p-5 rounded-2xl text-left transition-all duration-200",
                 isSelected
-                  ? "border-brand-citrus/60 bg-brand-citrus/8 shadow-brand-sm"
-                  : "border-white/10 bg-white/3 hover:border-brand-citrus/30 hover:bg-white/5"
+                  ? "site-card-selected"
+                  : ""
               )}
             >
               {/* Selection indicator */}
@@ -69,7 +69,7 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-display font-bold text-white text-lg">{pkg.name}</p>
+                      <p className="font-display font-bold site-heading text-lg">{pkg.name}</p>
                       {pkg.featured && (
                         <span className="bg-brand-gradient text-brand-deep text-[10px] font-bold px-2 py-0.5 rounded-full">
                           Popular
@@ -77,14 +77,14 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                       )}
                     </div>
                     {pkg.description && (
-                      <p className="text-white/50 text-sm mt-1 line-clamp-2">{pkg.description}</p>
+                      <p className="site-text-muted text-sm mt-1 line-clamp-2">{pkg.description}</p>
                     )}
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="font-display font-bold text-xl text-white">
+                    <p className="font-display font-bold text-xl site-heading">
                       {formatBookingPrice(total, riderType)}
                     </p>
-                    <p className="text-white/35 text-xs">
+                    <p className="site-text-muted text-xs">
                       {formatBookingPrice(unitPrice, riderType)} × {numRiders}
                     </p>
                     {isLocal ? (
@@ -92,7 +92,7 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                         MVR · Local price
                       </span>
                     ) : (
-                      <span className="text-[10px] text-white/30 mt-0.5 inline-block">USD</span>
+                      <span className="text-[10px] site-text-muted mt-0.5 inline-block">USD</span>
                     )}
                   </div>
                 </div>
@@ -100,7 +100,7 @@ export function Step4Package({ packages }: { packages: Package[] }) {
                 {pkg.included.length > 0 && (
                   <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
                     {pkg.included.slice(0, 4).map((item, i) => (
-                      <span key={i} className={cn("flex items-center gap-1 text-xs", isSelected ? "text-brand-lime/80" : "text-white/35")}>
+                      <span key={i} className={cn("flex items-center gap-1 text-xs", isSelected ? "site-accent" : "site-text-muted")}>
                         <Check className="w-3 h-3" />
                         {item}
                       </span>

@@ -28,7 +28,7 @@ export async function PageHeading({
   return (
     <div className={cn("space-y-4", className)}>
       <h1
-        className="font-display font-bold text-white leading-[1.05] text-balance [text-shadow:0_2px_40px_rgba(0,0,0,0.4)]"
+        className="font-display font-bold site-heading leading-[1.05] text-balance"
         style={{
           fontSize:        `clamp(2rem, ${(typo.fontSize / 16).toFixed(2)}vw, ${typo.fontSize}px)`,
           transform:       typo.rotation !== 0 ? `rotate(${typo.rotation}deg)` : undefined,
@@ -38,7 +38,7 @@ export async function PageHeading({
         {lines.map((line, i) => (
           <span key={i}>
             {i === accentLine ? (
-              <span className="text-brand-gradient">{line}</span>
+              <span className="site-accent">{line}</span>
             ) : (
               line
             )}
@@ -50,7 +50,7 @@ export async function PageHeading({
       {!hideSubheading && typo.subheading && (
         <p
           className={cn(
-            "text-white/60 text-base sm:text-lg md:text-xl max-w-xl leading-relaxed",
+            "site-text-muted text-base sm:text-lg md:text-xl max-w-xl leading-relaxed",
             subClassName
           )}
         >

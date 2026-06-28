@@ -39,7 +39,7 @@ export function TrustBar({ settings }: TrustBarProps) {
   ];
 
   return (
-    <section className="bg-brand-deep border-y border-white/6">
+    <section className="site-section-alt border-y site-subtle-border">
       <div className="container-brand py-6">
         <div className="flex flex-wrap justify-center lg:justify-between gap-6 lg:gap-0">
           {items.map((item, i) => {
@@ -50,8 +50,8 @@ export function TrustBar({ settings }: TrustBarProps) {
                   <Icon className={`w-4 h-4 ${item.color}`} />
                 </div>
                 <div>
-                  <p className="text-white/40 text-[11px] uppercase tracking-wider font-medium">{item.label}</p>
-                  <p className="text-white text-sm font-semibold">{item.value}</p>
+                  <p className="site-text-muted text-[11px] uppercase tracking-wider font-medium">{item.label}</p>
+                  <p className="site-heading text-sm font-semibold">{item.value}</p>
                 </div>
               </div>
             );

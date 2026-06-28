@@ -517,7 +517,7 @@ export function CmsWorkspace({
                       <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand-citrus/10 border border-brand-citrus/20">
                         <span className="text-brand-citrus text-[10px] font-semibold uppercase tracking-wider">{s.badge || sec.badge}</span>
                       </div>
-                      <div style={{ fontFamily: "'Kindness Matters', cursive", fontWeight: 700, fontSize: "22px", lineHeight: 1.1, color: "#fff" }}>
+                      <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: "22px", lineHeight: 1.1, color: "#fff" }}>
                         {(s.heading || sec.defaultH).split("\n").map((line, i, arr) => (
                           <span key={i}>
                             {i === 1
@@ -658,7 +658,7 @@ export function CmsWorkspace({
                           fontWeight: 700,
                           lineHeight: 1.05,
                           color: "#ffffff",
-                          fontFamily: "'Kindness Matters', cursive",
+                          fontFamily: "var(--font-display)",
                           transition: "all 0.15s",
                         }}
                       >

@@ -44,8 +44,8 @@ export function StepShell({
     <div className="space-y-4">
       {/* Step header */}
       <div className="space-y-1">
-        <h2 className="font-display font-bold text-2xl text-white">{title}</h2>
-        {subtitle && <p className="text-white/50 text-sm">{subtitle}</p>}
+        <h2 className="font-display font-bold text-2xl site-heading">{title}</h2>
+        {subtitle && <p className="site-text-muted text-sm">{subtitle}</p>}
       </div>
 
       {/* Content */}
@@ -62,7 +62,7 @@ export function StepShell({
           {!hidePrev && currentStep > 1 ? (
             <button
               onClick={prevStep}
-              className="flex items-center gap-2 text-white/50 hover:text-white text-sm font-medium transition-colors"
+              className="flex items-center gap-2 site-text-muted text-sm font-medium transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -79,7 +79,7 @@ export function StepShell({
               className={cn(
                 "lg:hidden",   // ← hidden on desktop (sidebar has it)
                 "flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold",
-                "bg-brand-gradient text-white shadow-brand-md",
+                "site-button shadow-brand-md",
                 "transition-all duration-200 active:scale-[0.98]",
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
               )}

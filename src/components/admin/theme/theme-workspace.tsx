@@ -12,32 +12,42 @@ import { GradientBuilder } from "./gradient-builder";
 import { BackgroundEditor } from "./background-editor";
 import { ThemePreview } from "./theme-preview";
 
-// ─── Default brand palette (Vahmāfushi) ──────────────────────────────────────
+// ─── Default premium Maldives palette ────────────────────────────────────────
 const BRAND_DEFAULTS = {
-  primaryColor:     "#F5A623",
-  secondaryColor:   "#FF7B2E",
-  accentColor:      "#06B6D4",
-  backgroundColor:  "#0A0F1A",
-  textColor:        "#FFFFFF",
-  textMutedColor:   "#8B9CB3",
-  buttonColor:      "#F5A623",
-  buttonTextColor:  "#0A0F1A",
-  headerBgColor:    "#0A0F1A",
-  footerBgColor:    "#050A10",
+  primaryColor:     "#00A6B4",
+  secondaryColor:   "#064E5F",
+  accentColor:      "#F6C85F",
+  backgroundColor:  "#F8FAF9",
+  sectionBgColor:   "#FFFFFF",
+  sectionAltBgColor:"#EEFAF8",
+  cardBgColor:      "#FFFFFF",
+  cardBorderColor:  "#00A6B4",
+  textColor:        "#263238",
+  headingColor:     "#083344",
+  textMutedColor:   "#6B7280",
+  buttonColor:      "#00A6B4",
+  buttonTextColor:  "#FFFFFF",
+  headerBgColor:    "#FFFFFF",
+  footerBgColor:    "#052F3F",
   buttonRadius:     "rounded-full",
 };
 
 const COLOR_FIELDS = [
-  { key: "primaryColor",    label: "Primary",          desc: "CTA buttons, highlights, links" },
-  { key: "secondaryColor",  label: "Secondary",        desc: "Hover, secondary buttons" },
-  { key: "accentColor",     label: "Accent",           desc: "Tags, badges, special elements" },
-  { key: "backgroundColor", label: "Page background",  desc: "Main site background" },
-  { key: "textColor",       label: "Body text",        desc: "Primary text colour" },
-  { key: "textMutedColor",  label: "Secondary text",   desc: "Subtitles, captions, helper text — the greyish text colour" },
-  { key: "buttonColor",     label: "Button fill",      desc: "Default button background" },
-  { key: "buttonTextColor", label: "Button text",      desc: "Text inside buttons" },
-  { key: "headerBgColor",   label: "Header background",desc: "Navigation bar background" },
-  { key: "footerBgColor",   label: "Footer background",desc: "Footer background" },
+  { key: "backgroundColor",   label: "Main background",      desc: "Overall public website background" },
+  { key: "sectionBgColor",    label: "Section background",   desc: "Default public section background" },
+  { key: "sectionAltBgColor", label: "Alternate section",     desc: "Soft alternating section background" },
+  { key: "cardBgColor",       label: "Card background",       desc: "Package, add-on and content card fill" },
+  { key: "cardBorderColor",   label: "Card border",           desc: "Subtle border around cards" },
+  { key: "primaryColor",      label: "Primary brand",         desc: "CTA buttons, highlights, links" },
+  { key: "secondaryColor",    label: "Secondary brand",       desc: "Secondary accents and strong text" },
+  { key: "accentColor",       label: "Accent",                desc: "Badges, tags, special elements" },
+  { key: "buttonColor",       label: "Button background",     desc: "Default button fill" },
+  { key: "buttonTextColor",   label: "Button text",           desc: "Text inside buttons" },
+  { key: "headingColor",      label: "Heading text",          desc: "Public website headings" },
+  { key: "textColor",         label: "Body text",             desc: "Primary public body text" },
+  { key: "textMutedColor",    label: "Muted text",            desc: "Subtitles, captions, helper text" },
+  { key: "headerBgColor",     label: "Header background",     desc: "Navigation bar background" },
+  { key: "footerBgColor",     label: "Footer background",     desc: "Footer background" },
 ];
 
 const BUTTON_RADIUS_OPTIONS = [
@@ -75,10 +85,21 @@ function getContrastRatio(hex1: string, hex2: string): number {
 
 interface ThemeData {
   primaryColor: string; secondaryColor: string; accentColor: string;
-  backgroundColor: string; textColor: string; textMutedColor: string;
+  backgroundColor: string; sectionBgColor: string; sectionAltBgColor: string;
+  cardBgColor: string; cardBorderColor: string;
+  textColor: string; headingColor: string; textMutedColor: string;
   buttonColor: string; buttonTextColor: string;
   headerBgColor: string; footerBgColor: string;
   buttonRadius: string;
+}
+
+function getThemeConfig(initialTheme: any): Partial<ThemeData> {
+  if (!initialTheme?.config || typeof initialTheme.config !== "object" || Array.isArray(initialTheme.config)) return {};
+  return initialTheme.config as Partial<ThemeData>;
+}
+
+function isOldDefaultTheme(initialTheme: any): boolean {
+  return initialTheme?.backgroundColor === "#0A0F1A" && initialTheme?.primaryColor === "#F5A623";
 }
 
 export function ThemeWorkspace({
@@ -94,20 +115,27 @@ export function ThemeWorkspace({
   const [isPending, startTransition] = useTransition();
   const [showPreview, setShowPreview] = useState(false);
   const [isDraft, setIsDraft]         = useState(false);
+  const initialConfig = getThemeConfig(initialTheme);
+  const usePremiumDefaults = isOldDefaultTheme(initialTheme);
 
   // Theme colors state
   const [theme, setTheme] = useState<ThemeData>({
-    primaryColor:     initialTheme?.primaryColor     ?? BRAND_DEFAULTS.primaryColor,
-    secondaryColor:   initialTheme?.secondaryColor   ?? BRAND_DEFAULTS.secondaryColor,
-    accentColor:      initialTheme?.accentColor      ?? BRAND_DEFAULTS.accentColor,
-    backgroundColor:  initialTheme?.backgroundColor  ?? BRAND_DEFAULTS.backgroundColor,
-    textColor:        initialTheme?.textColor        ?? BRAND_DEFAULTS.textColor,
-    textMutedColor:   (initialTheme as any)?.textMutedColor  ?? BRAND_DEFAULTS.textMutedColor,
-    buttonColor:      initialTheme?.buttonColor      ?? BRAND_DEFAULTS.buttonColor,
-    buttonTextColor:  initialTheme?.buttonTextColor  ?? BRAND_DEFAULTS.buttonTextColor,
-    headerBgColor:    initialTheme?.headerBgColor    ?? BRAND_DEFAULTS.headerBgColor,
-    footerBgColor:    initialTheme?.footerBgColor    ?? BRAND_DEFAULTS.footerBgColor,
-    buttonRadius:     initialTheme?.buttonRadius     ?? BRAND_DEFAULTS.buttonRadius,
+    primaryColor:     usePremiumDefaults ? BRAND_DEFAULTS.primaryColor : initialTheme?.primaryColor     ?? BRAND_DEFAULTS.primaryColor,
+    secondaryColor:   usePremiumDefaults ? BRAND_DEFAULTS.secondaryColor : initialTheme?.secondaryColor   ?? BRAND_DEFAULTS.secondaryColor,
+    accentColor:      usePremiumDefaults ? BRAND_DEFAULTS.accentColor : initialTheme?.accentColor      ?? BRAND_DEFAULTS.accentColor,
+    backgroundColor:  usePremiumDefaults ? BRAND_DEFAULTS.backgroundColor : initialTheme?.backgroundColor  ?? BRAND_DEFAULTS.backgroundColor,
+    sectionBgColor:   initialConfig.sectionBgColor   ?? BRAND_DEFAULTS.sectionBgColor,
+    sectionAltBgColor:initialConfig.sectionAltBgColor?? BRAND_DEFAULTS.sectionAltBgColor,
+    cardBgColor:      initialConfig.cardBgColor      ?? BRAND_DEFAULTS.cardBgColor,
+    cardBorderColor:  initialConfig.cardBorderColor  ?? BRAND_DEFAULTS.cardBorderColor,
+    textColor:        usePremiumDefaults ? BRAND_DEFAULTS.textColor : initialTheme?.textColor        ?? BRAND_DEFAULTS.textColor,
+    headingColor:     initialConfig.headingColor     ?? BRAND_DEFAULTS.headingColor,
+    textMutedColor:   usePremiumDefaults ? BRAND_DEFAULTS.textMutedColor : (initialTheme as any)?.textMutedColor  ?? BRAND_DEFAULTS.textMutedColor,
+    buttonColor:      usePremiumDefaults ? BRAND_DEFAULTS.buttonColor : initialTheme?.buttonColor      ?? BRAND_DEFAULTS.buttonColor,
+    buttonTextColor:  usePremiumDefaults ? BRAND_DEFAULTS.buttonTextColor : initialTheme?.buttonTextColor  ?? BRAND_DEFAULTS.buttonTextColor,
+    headerBgColor:    usePremiumDefaults ? BRAND_DEFAULTS.headerBgColor : initialTheme?.headerBgColor    ?? BRAND_DEFAULTS.headerBgColor,
+    footerBgColor:    usePremiumDefaults ? BRAND_DEFAULTS.footerBgColor : initialTheme?.footerBgColor    ?? BRAND_DEFAULTS.footerBgColor,
+    buttonRadius:     usePremiumDefaults ? BRAND_DEFAULTS.buttonRadius : initialTheme?.buttonRadius     ?? BRAND_DEFAULTS.buttonRadius,
   });
 
   const [presets, setPresets] = useState<any[]>(initialPresets ?? []);
@@ -128,10 +156,14 @@ export function ThemeWorkspace({
   async function publish() {
     if (!canPublish) { toast.error("You do not have permission to publish website theme changes."); return; }
     startTransition(async () => {
+      const { sectionBgColor, sectionAltBgColor, cardBgColor, cardBorderColor, headingColor, ...baseTheme } = theme;
       const res = await fetch("/api/admin/theme", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(theme),
+        body: JSON.stringify({
+          ...baseTheme,
+          config: { sectionBgColor, sectionAltBgColor, cardBgColor, cardBorderColor, headingColor },
+        }),
       });
       if (res.ok) { toast.success("Theme published! Refresh the public site to see changes."); setIsDraft(false); }
       else toast.error("Failed to publish theme");
@@ -281,11 +313,11 @@ export function ThemeWorkspace({
               {/* Live mini-preview */}
               <div className="admin-card space-y-4" style={{ backgroundColor: theme.backgroundColor }}>
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Live preview</p>
-                <div className="space-y-3 p-4 rounded-xl" style={{ backgroundColor: theme.backgroundColor }}>
-                  <h3 className="font-bold text-2xl" style={{ color: theme.textColor }}>
+                <div className="space-y-3 p-4 rounded-xl" style={{ backgroundColor: theme.sectionBgColor }}>
+                  <h3 className="font-bold text-2xl" style={{ color: theme.headingColor }}>
                     Drop in by zipline.
                   </h3>
-                  <p style={{ color: theme.textColor, opacity: 0.7 }} className="text-sm">
+                  <p style={{ color: theme.textMutedColor }} className="text-sm">
                     428 metres of ocean, adrenaline, and unforgettable views.
                   </p>
                   <div className="flex gap-2 flex-wrap">
@@ -297,10 +329,14 @@ export function ThemeWorkspace({
                     </button>
                     <button
                       className={cn("px-5 py-2.5 text-sm font-semibold border", theme.buttonRadius)}
-                      style={{ borderColor: theme.primaryColor, color: theme.primaryColor }}
+                      style={{ borderColor: theme.primaryColor, color: theme.primaryColor, backgroundColor: theme.cardBgColor }}
                     >
                       View packages
                     </button>
+                  </div>
+                  <div className="rounded-xl border p-4 shadow-sm" style={{ backgroundColor: theme.cardBgColor, borderColor: theme.cardBorderColor }}>
+                    <p className="text-xs font-semibold" style={{ color: theme.headingColor }}>Premium package card</p>
+                    <p className="text-xs mt-1" style={{ color: theme.textMutedColor }}>Cards stand apart from the page background.</p>
                   </div>
                   <div className="flex gap-2 flex-wrap">
                     {[theme.primaryColor, theme.secondaryColor, theme.accentColor].map((c, i) => (
