@@ -10,7 +10,7 @@ import {
   eachDayOfInterval, getDay, isBefore, isToday, parseISO,
 } from "date-fns";
 
-const OPEN_DAYS = new Set([0, 1, 2, 3, 4, 5, 6]);
+const OPEN_DAYS  = new Set([0, 1, 2, 3, 4, 5, 6]);
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 export function Step1Date() {
@@ -23,13 +23,9 @@ export function Step1Date() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const days = eachDayOfInterval({
-    start: startOfMonth(viewMonth),
-    end:   endOfMonth(viewMonth),
-  });
-
-  const firstDow   = getDay(startOfMonth(viewMonth));
-  const selected   = date ? parseISO(date) : null;
+  const days      = eachDayOfInterval({ start: startOfMonth(viewMonth), end: endOfMonth(viewMonth) });
+  const firstDow  = getDay(startOfMonth(viewMonth));
+  const selected  = date ? parseISO(date) : null;
 
   function isSelectable(d: Date) {
     return !isBefore(d, today) && OPEN_DAYS.has(getDay(d));
@@ -51,28 +47,26 @@ export function Step1Date() {
       onNext={nextStep}
       nextDisabled={!date}
     >
-      {/* Calendar — compact, max-width constrained */}
-      {/* Calendar — full width on left column, centered content */}
       <div className="w-full max-w-md mx-auto">
-        <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
 
           {/* Month navigation */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-white/8">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <button
               onClick={prevMonth}
               disabled={isBefore(subMonths(viewMonth, 1), startOfMonth(today))}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 disabled:opacity-25 transition-all"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 disabled:opacity-25 transition-all"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
 
-            <span className="text-sm font-semibold text-white">
+            <span className="text-sm font-semibold text-gray-800">
               {format(viewMonth, "MMMM yyyy")}
             </span>
 
             <button
               onClick={() => setViewMonth((m) => addMonths(m, 1))}
-              className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-all"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -82,7 +76,7 @@ export function Step1Date() {
             {/* Weekday headers */}
             <div className="grid grid-cols-7 mb-2">
               {DAY_LABELS.map((d) => (
-                <div key={d} className="text-center text-xs font-semibold text-white/40 py-2">
+                <div key={d} className="text-center text-xs font-semibold text-gray-400 py-2">
                   {d}
                 </div>
               ))}
@@ -90,10 +84,7 @@ export function Step1Date() {
 
             {/* Day grid */}
             <div className="grid grid-cols-7 gap-1">
-              {/* Empty cells */}
-              {Array.from({ length: firstDow }).map((_, i) => (
-                <div key={`e-${i}`} />
-              ))}
+              {Array.from({ length: firstDow }).map((_, i) => <div key={`e-${i}`} />)}
 
               {days.map((d) => {
                 const selectable = isSelectable(d);
@@ -107,21 +98,21 @@ export function Step1Date() {
                     onClick={() => select(d)}
                     disabled={!selectable}
                     className={cn(
-                      "relative h-11 w-full rounded-xl text-sm font-medium transition-all duration-150 flex items-center justify-center",
+                      "relative h-10 w-full rounded-xl text-sm font-medium transition-all duration-150 flex items-center justify-center",
                       isSelected
-                        ? "bg-[var(--theme-primary,#F5A623)] text-[#0A0F1A] font-bold"
+                        ? "bg-[var(--site-primary,#00A6B4)] text-white font-bold shadow-sm"
                         : isTodayD && selectable
-                        ? "border border-[var(--theme-primary,#F5A623)]/50 text-white hover:bg-[var(--theme-primary,#F5A623)]/15"
+                        ? "border border-[var(--site-primary,#00A6B4)] text-[var(--site-primary,#00A6B4)] font-semibold hover:bg-[var(--site-primary,#00A6B4)]/10"
                         : selectable
-                        ? "text-white/85 hover:bg-white/10 hover:text-white"
+                        ? "text-gray-800 hover:bg-gray-100 hover:text-gray-900"
                         : isPast
-                        ? "text-white/20 cursor-not-allowed"
-                        : "text-white/20 cursor-not-allowed"
+                        ? "text-gray-300 cursor-not-allowed"
+                        : "text-gray-300 cursor-not-allowed"
                     )}
                   >
                     {format(d, "d")}
                     {isTodayD && !isSelected && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--theme-primary,#F5A623)]" />
+                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--site-primary,#00A6B4)]" />
                     )}
                   </button>
                 );
@@ -130,17 +121,17 @@ export function Step1Date() {
           </div>
 
           {/* Legend */}
-          <div className="px-4 py-2.5 border-t border-white/8 flex items-center gap-4 text-[11px] text-white/35">
+          <div className="px-4 py-2.5 border-t border-gray-100 flex items-center gap-4 text-[11px] text-gray-400">
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-[var(--theme-primary,#F5A623)]/80 inline-block" />
+              <span className="w-3 h-3 rounded-sm bg-[var(--site-primary,#00A6B4)] inline-block" />
               Selected
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm border border-[var(--theme-primary,#F5A623)]/50 inline-block" />
+              <span className="w-3 h-3 rounded-sm border border-[var(--site-primary,#00A6B4)] inline-block" />
               Today
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-sm bg-white/8 inline-block" />
+              <span className="w-3 h-3 rounded-sm bg-gray-100 border border-gray-200 inline-block" />
               Available
             </span>
           </div>
@@ -149,14 +140,14 @@ export function Step1Date() {
         {/* Selected date confirmation */}
         {date && (
           <div className="mt-3 flex items-center gap-2 text-sm px-1">
-            <div className="w-2 h-2 rounded-full bg-[var(--theme-success,#84CC16)] flex-shrink-0" />
-            <span className="text-white/70">
-              <span className="text-white font-medium">{format(parseISO(date), "EEEE, d MMMM yyyy")}</span>
+            <div className="w-2 h-2 rounded-full bg-[var(--site-primary,#00A6B4)] flex-shrink-0" />
+            <span className="text-gray-500">
+              <span className="text-gray-900 font-medium">{format(parseISO(date), "EEEE, d MMMM yyyy")}</span>
             </span>
           </div>
         )}
 
-        <p className="text-[11px] text-white/25 text-center mt-3">
+        <p className="text-[11px] text-gray-400 text-center mt-3">
           Open daily 08:00 – 17:00 · Weather may affect operations
         </p>
       </div>
