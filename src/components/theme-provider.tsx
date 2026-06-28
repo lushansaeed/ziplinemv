@@ -111,6 +111,7 @@ export async function ThemeProvider({ children }: { children: React.ReactNode })
   const cssVars = `
     :root {
       /* ── Website theme (public site only) ── */
+      --public-bg:            ${colors.backgroundColor};
       --site-primary:         ${colors.primaryColor};
       --site-secondary:       ${colors.secondaryColor};
       --site-accent:          ${colors.accentColor};

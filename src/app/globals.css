@@ -253,6 +253,11 @@
 .theme-contrast :where(.text-white\/20) { color: rgba(255, 255, 255, 0.20) !important; }
 .theme-contrast :where(.text-white\/15) { color: rgba(255, 255, 255, 0.15) !important; }
 
+/* Prevent navy flash during public page navigation */
+html:has(.theme-public) {
+  background-color: var(--public-bg, #F8FAF9);
+}
+
 /* ─── Base Resets ───────────────────────────────────────────────────── */
 @layer base {
   * {

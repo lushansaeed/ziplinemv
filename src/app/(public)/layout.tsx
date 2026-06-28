@@ -44,7 +44,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <SiteHeader logo={logo} />
       <Suspense fallback={null}><AffiliateTracker /></Suspense>
       <main className="theme-light-copy flex-1">{children}</main>
-      <SiteFooter />
+      <SiteFooter logo={logo} />
     </div>
   );
 }

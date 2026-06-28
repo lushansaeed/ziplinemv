@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogoMark, type LogoData } from "@/components/shared/site-logo";
 
 const LINKS = {
   Experience: [
@@ -57,7 +58,7 @@ const SOCIALS = [
   },
 ];
 
-export function SiteFooter() {
+export function SiteFooter({ logo }: { logo?: LogoData }) {
   return (
     <footer className="theme-contrast border-t border-white/10" style={{ backgroundColor: "var(--footer-bg, var(--site-footer-bg, #052F3F))" }}>
       <div className="container-brand py-16 lg:py-20">
@@ -65,15 +66,21 @@ export function SiteFooter() {
           {/* Brand column */}
           <div className="col-span-2 lg:col-span-1 space-y-5">
             <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
-              <div>
-                <p className="font-display font-bold text-white text-sm leading-none">Zipline Maldives</p>
-                <p className="text-white/35 text-[10px] tracking-wide mt-0.5">Vahmāfushi Island</p>
-              </div>
+              {logo ? (
+                <LogoMark logo={logo} />
+              ) : (
+                <div className="w-9 h-9 rounded-xl bg-brand-gradient flex items-center justify-center">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <path d="M3 17L12 3L21 17" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </div>
+              )}
+              {!logo?.url && (
+                <div>
+                  <p className="font-display font-bold text-white text-sm leading-none">Zipline Maldives</p>
+                  <p className="text-white/35 text-[10px] tracking-wide mt-0.5">Vahmāfushi Island</p>
+                </div>
+              )}
             </Link>
             <p className="text-white/40 text-sm leading-relaxed max-w-[200px]">
               Maldives' first island-to-island zipline. 428 metres of pure adventure.
