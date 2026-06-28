@@ -13,7 +13,7 @@ export default async function AuthLayout({
 }) {
   const logo = await getLogoData();
   return (
-    <div className="min-h-screen bg-brand-deep theme-public flex">
+    <div className="min-h-screen bg-brand-deep flex">
       {/* Left — brand panel (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-[480px] xl:w-[540px] relative flex-col justify-between p-12 bg-gradient-to-br from-brand-deep via-[#0d1f2d] to-brand-deep overflow-hidden flex-shrink-0">
         {/* Decorative circles */}
