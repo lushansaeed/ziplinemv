@@ -43,9 +43,9 @@ export function Step2Slot() {
 
   function selectSlot(slot: SlotAvailability) {
     if (!slot.selectable) return;
-    // Store DB slot ID (required by booking creation) + display key for matching
-    setField("slotId",   (slot as any).id ?? `${slot.startTime}-${slot.endTime}`);
-    setField("slotTime", slot.label);
+    setField("slotId",        (slot as any).id ?? `${slot.startTime}-${slot.endTime}`);
+    setField("slotTime",      slot.label);
+    setField("slotRemaining", (slot as any).remaining ?? 35);
   }
 
   return (

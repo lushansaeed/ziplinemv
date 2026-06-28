@@ -5,10 +5,10 @@ import { useBookingStore } from "@/lib/booking/store";
 import { StepShell } from "../step-shell";
 import { cn } from "@/lib/utils";
 
-const MAX_RIDERS = 8;
-
 export function Step3Riders() {
-  const { numRiders, riderType, syncRiders, setField, nextStep } = useBookingStore();
+  const { numRiders, riderType, slotRemaining, syncRiders, setField, nextStep } = useBookingStore();
+  // Cap at slot's remaining capacity (falls back to 35 for walk-ins / fresh state)
+  const MAX_RIDERS = Math.max(1, slotRemaining ?? 35);
 
   function selectRiderType(type: "tourist" | "local") {
     if (type === riderType) return;
@@ -140,9 +140,9 @@ export function Step3Riders() {
           </button>
         </div>
 
-        {/* Quick buttons */}
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5, 6].map((n) => (
+        {/* Quick buttons — show up to 8 shortcuts, capped by MAX_RIDERS */}
+        <div className="flex gap-2 flex-wrap justify-center">
+          {Array.from({ length: Math.min(MAX_RIDERS, 8) }, (_, i) => i + 1).map((n) => (
             <button
               key={n}
               onClick={() => syncRiders(n)}
@@ -179,9 +179,9 @@ export function Step3Riders() {
         </div>
       </div>
 
-      {numRiders > 4 && (
+      {numRiders === MAX_RIDERS && MAX_RIDERS > 1 && (
         <p className="text-brand-mango/80 text-xs text-center">
-          For groups larger than 8, please <a href="/contact" className="underline hover:text-brand-citrus">contact us</a>.
+          Maximum {MAX_RIDERS} riders available for this slot.
         </p>
       )}
     </StepShell>
