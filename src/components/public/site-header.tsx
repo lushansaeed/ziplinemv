@@ -22,6 +22,10 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname                = usePathname();
   const isHome                  = pathname === "/";
+  const useLightHeader          = scrolled || !isHome;
+  const headerLogo              = useLightHeader
+    ? { ...logo, url: "/images/zipline-logo-black.png" }
+    : logo;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -37,20 +41,20 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
       <header
         className={cn(
           "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-          scrolled || !isHome
+          useLightHeader
             ? "backdrop-blur-md border-b py-3"
             : "py-5 bg-transparent"
         )}
-        style={scrolled || !isHome ? { backgroundColor: "var(--header-bg, var(--site-header-bg, rgba(255,255,255,0.92)))", borderColor: "var(--card-border, rgba(0,128,160,0.18))" } : undefined}
+        style={useLightHeader ? { backgroundColor: "var(--header-bg, var(--site-header-bg, rgba(255,255,255,0.92)))", borderColor: "var(--card-border, rgba(0,128,160,0.18))" } : undefined}
       >
         <div className="container-brand flex items-center justify-between">
           {/* Logo */}
           <LogoLockup
-            logo={logo}
+            logo={headerLogo}
             subtitle="Vahmāfushi Island"
-            textClassName={scrolled || !isHome ? "site-heading" : undefined}
-            subtitleClassName={scrolled || !isHome ? "site-text-muted" : undefined}
-            markClassName={!scrolled && isHome ? "brightness-0 invert drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]" : undefined}
+            textClassName={useLightHeader ? "site-heading" : undefined}
+            subtitleClassName={useLightHeader ? "site-text-muted" : undefined}
+            markClassName={!useLightHeader ? "brightness-0 invert drop-shadow-[0_2px_14px_rgba(0,0,0,0.35)]" : undefined}
           />
 
           {/* Desktop nav */}
@@ -63,7 +67,7 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
                   "px-3.5 py-2 rounded-lg text-sm font-medium transition-colors",
                   pathname === item.href
                     ? "site-accent bg-white/20"
-                    : scrolled || !isHome
+                    : useLightHeader
                     ? "site-body hover:bg-white/30"
                     : "text-white/80 hover:text-white hover:bg-white/6"
                 )}
@@ -79,7 +83,7 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
               href="/auth/login"
               className={cn(
                 "text-sm font-medium transition-colors px-3 py-2",
-                scrolled || !isHome ? "site-body" : "text-white/70 hover:text-white"
+                useLightHeader ? "site-body" : "text-white/70 hover:text-white"
               )}
             >
               Sign in
@@ -93,7 +97,7 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
           <button
             className={cn(
               "md:hidden p-2 rounded-lg transition-colors",
-              scrolled || !isHome ? "site-body hover:bg-white/30" : "text-white/70 hover:text-white hover:bg-white/8"
+              useLightHeader ? "site-body hover:bg-white/30" : "text-white/70 hover:text-white hover:bg-white/8"
             )}
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Toggle menu"
@@ -135,8 +139,8 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
               </Link>
             ))}
           </nav>
-          <div className="space-y-3 pt-6 border-t border-white/8">
-            <Link href="/auth/login" className="btn-ghost-white w-full text-sm py-3">
+          <div className="space-y-3 pt-6 border-t site-subtle-border">
+            <Link href="/auth/login" className="btn-brand-outline w-full text-sm py-3">
               Sign in
             </Link>
             <Link href="/book" className="btn-brand w-full text-sm py-3">

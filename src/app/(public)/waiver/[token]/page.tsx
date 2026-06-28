@@ -49,18 +49,18 @@ export default async function PublicWaiverPage({
   const full = completed >= link.maxSubmissions || completed >= link.booking.numRiders;
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:py-12">
+    <main className="min-h-screen px-4 py-8 sm:py-12" style={{ backgroundColor: "var(--site-bg, #F8FAF9)", color: "var(--body, #263238)" }}>
       <div className="mx-auto max-w-2xl">
-        <div className="mb-5 rounded-2xl border border-border bg-card p-5">
+        <div className="site-card mb-5 rounded-2xl p-5">
           <p className="font-mono text-sm font-bold text-primary">{link.booking.reference}</p>
-          <h1 className="mt-2 font-display text-3xl font-bold">Zipline waiver form</h1>
-          <div className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-            <p><span className="font-semibold text-foreground">Agent:</span> {link.booking.agent?.businessName ?? "Zipline Maldives"}</p>
-            <p><span className="font-semibold text-foreground">Ride:</span> {formatDate(link.booking.bookingDate)} at {link.booking.slot.startTime}</p>
-            <p><span className="font-semibold text-foreground">Waivers:</span> {completed} of {link.maxSubmissions} completed</p>
-            <p><span className="font-semibold text-foreground">Riders:</span> {link.booking.numRiders}</p>
+          <h1 className="mt-2 font-display text-3xl font-bold site-heading">Zipline waiver form</h1>
+          <div className="mt-4 grid gap-2 text-sm site-text-muted sm:grid-cols-2">
+            <p><span className="font-semibold site-heading">Agent:</span> {link.booking.agent?.businessName ?? "Zipline Maldives"}</p>
+            <p><span className="font-semibold site-heading">Ride:</span> {formatDate(link.booking.bookingDate)} at {link.booking.slot.startTime}</p>
+            <p><span className="font-semibold site-heading">Waivers:</span> {completed} of {link.maxSubmissions} completed</p>
+            <p><span className="font-semibold site-heading">Riders:</span> {link.booking.numRiders}</p>
           </div>
-          <p className="mt-4 text-xs text-muted-foreground">
+          <p className="mt-4 text-xs site-text-muted">
             One phone or device may be used for multiple riders. Submit one waiver per rider; the link closes when all riders are complete.
           </p>
         </div>
@@ -70,11 +70,11 @@ export default async function PublicWaiverPage({
             This waiver link is invalid, expired, or no longer active.
           </div>
         ) : full ? (
-          <div className="rounded-2xl border border-primary/20 bg-primary/10 p-5 text-sm text-foreground">
+          <div className="site-card rounded-2xl p-5 text-sm">
             Waiver limit reached. All riders for this booking have already submitted the waiver form.
           </div>
         ) : (
-          <div className="rounded-2xl border border-border bg-card p-5">
+          <div className="site-card rounded-2xl p-5">
             <WaiverForm token={params.token} minWeight={limits.min} maxWeight={limits.max} staffAssisted={searchParams.mode === "staff"} />
           </div>
         )}

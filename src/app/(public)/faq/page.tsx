@@ -49,7 +49,7 @@ export default async function FaqPage() {
               <a
                 key={cat}
                 href={`#${cat.toLowerCase().replace(/\s+/g, "-")}`}
-                className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/8 text-white/60 hover:text-white hover:bg-white/10 text-xs font-medium transition-all"
+                className="site-button-outline px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
               >
                 {cat}
               </a>
@@ -61,7 +61,7 @@ export default async function FaqPage() {
         <div className="space-y-12">
           {Object.entries(grouped).map(([category, items]) => (
             <div key={category} id={category.toLowerCase().replace(/\s+/g, "-")}>
-              <h2 className="font-display font-semibold text-lg text-white/70 mb-4 pb-3 border-b border-white/8">
+              <h2 className="font-display font-semibold text-lg site-heading mb-4 pb-3 border-b site-subtle-border">
                 {category}
               </h2>
               <FaqAccordion items={items} />
@@ -69,19 +69,19 @@ export default async function FaqPage() {
           ))}
 
           {faqs.length === 0 && (
-            <p className="text-white/30 text-center py-10 text-sm">
+            <p className="site-text-muted text-center py-10 text-sm">
               FAQs coming soon.
             </p>
           )}
         </div>
 
         {/* Still have questions */}
-        <div className="mt-16 text-center bg-white/3 border border-white/8 rounded-2xl p-8 space-y-4">
-          <h3 className="font-display font-bold text-xl text-white">Still have questions?</h3>
-          <p className="text-white/50 text-sm">
+        <div className="mt-16 text-center site-card rounded-2xl p-8 space-y-4">
+          <h3 className="font-display font-bold text-xl site-heading">Still have questions?</h3>
+          <p className="site-text-muted text-sm">
             We're happy to help. Reach out via WhatsApp or email.
           </p>
-          <Link href="/contact" className="inline-flex items-center gap-2 text-brand-citrus hover:text-brand-mango font-semibold text-sm transition-colors group">
+          <Link href="/contact" className="inline-flex items-center gap-2 site-accent font-semibold text-sm transition-colors group">
             Contact us
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>

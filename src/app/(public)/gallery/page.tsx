@@ -37,7 +37,7 @@ export default async function GalleryPage() {
         </div>
 
         {media.length === 0 ? (
-          <div className="text-center py-20 text-white/25 text-sm">
+          <div className="text-center py-20 site-text-muted text-sm">
             Gallery coming soon. Upload media from the admin panel.
           </div>
         ) : (

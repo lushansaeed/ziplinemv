@@ -23,20 +23,20 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
             className={cn(
               "rounded-xl border transition-all duration-200",
               isOpen
-                ? "border-brand-citrus/30 bg-brand-citrus/4"
-                : "border-white/8 bg-white/3 hover:border-white/15 hover:bg-white/5"
+                ? "site-card-selected"
+                : "site-card"
             )}
           >
             <button
               onClick={() => setOpenId(isOpen ? null : item.id)}
               className="w-full flex items-start gap-4 text-left px-5 py-4"
             >
-              <span className="flex-1 font-medium text-white text-sm leading-snug mt-0.5">
+              <span className="flex-1 font-medium site-heading text-sm leading-snug mt-0.5">
                 {item.question}
               </span>
               <ChevronDown
                 className={cn(
-                  "w-4 h-4 text-white/40 flex-shrink-0 mt-0.5 transition-transform duration-200",
+                  "w-4 h-4 site-text-muted flex-shrink-0 mt-0.5 transition-transform duration-200",
                   isOpen && "rotate-180 text-brand-citrus"
                 )}
               />
@@ -49,7 +49,7 @@ export function FaqAccordion({ items }: { items: FaqItem[] }) {
               )}
             >
               <div className="px-5 pb-5">
-                <p className="text-white/60 text-sm leading-relaxed">{item.answer}</p>
+                <p className="site-text-muted text-sm leading-relaxed">{item.answer}</p>
               </div>
             </div>
           </div>
