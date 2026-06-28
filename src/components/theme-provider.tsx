@@ -6,7 +6,7 @@ const DEFAULTS = {
   primaryColor:     "#00A6B4",
   secondaryColor:   "#064E5F",
   accentColor:      "#F6C85F",
-  backgroundColor:  "#c3c3c3",
+  backgroundColor:  "#F8FAF9",
   sectionBgColor:   "#FFFFFF",
   sectionAltBgColor:"#EEFAF8",
   cardBgColor:      "#FFFFFF",
@@ -76,10 +76,9 @@ function readThemeConfig(theme: any): Record<string, string> {
 }
 
 function isOldDefaultTheme(theme: any): boolean {
-  return (
-    (theme?.backgroundColor === "#0A0F1A" && theme?.primaryColor === "#F5A623") ||
-    (theme?.backgroundColor === "#F8FAF9" && theme?.primaryColor === "#00A6B4")
-  );
+  // Only treat the original dark Vahmāfushi default as "old" — skip applying it
+  // so new DEFAULTS take effect. The light teal theme (#F8FAF9 / #00A6B4) is current.
+  return theme?.backgroundColor === "#0A0F1A" && theme?.primaryColor === "#F5A623";
 }
 
 export async function ThemeProvider({ children }: { children: React.ReactNode }) {

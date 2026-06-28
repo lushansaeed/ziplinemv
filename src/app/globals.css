@@ -64,7 +64,7 @@
 @layer base {
   :root {
     /* shadcn/ui semantic tokens — light (admin/portals use this) */
-    --background:         0 0% 76.5%;
+    --background:         0 0% 100%;
     --foreground:         222.2 84% 4.9%;
     --card:               0 0% 100%;
     --card-foreground:    222.2 84% 4.9%;
