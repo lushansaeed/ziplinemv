@@ -162,7 +162,7 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
         collapsed && "justify-center px-2"
       )}>
         <Link href="/admin/dashboard" className="flex items-center gap-2.5 min-w-0">
-          <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} />
+          <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} className="dark:brightness-0 dark:invert" />
           {!collapsed && !(logo?.url) && (
             <div className="min-w-0">
               <p className="text-sm font-display font-bold text-foreground leading-tight truncate">
@@ -280,7 +280,7 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
             <Menu className="w-5 h-5 text-muted-foreground" />
           </button>
           <div className="flex items-center gap-2">
-            <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} />
+            <LogoMark logo={{ ...(logo ?? defaultLogo), size: "sm" }} className="dark:brightness-0 dark:invert" />
             {!(logo?.url) && <span className="font-display font-bold text-sm text-foreground">Zipline MV</span>}
           </div>
         </div>
