@@ -5,9 +5,9 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const inputCls = cn(
-  "w-full rounded-xl px-4 py-3 text-sm bg-white/5 border border-white/10",
-  "text-white placeholder:text-white/25",
-  "focus:outline-none focus:ring-2 focus:ring-brand-ocean/40 focus:border-brand-ocean/30",
+  "w-full rounded-xl px-4 py-3 text-sm bg-white border border-gray-200",
+  "text-gray-900 placeholder:text-gray-400",
+  "focus:outline-none focus:ring-2 focus:ring-[#00A6B4]/40 focus:border-[#00A6B4]/60",
   "transition-all duration-150 disabled:opacity-50"
 );
 
@@ -44,8 +44,8 @@ export function AgentRegistrationForm() {
     return (
       <div className="flex flex-col items-center text-center py-10 space-y-4">
         <CheckCircle2 className="w-12 h-12 text-brand-lime" />
-        <h3 className="font-display font-bold text-xl text-white">Application submitted!</h3>
-        <p className="text-white/55 text-sm max-w-xs leading-relaxed">
+        <h3 className="font-display font-bold text-xl text-gray-900">Application submitted!</h3>
+        <p className="text-gray-500 text-sm max-w-xs leading-relaxed">
           We'll review your application and get back to you within 2 business days.
           You'll receive an email once approved.
         </p>
@@ -61,31 +61,31 @@ export function AgentRegistrationForm() {
 
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Business name *</label>
+          <label className="text-xs text-gray-600 font-medium">Business name *</label>
           <input name="businessName" required placeholder="Island Adventures" className={inputCls} disabled={isPending} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Contact person *</label>
+          <label className="text-xs text-gray-600 font-medium">Contact person *</label>
           <input name="contactPerson" required placeholder="Your name" className={inputCls} disabled={isPending} />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Email *</label>
+          <label className="text-xs text-gray-600 font-medium">Email *</label>
           <input type="email" name="email" required placeholder="agent@example.com" className={inputCls} disabled={isPending} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Phone *</label>
+          <label className="text-xs text-gray-600 font-medium">Phone *</label>
           <input name="phone" required placeholder="+960 7XX XXXX" className={inputCls} disabled={isPending} />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Island</label>
+          <label className="text-xs text-gray-600 font-medium">Island</label>
           <input name="island" placeholder="Maafushi" className={inputCls} disabled={isPending} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Business type</label>
+          <label className="text-xs text-gray-600 font-medium">Business type</label>
           <select name="businessType" className={cn(inputCls, "appearance-none")} disabled={isPending}>
             <option value="">Select…</option>
             <option>Guesthouse / Hotel</option>
@@ -97,11 +97,11 @@ export function AgentRegistrationForm() {
         </div>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Website or social media</label>
+        <label className="text-xs text-gray-600 font-medium">Website or social media</label>
         <input name="website" placeholder="https://yourwebsite.com" className={inputCls} disabled={isPending} />
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Expected monthly bookings</label>
+        <label className="text-xs text-gray-600 font-medium">Expected monthly bookings</label>
         <select name="expectedMonthlyBookings" className={cn(inputCls, "appearance-none")} disabled={isPending}>
           <option value="">Select…</option>
           <option value="5">1–5</option>
@@ -111,14 +111,14 @@ export function AgentRegistrationForm() {
         </select>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Password *</label>
+        <label className="text-xs text-gray-600 font-medium">Password *</label>
         <input type="password" name="password" required minLength={8} placeholder="Min. 8 characters" className={inputCls} disabled={isPending} />
       </div>
 
       {/* Agreement */}
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" name="agreementAccepted" required className="mt-1 w-4 h-4 rounded accent-brand-ocean flex-shrink-0" />
-        <span className="text-white/50 text-xs leading-relaxed">
+        <span className="text-gray-500 text-xs leading-relaxed">
           I agree to the{" "}
           <a href="/terms" className="text-brand-ocean hover:underline">Terms & Conditions</a>
           {" "}and agent programme agreement.

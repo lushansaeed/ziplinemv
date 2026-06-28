@@ -5,9 +5,9 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const inputCls = cn(
-  "w-full rounded-xl px-4 py-3 text-sm bg-white/5 border border-white/10",
-  "text-white placeholder:text-white/25",
-  "focus:outline-none focus:ring-2 focus:ring-brand-citrus/40 focus:border-brand-citrus/30",
+  "w-full rounded-xl px-4 py-3 text-sm bg-white border border-gray-200",
+  "text-gray-900 placeholder:text-gray-400",
+  "focus:outline-none focus:ring-2 focus:ring-[#00A6B4]/40 focus:border-[#00A6B4]/60",
   "transition-all duration-150 disabled:opacity-50"
 );
 
@@ -44,8 +44,8 @@ export function AffiliateRegistrationForm() {
     return (
       <div className="flex flex-col items-center text-center py-10 space-y-4">
         <CheckCircle2 className="w-12 h-12 text-brand-lime" />
-        <h3 className="font-display font-bold text-xl text-white">Application received!</h3>
-        <p className="text-white/55 text-sm max-w-xs leading-relaxed">
+        <h3 className="font-display font-bold text-xl text-gray-900">Application received!</h3>
+        <p className="text-gray-500 text-sm max-w-xs leading-relaxed">
           We'll review your application and get back to you within 2 business days. Welcome aboard.
         </p>
       </div>
@@ -59,30 +59,30 @@ export function AffiliateRegistrationForm() {
       )}
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Name or brand name *</label>
+          <label className="text-xs text-gray-600 font-medium">Name or brand name *</label>
           <input name="name" required placeholder="Your name or channel" className={inputCls} disabled={isPending} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Contact person *</label>
+          <label className="text-xs text-gray-600 font-medium">Contact person *</label>
           <input name="contactPerson" required placeholder="Full name" className={inputCls} disabled={isPending} />
         </div>
       </div>
       <div className="grid sm:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Email *</label>
+          <label className="text-xs text-gray-600 font-medium">Email *</label>
           <input type="email" name="email" required placeholder="you@example.com" className={inputCls} disabled={isPending} />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs text-white/50 font-medium">Phone *</label>
+          <label className="text-xs text-gray-600 font-medium">Phone *</label>
           <input name="phone" required placeholder="+960 7XX XXXX" className={inputCls} disabled={isPending} />
         </div>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Website or social media</label>
+        <label className="text-xs text-gray-600 font-medium">Website or social media</label>
         <input name="website" placeholder="https://yourinstagram.com/..." className={inputCls} disabled={isPending} />
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Promotion channel</label>
+        <label className="text-xs text-gray-600 font-medium">Promotion channel</label>
         <select name="promotionChannel" className={cn(inputCls, "appearance-none")} disabled={isPending}>
           <option value="">Select…</option>
           <option>Instagram</option>
@@ -95,18 +95,18 @@ export function AffiliateRegistrationForm() {
         </select>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Preferred coupon word (optional)</label>
+        <label className="text-xs text-gray-600 font-medium">Preferred coupon word (optional)</label>
         <input name="preferredCoupon" placeholder="e.g. YOURNAME" maxLength={20} className={inputCls} disabled={isPending} />
-        <p className="text-white/25 text-xs">Subject to approval. Must be unique.</p>
+        <p className="text-gray-400 text-xs">Subject to approval. Must be unique.</p>
       </div>
       <div className="space-y-1.5">
-        <label className="text-xs text-white/50 font-medium">Password *</label>
+        <label className="text-xs text-gray-600 font-medium">Password *</label>
         <input type="password" name="password" required minLength={8} placeholder="Min. 8 characters" className={inputCls} disabled={isPending} />
       </div>
 
       <label className="flex items-start gap-3 cursor-pointer">
         <input type="checkbox" name="agreementAccepted" required className="mt-1 w-4 h-4 rounded accent-brand-citrus flex-shrink-0" />
-        <span className="text-white/50 text-xs leading-relaxed">
+        <span className="text-gray-500 text-xs leading-relaxed">
           I agree to the{" "}
           <a href="/terms" className="text-brand-citrus hover:underline">Terms & Conditions</a>
           {" "}and affiliate programme agreement.
