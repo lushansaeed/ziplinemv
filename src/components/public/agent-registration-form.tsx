@@ -127,8 +127,8 @@ export function AgentRegistrationForm() {
 
       <button type="submit" disabled={isPending} className={cn(
         "w-full flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-semibold mt-2",
-        "bg-brand-ocean text-white hover:bg-brand-ocean/90",
-        "shadow-ocean-md hover:shadow-ocean-lg transition-all duration-200 active:scale-[0.98]",
+        "bg-brand-gradient text-white shadow-brand-md hover:shadow-brand-lg",
+        "transition-all duration-200 active:scale-[0.98]",
         "disabled:opacity-50 disabled:cursor-not-allowed"
       )}>
         {isPending ? <><Loader2 className="w-4 h-4 animate-spin" />Submitting…</> : "Submit application"}
