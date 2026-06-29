@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import {
   CalendarCheck, DollarSign, Users, TrendingUp,
-  UserCheck, Handshake, Image, AlertTriangle, Filter,
+  UserCheck, Handshake, Image, AlertTriangle,
 } from "lucide-react";
+// Filter icon moved to DashboardFilterForm (client component)
 import { PageHeader } from "@/components/shared/page-header";
 import { StatCard } from "@/components/shared/stat-card";
 import { requirePermission } from "@/lib/auth/permissions";
@@ -10,6 +11,7 @@ import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { bookingStatusColor, paymentStatusColor, sourceColor } from "@/lib/utils";
 import { BookingSource, BookingStatus, PaymentStatus, Prisma } from "@prisma/client";
+import { DashboardFilterForm } from "@/components/admin/dashboard/dashboard-filter-form";
 
 export const metadata: Metadata = { title: "Dashboard | Admin" };
 
@@ -376,62 +378,14 @@ export default async function AdminDashboardPage({
       />
 
       <div className="p-5 space-y-5">
-        <form className="admin-card flex flex-wrap items-end gap-2.5 p-4" action="/admin/dashboard">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground mr-1 pb-1">
-            <Filter className="w-3.5 h-3.5 text-primary" />
-            Dashboard filters
-          </div>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">Date range</span>
-            <select name="range" defaultValue={data.filters.range} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="week">This week</option>
-              <option value="month">This month</option>
-              <option value="custom">Custom</option>
-            </select>
-          </label>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">From</span>
-            <input name="from" type="date" defaultValue={customFrom} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm" />
-          </label>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">To</span>
-            <input name="to" type="date" defaultValue={customTo} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm" />
-          </label>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">Source</span>
-            <select name="source" defaultValue={data.filters.source ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
-              <option value="">All sources</option>
-              <option value="DIRECT">Public</option>
-              <option value="AGENT">Agent</option>
-              <option value="WALK_IN">Walk-in</option>
-              <option value="AFFILIATE">Affiliate</option>
-            </select>
-          </label>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">Currency</span>
-            <select name="currency" defaultValue={data.filters.currency ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
-              <option value="">All</option>
-              <option value="MVR">MVR</option>
-              <option value="USD">USD</option>
-            </select>
-          </label>
-          <label className="space-y-0.5">
-            <span className="block text-xs text-muted-foreground">Payment status</span>
-            <select name="paymentStatus" defaultValue={data.filters.paymentStatus ?? ""} className="h-8 rounded-md border border-border bg-background px-2.5 text-sm">
-              <option value="">All</option>
-              <option value="PAID">Paid</option>
-              <option value="UNPAID">Unpaid</option>
-              <option value="PARTIALLY_PAID">Partially paid</option>
-              <option value="FAILED">Failed</option>
-              <option value="REFUNDED">Refunded</option>
-            </select>
-          </label>
-          <button className="h-8 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90">
-            Apply
-          </button>
-        </form>
+        <DashboardFilterForm
+          range={data.filters.range}
+          customFrom={customFrom}
+          customTo={customTo}
+          source={data.filters.source ?? ""}
+          currency={data.filters.currency ?? ""}
+          paymentStatus={data.filters.paymentStatus ?? ""}
+        />
 
         {/* KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
