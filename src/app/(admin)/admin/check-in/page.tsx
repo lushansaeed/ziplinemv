@@ -6,7 +6,7 @@ import { CheckInModule } from "@/components/admin/check-in/check-in-module";
 export const metadata: Metadata = { title: "Check-in | Admin" };
 
 export default async function CheckInPage() {
-  const user = await requirePermission("bookings", "edit");
+  const user = await requirePermission("check_in", "view");
   const canEditPayments = await userHasPermission(user.id, user.role, "payments", "edit");
   return (
     <div>

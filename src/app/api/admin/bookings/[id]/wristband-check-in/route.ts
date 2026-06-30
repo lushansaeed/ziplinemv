@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
-import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
+import { logAudit, userHasPermission } from "@/lib/auth/permissions";
+import { requireApiRole } from "@/lib/auth/api";
+import { ADMIN_ROLES } from "@/lib/auth/roles";
 import {
   CheckInGateError,
   completeCheckInTransaction,
@@ -11,6 +13,39 @@ import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-g
 type RequestBody = {
   assignments?: WristbandAssignmentInput[];
 };
+
+async function requireWristbandCheckInPermission() {
+  const auth = await requireApiRole(ADMIN_ROLES as any);
+  if (!auth.ok) return auth;
+
+  const [canCreateCheckIn, canEditCheckIn, canCreateRideTracking, canEditBookings] = await Promise.all([
+    userHasPermission(auth.dbUser.id, auth.dbUser.role, "check_in", "create"),
+    userHasPermission(auth.dbUser.id, auth.dbUser.role, "check_in", "edit"),
+    userHasPermission(auth.dbUser.id, auth.dbUser.role, "ride_tracking", "create"),
+    userHasPermission(auth.dbUser.id, auth.dbUser.role, "bookings", "edit"),
+  ]);
+
+  const canCheckIn = canCreateCheckIn || canEditCheckIn || canCreateRideTracking || canEditBookings;
+
+  if (!canCheckIn) {
+    await logAudit({
+      userId: auth.dbUser.id,
+      action: "RESTRICTED_API_ACCESS_ATTEMPT",
+      module: "ride_tracking",
+      newValue: {
+        permission: "check_in.create",
+        alternativePermissions: ["check_in.edit", "ride_tracking.create", "bookings.edit"],
+      },
+    }).catch(() => {});
+
+    return {
+      ok: false as const,
+      response: NextResponse.json({ error: "You do not have permission to perform this action." }, { status: 403 }),
+    };
+  }
+
+  return auth;
+}
 
 async function logFailedAttempt(input: {
   userId: string;
@@ -50,7 +85,7 @@ async function logFailedAttempt(input: {
 }
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
-  const auth = await requireApiPermission("ride_tracking", "create");
+  const auth = await requireWristbandCheckInPermission();
   if (!auth.ok) return auth.response;
   await ensureRideTrackingLaunchLineColumn();
 

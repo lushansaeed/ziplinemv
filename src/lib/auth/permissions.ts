@@ -12,6 +12,7 @@ export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 export const PERMISSION_MODULES = [
   { key: "dashboard", label: "Dashboard", actions: ["view"] },
   { key: "bookings", label: "Bookings", actions: ["view", "create", "edit", "approve", "export", "delete"] },
+  { key: "check_in", label: "Check-in & Wristbands", actions: ["view", "create", "edit"] },
   { key: "customers", label: "Customers", actions: ["view", "create", "edit", "export", "delete"] },
   { key: "agents", label: "Agents", actions: ["view", "create", "edit", "approve", "export", "delete"] },
   { key: "affiliates", label: "Affiliates", actions: ["view", "create", "edit", "approve", "export", "delete"] },
@@ -34,7 +35,7 @@ export type PermissionModule = (typeof PERMISSION_MODULES)[number]["key"];
 export const ADMIN_ROUTE_MODULES: Array<{ prefix: string; module: PermissionModule }> = [
   { prefix: "/admin/dashboard", module: "dashboard" },
   { prefix: "/admin/bookings", module: "bookings" },
-  { prefix: "/admin/check-in", module: "bookings" },
+  { prefix: "/admin/check-in", module: "check_in" },
   { prefix: "/admin/waivers", module: "bookings" },
   { prefix: "/admin/customers", module: "customers" },
   { prefix: "/admin/agents", module: "agents" },
@@ -60,6 +61,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
   Admin: Object.fromEntries(PERMISSION_MODULES.map((m) => [m.key, [...m.actions] as PermissionAction[]])),
   Manager: {
     dashboard: ["view"], bookings: ["view", "create", "edit", "approve", "export"],
+    check_in: ["view", "create", "edit"],
     customers: ["view", "create", "edit", "export"], agents: ["view", "create", "edit", "approve", "export"],
     affiliates: ["view", "create", "edit", "approve", "export"], media: ["view", "create", "edit", "send"],
     website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"], catalog: ["view", "create", "edit"], slots: ["view", "create", "edit"],
@@ -67,11 +69,11 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
     ride_tracking: ["view", "create", "edit", "export"],
   },
   "Reception Staff": {
-    dashboard: ["view"], bookings: ["view", "create", "edit"], customers: ["view", "create", "edit"], payments: ["view", "create"],
+    dashboard: ["view"], bookings: ["view", "create", "edit"], check_in: ["view", "create", "edit"], customers: ["view", "create", "edit"], payments: ["view", "create"],
     ride_tracking: ["view", "create", "edit"],
   },
   "Operations Staff": {
-    dashboard: ["view"], bookings: ["view", "edit"], customers: ["view"], slots: ["view"],
+    dashboard: ["view"], bookings: ["view", "edit"], check_in: ["view", "create", "edit"], customers: ["view"], slots: ["view"],
     ride_tracking: ["view", "create", "edit"],
   },
   Photographer: {

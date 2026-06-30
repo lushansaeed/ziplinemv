@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
 import { logAudit, PERMISSION_MODULES, requireApiPermission } from "@/lib/auth/permissions";
 
@@ -34,28 +35,32 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     ? normalizedPermissions(body.permissions, existing.isAdmin)
     : null;
 
-  const role = await prisma.$transaction(async (tx) => {
-    await tx.staffRole.update({
+  const writes: Prisma.PrismaPromise<any>[] = [
+    prisma.staffRole.update({
       where: { id: params.id },
       data: { name: nextName, description: nextDescription, active: nextActive },
-    });
+    }),
+  ];
 
-    if (nextPermissions) {
-      await tx.rolePermission.deleteMany({ where: { roleId: params.id } });
-      await tx.rolePermission.createMany({
+  if (nextPermissions) {
+    writes.push(
+      prisma.rolePermission.deleteMany({ where: { roleId: params.id } }),
+      prisma.rolePermission.createMany({
         data: nextPermissions.map((permission) => ({
           roleId: params.id,
           module: permission.module,
           action: permission.action,
           allowed: permission.allowed,
         })),
-      });
-    }
+      })
+    );
+  }
 
-    return tx.staffRole.findUnique({
-      where: { id: params.id },
-      include: { permissions: true, users: { select: { id: true, name: true, email: true, status: true } } },
-    });
+  await prisma.$transaction(writes);
+
+  const role = await prisma.staffRole.findUnique({
+    where: { id: params.id },
+    include: { permissions: true, users: { select: { id: true, name: true, email: true, status: true } } },
   });
 
   await logAudit({

@@ -55,7 +55,7 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: "Bookings",      href: "/admin/bookings",   icon: CalendarCheck, module: "bookings" },
       { label: "Walk-in",       href: "/admin/bookings/walk-in", icon: Plus, module: "bookings" },
-      { label: "Check-in",      href: "/admin/check-in",   icon: QrCode, module: "bookings" },
+      { label: "Check-in",      href: "/admin/check-in",   icon: QrCode, module: "check_in" },
       { label: "Waivers",       href: "/admin/waivers",    icon: ShieldCheck, module: "bookings" },
       { label: "Customers",     href: "/admin/customers",  icon: Users, module: "customers" },
     ],

@@ -19,7 +19,7 @@ function normalizeBookingLookup(raw: string) {
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await requireApiPermission("bookings", "view");
+  const auth = await requireApiPermission("check_in", "view");
   if (!auth.ok) return auth.response;
   await ensureRideTrackingLaunchLineColumn();
 
