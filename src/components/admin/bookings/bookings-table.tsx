@@ -80,10 +80,11 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
   const columns: Column<BookingRow>[] = [
     {
       key: "reference", header: "Reference",
+      className: "w-[8%]",
       cell: (r) => (
         <button
           onClick={() => { setSelectedId(r.id); setDrawerOpen(true); }}
-          className="font-mono text-xs font-bold text-primary hover:underline"
+          className="block max-w-[86px] break-all text-left font-mono text-[11px] font-bold leading-tight text-primary hover:underline"
         >
           {r.reference}
         </button>
@@ -91,34 +92,37 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "customer", header: "Customer",
+      className: "w-[16%]",
       cell: (r) => (
-        <div>
-          <p className="font-medium text-sm">{r.customer.name}</p>
+        <div className="min-w-0 pr-2">
+          <p className="whitespace-normal text-[13px] font-medium leading-snug">{r.customer.name}</p>
           <p className="text-xs text-muted-foreground">{r.customer.phone}</p>
         </div>
       ),
     },
     {
       key: "bookingDate", header: "Date", sortable: true,
+      className: "w-[8%]",
       cell: (r) => (
         <div>
-          <p className="text-sm">{formatDate(r.bookingDate)}</p>
+          <p className="text-[13px] leading-snug">{formatDate(r.bookingDate)}</p>
           <p className="text-xs text-muted-foreground">{r.slot.startTime}</p>
         </div>
       ),
     },
     {
       key: "package", header: "Package", hide: "md",
-      className: "hidden xl:table-cell",
-      cell: (r) => <span className="text-sm">{r.package.name}</span>,
+      className: "hidden xl:table-cell w-[10%]",
+      cell: (r) => <span className="block whitespace-normal text-[13px] leading-snug">{r.package.name}</span>,
     },
     {
       key: "riders", header: "Riders", hide: "lg",
-      cell: (r) => <span className="text-sm">{r.numRiders}</span>,
+      className: "w-[4%] text-center",
+      cell: (r) => <span className="text-[13px]">{r.numRiders}</span>,
     },
     {
       key: "customerType", header: "Type", hide: "lg",
-      className: "hidden 2xl:table-cell",
+      className: "hidden 2xl:table-cell w-[7%]",
       cell: (r) => (
         <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
           {(r.customerType ?? "TOURIST").toLowerCase()}
@@ -127,6 +131,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "source", header: "Source",
+      className: "w-[8%]",
       cell: (r) => (
         <div className="space-y-1">
           <StatusBadge value={r.source} type="source" />
@@ -137,10 +142,12 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "bookingStatus", header: "Status",
+      className: "w-[9%]",
       cell: (r) => <StatusBadge value={r.bookingStatus} type="booking" />,
     },
     {
       key: "paymentStatus", header: "Payment",
+      className: "w-[8%]",
       cell: (r) => r.paymentStatus === "COMPLIMENTARY" ? (
         <span
           title="Complimentary"
@@ -154,7 +161,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "waiver", header: "Waiver", hide: "lg",
-      className: "hidden 2xl:table-cell",
+      className: "hidden 2xl:table-cell w-[9%]",
       cell: (r) => {
         const status = waiverStatus(r);
         const signed = r.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
@@ -168,12 +175,14 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "total", header: "Total", sortable: true, hide: "sm",
+      className: "w-[7%]",
       cell: (r) => (
-        <span className="font-semibold text-sm">{formatCurrency(Number(r.total), r.currency)}</span>
+        <span className="text-[13px] font-semibold">{formatCurrency(Number(r.total), r.currency)}</span>
       ),
     },
     {
       key: "actions", header: "",
+      className: "w-[5%] text-right",
       cell: (r) => (
         <ActionDropdown
           items={[
@@ -272,7 +281,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
           columns={columns}
           data={bookings}
           keyField="id"
-          tableClassName="table-fixed"
+          tableClassName="table-fixed [&_th]:px-3 [&_td]:px-3 [&_td]:py-4"
           total={total}
           page={page}
           perPage={perPage}
