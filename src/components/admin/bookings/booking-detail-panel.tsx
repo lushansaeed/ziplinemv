@@ -161,7 +161,7 @@ export function BookingDetailPanel({
     : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-6 [&>section:first-of-type]:border-t-0 [&>section:first-of-type]:pt-0">
       {/* Reference + status row */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
