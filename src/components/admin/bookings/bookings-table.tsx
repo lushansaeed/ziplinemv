@@ -121,20 +121,16 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
       cell: (r) => <span className="text-[13px]">{r.numRiders}</span>,
     },
     {
-      key: "customerType", header: "Type", hide: "lg",
-      className: "hidden 2xl:table-cell w-[7%]",
-      cell: (r) => (
-        <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
-          {(r.customerType ?? "TOURIST").toLowerCase()}
-        </span>
-      ),
-    },
-    {
-      key: "source", header: "Source",
-      className: "w-[8%]",
+      key: "source", header: "Type / source",
+      className: "w-[10%]",
       cell: (r) => (
         <div className="space-y-1">
-          <StatusBadge value={r.source} type="source" />
+          <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize leading-tight">
+            {(r.customerType ?? "TOURIST").toLowerCase()}
+          </span>
+          <div>
+            <StatusBadge value={r.source} type="source" className="text-[11px]" />
+          </div>
           {r.agent && <p className="text-[10px] text-muted-foreground">{r.agent.businessName}</p>}
           {r.affiliate && <p className="text-[10px] text-muted-foreground">{r.affiliate.name}</p>}
         </div>
