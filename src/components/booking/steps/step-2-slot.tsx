@@ -56,7 +56,7 @@ export function Step2Slot() {
       nextDisabled={!slotId}
     >
       {loading ? (
-        <div className="flex items-center justify-center gap-3 py-10 text-white/40">
+        <div className="flex items-center justify-center gap-3 py-10 site-text-muted">
           <Loader2 className="w-5 h-5 animate-spin" />
           <span className="text-sm">Loading slots…</span>
         </div>
@@ -68,9 +68,9 @@ export function Step2Slot() {
         </div>
 
       ) : message && slots.length === 0 ? (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-          <AlertCircle className="w-4 h-4 text-white/40 flex-shrink-0 mt-0.5" />
-          <p className="text-white/60 text-sm">{message}</p>
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-white border border-slate-200 shadow-sm">
+          <AlertCircle className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" />
+          <p className="site-text-muted text-sm">{message}</p>
         </div>
 
       ) : (
@@ -97,18 +97,18 @@ export function Step2Slot() {
                     // Selected
                     isSelected && "bg-brand-citrus border-brand-citrus text-brand-deep shadow-brand-sm scale-[1.02]",
                     // Available
-                    !isDisabled && !isSelected && "border-white/15 bg-white/4 text-white hover:border-brand-citrus/50 hover:bg-brand-citrus/8 hover:text-brand-citrus active:scale-95",
+                    !isDisabled && !isSelected && "border-slate-200 bg-white text-slate-700 shadow-sm hover:border-brand-citrus/50 hover:bg-brand-citrus/8 hover:text-brand-citrus active:scale-95",
                     // Full
-                    isFull && !isSelected && "border-white/6 bg-white/2 text-white/25 cursor-not-allowed",
+                    isFull && !isSelected && "border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed",
                     // Blocked
-                    isBlocked && "border-white/5 bg-white/1 text-white/15 cursor-not-allowed line-through",
+                    isBlocked && "border-slate-200 bg-slate-50 text-slate-300 cursor-not-allowed line-through",
                   )}
                 >
                   {/* Time range — both bold white */}
-                  <span className={cn("font-bold text-sm leading-tight", isSelected ? "text-brand-deep" : "text-white")}>
+                  <span className={cn("font-bold text-sm leading-tight", isSelected ? "text-brand-deep" : "text-inherit")}>
                     {slot.startTime}
                   </span>
-                  <span className={cn("font-bold text-xs leading-tight", isSelected ? "text-brand-deep" : "text-white")}>
+                  <span className={cn("font-bold text-xs leading-tight", isSelected ? "text-brand-deep" : "text-inherit")}>
                     {slot.endTime}
                   </span>
 
@@ -138,8 +138,8 @@ export function Step2Slot() {
             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-brand-citrus/8 border border-brand-citrus/20">
               <Clock className="w-4 h-4 text-brand-citrus flex-shrink-0" />
               <div className="flex-1">
-                <p className="text-white text-sm font-medium">{selected.label}</p>
-                <p className="text-white/45 text-xs">
+                <p className="site-heading text-sm font-medium">{selected.label}</p>
+                <p className="site-text-muted text-xs">
                   {selected.remaining} of {selected.capacity} spots remaining
                 </p>
               </div>
@@ -148,9 +148,9 @@ export function Step2Slot() {
           )}
 
           {/* Legend */}
-          <div className="flex items-center gap-4 text-[11px] text-white/25 pt-1">
+          <div className="flex items-center gap-4 text-[11px] site-text-muted pt-1">
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded border border-white/15 bg-white/4 inline-block" />
+              <span className="w-2.5 h-2.5 rounded border border-slate-300 bg-white inline-block" />
               Available
             </span>
             <span className="flex items-center gap-1.5">
@@ -158,7 +158,7 @@ export function Step2Slot() {
               Selected
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded bg-white/2 border border-white/6 inline-block" />
+              <span className="w-2.5 h-2.5 rounded bg-slate-50 border border-slate-200 inline-block" />
               Full
             </span>
           </div>
