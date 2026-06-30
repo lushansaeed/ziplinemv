@@ -68,18 +68,6 @@ async function saleOrderProductIdFor(key: string) {
   const cached = resolvedProductIds.get(cacheKey);
   if (cached) return cached;
 
-  const directProduct = await searchRead<{ id: OdooId }>(
-    "product.product",
-    [["id", "=", configuredId]],
-    ["id"],
-    1,
-  );
-
-  if (directProduct[0]?.id) {
-    resolvedProductIds.set(cacheKey, configuredId);
-    return configuredId;
-  }
-
   const productTemplate = await searchRead<{ id: OdooId; name?: string; default_code?: string | false; product_variant_id?: OdooMany2One }>(
     "product.template",
     [["id", "=", configuredId]],
@@ -100,6 +88,24 @@ async function saleOrderProductIdFor(key: string) {
     });
     resolvedProductIds.set(cacheKey, variantId);
     return variantId;
+  }
+
+  const directProduct = await searchRead<{ id: OdooId; display_name?: string; default_code?: string | false }>(
+    "product.product",
+    [["id", "=", configuredId]],
+    ["id", "display_name", "default_code"],
+    1,
+  );
+
+  if (directProduct[0]?.id) {
+    console.info("[odoo] using configured product variant for sale-order line", {
+      key,
+      configuredId,
+      productName: directProduct[0]?.display_name,
+      productReference: directProduct[0]?.default_code || null,
+    });
+    resolvedProductIds.set(cacheKey, configuredId);
+    return configuredId;
   }
 
   throw new Error(
@@ -270,7 +276,8 @@ async function createInvoiceForSaleOrder(saleOrderId: OdooId) {
   }
 
   const wizardId = normalizeOdooId(await create<unknown>("sale.advance.payment.inv", {
-    advance_payment_method: "delivered",
+    advance_payment_method: "percentage",
+    amount: 100,
   }), "invoice wizard");
 
   const result = await callOdoo<unknown>("sale.advance.payment.inv", "create_invoices", {
