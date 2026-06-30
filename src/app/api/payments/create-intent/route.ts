@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { createPaymentIntent } from "@/lib/payments/stripe";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 import { z } from "zod";
 
 const schema = z.object({
@@ -9,6 +10,8 @@ const schema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
+    await ensureBookingMediaColumns();
+
     const body   = await req.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: "bookingId required" }, { status: 400 });

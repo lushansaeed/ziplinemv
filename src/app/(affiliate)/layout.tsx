@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/actions";
 import { UserRole } from "@prisma/client";
 import { AffiliateShell } from "@/components/affiliate/affiliate-shell";
 import { getLogoData } from "@/components/shared/site-logo";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export default async function AffiliateLayout({
   children,
@@ -20,6 +21,8 @@ export default async function AffiliateLayout({
   if (user.affiliate?.status !== "APPROVED") {
     redirect("/auth/login?error=Your+affiliate+account+is+pending+approval.");
   }
+
+  await ensureBookingMediaColumns();
 
   return (
     <div className="theme-backend font-body min-h-screen">

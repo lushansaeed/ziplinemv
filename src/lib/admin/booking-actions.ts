@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { BookingStatus, PaymentMethod, PaymentStatus, WaiverStatus, WristbandStatus } from "@prisma/client";
+import { BookingStatus, MediaFolderStatus, PaymentMethod, PaymentStatus, WaiverStatus, WristbandStatus } from "@prisma/client";
 import {
   logAudit,
   requirePermission,
@@ -21,6 +21,8 @@ import { CheckInGateError, completeCheckInTransaction, ensureBookingRiders } fro
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 import { createBooking } from "@/lib/booking/create";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
+import { ensureMediaFolderForBooking, markMediaFolderStatus, sendMediaFolderEmail } from "@/lib/booking/media-folder";
 
 function testAddOnKey(name: string) {
   const normalized = name.toLowerCase();
@@ -173,6 +175,16 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
   if (status === BookingStatus.CONFIRMED) {
     sendBookingConfirmation(bookingId).catch((error) => {
       console.error("[updateBookingStatus:sendBookingConfirmation]", error?.message ?? error);
+    });
+  }
+  if (status === BookingStatus.CHECKED_IN) {
+    ensureMediaFolderForBooking(bookingId).catch((error) => {
+      console.error("[updateBookingStatus:googleDrive]", error?.message ?? error);
+    });
+  }
+  if (status === BookingStatus.COMPLETED || status === BookingStatus.COMPLETED_WITH_REMARKS) {
+    sendMediaFolderEmail(bookingId, { userId: user.id }).catch((error) => {
+      console.error("[updateBookingStatus:mediaFolderEmail]", error?.message ?? error);
     });
   }
 
@@ -379,6 +391,10 @@ export async function checkInBooking(bookingId: string, notes?: string) {
       await completeCheckInTransaction(tx, { bookingId, userId, notes });
     });
 
+    await ensureMediaFolderForBooking(bookingId).catch((error) => {
+      console.error("[checkInBooking:googleDrive]", error?.message ?? error);
+    });
+
     revalidatePath("/admin/bookings");
     revalidatePath("/admin/check-in");
     return { success: true };
@@ -467,6 +483,19 @@ export async function completeBooking(bookingId: string) {
     },
   });
 
+  await sendMediaFolderEmail(bookingId, { userId: user.id }).catch(async (error) => {
+    console.error("[completeBooking:mediaFolderEmail]", error?.message ?? error);
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "MEDIA_FOLDER_EMAIL_FAILED",
+        module: "media",
+        recordId: bookingId,
+        newValue: { error: error?.message ?? "Media folder email failed." },
+      },
+    }).catch(() => {});
+  });
+
   revalidatePath("/admin/bookings");
   return { success: true };
 }
@@ -489,6 +518,7 @@ export async function updateBookingNotes(bookingId: string, notes: string) {
 
 export async function getBookingDetail(bookingId: string) {
   await requirePermission("bookings", "view");
+  await ensureBookingMediaColumns();
   const booking = await prisma.booking.findUnique({
     where: { id: bookingId },
     include: {
@@ -510,6 +540,33 @@ export async function getBookingDetail(bookingId: string) {
   if (!booking) return null;
   const waiverShare = await buildWaiverSharePayload(booking.id);
   return { ...booking, waiverShare };
+}
+
+export async function resendMediaFolderEmail(bookingId: string) {
+  const user = await requirePermission("media", "send");
+  try {
+    const result = await sendMediaFolderEmail(bookingId, { force: true, userId: user.id });
+    revalidatePath("/admin/bookings");
+    return result.sent
+      ? { success: true }
+      : { success: false, error: result.reason ?? result.error ?? "Media folder email was not sent." };
+  } catch (error: any) {
+    console.error("[resendMediaFolderEmail]", error?.message ?? error);
+    return { success: false, error: error?.message ?? "Could not resend media folder email." };
+  }
+}
+
+export async function updateMediaFolderStatus(bookingId: string, status: MediaFolderStatus) {
+  const user = await requirePermission("media", "edit");
+  try {
+    await markMediaFolderStatus(bookingId, status, user.id);
+    revalidatePath("/admin/bookings");
+    revalidatePath("/admin/dashboard");
+    return { success: true };
+  } catch (error: any) {
+    console.error("[updateMediaFolderStatus]", error?.message ?? error);
+    return { success: false, error: error?.message ?? "Could not update media status." };
+  }
 }
 
 export async function regenerateWaiverLink(bookingId: string) {

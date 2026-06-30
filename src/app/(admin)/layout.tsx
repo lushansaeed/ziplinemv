@@ -4,6 +4,7 @@ import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { ensureDefaultStaffRoles, getUserPermissionSet } from "@/lib/auth/permissions";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { getLogoData } from "@/components/shared/site-logo";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export default async function AdminLayout({
   children,
@@ -21,7 +22,10 @@ export default async function AdminLayout({
     redirect("/auth/login?error=You+don't+have+access+to+the+admin+portal.");
   }
 
-  await ensureDefaultStaffRoles();
+  await Promise.all([
+    ensureDefaultStaffRoles(),
+    ensureBookingMediaColumns(),
+  ]);
 
   const permissions = await getUserPermissionSet(user.id, user.role);
 

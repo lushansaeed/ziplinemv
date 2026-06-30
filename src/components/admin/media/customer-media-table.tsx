@@ -6,6 +6,7 @@ import { Link2, ChevronDown, ChevronUp, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { TableFilters } from "../shared/table-filters";
 import { formatDate, cn } from "@/lib/utils";
+import { updateMediaFolderStatus } from "@/lib/admin/booking-actions";
 
 interface AddOnDelivery {
   addOnId:   string;
@@ -23,8 +24,12 @@ interface DeliveryRow {
   // dynamic per-addon statuses stored as JSON in notes or via metadata
   addonStatuses:   Record<string, string>; // addOnId → status
   booking: {
+    id:          string;
     reference:   string;
     bookingDate: Date;
+    driveFolderUrl: string | null;
+    mediaFolderStatus: string;
+    mediaUploadedAt: Date | null;
     customer:    { name: string; phone: string; email: string | null };
     addOns:      Array<{ addOnId: string; addOn: { id: string; name: string } }>;
   };
@@ -49,11 +54,21 @@ const STATUS_OPTIONS = [
   { value: "NOT_APPLICABLE",   label: "N/A",        color: "text-muted-foreground" },
 ];
 
+const FOLDER_STATUS_OPTIONS = [
+  { value: "PENDING_UPLOAD", label: "Pending Upload", color: "text-yellow-600" },
+  { value: "PARTIALLY_UPLOADED", label: "Partially Uploaded", color: "text-blue-600" },
+  { value: "UPLOADED", label: "Uploaded", color: "text-green-600" },
+  { value: "ISSUE_REPORTED", label: "Issue Reported", color: "text-red-600" },
+];
+
 function statusColor(s: string) {
   return STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "text-muted-foreground";
 }
 function statusLabel(s: string) {
   return STATUS_OPTIONS.find((o) => o.value === s)?.label ?? s;
+}
+function folderStatusColor(s: string) {
+  return FOLDER_STATUS_OPTIONS.find((o) => o.value === s)?.color ?? "text-muted-foreground";
 }
 
 const selectCls = "text-xs rounded-lg border border-border bg-background px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer";
@@ -112,6 +127,18 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
     });
   }
 
+  function updateDriveStatus(bookingId: string, status: string) {
+    startTransition(async () => {
+      const res = await updateMediaFolderStatus(bookingId, status as any);
+      if (res.success) {
+        toast.success("Drive media status updated");
+        router.refresh();
+      } else {
+        toast.error(res.error ?? "Failed to update Drive media status");
+      }
+    });
+  }
+
   return (
     <div>
       {/* Filters */}
@@ -141,6 +168,7 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
               <th>Customer</th>
               <th>Add-ons purchased</th>
               <th>Overall status</th>
+              <th>Drive folder</th>
               <th>Media link</th>
               <th>Assigned to</th>
               <th className="w-8"></th>
@@ -149,7 +177,7 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
           <tbody>
             {deliveries.length === 0 ? (
               <tr>
-                <td colSpan={7} className="text-center py-14 text-muted-foreground text-sm">
+                <td colSpan={8} className="text-center py-14 text-muted-foreground text-sm">
                   No media delivery records. Add media add-ons to bookings to see them here.
                 </td>
               </tr>
@@ -202,6 +230,29 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
                     </select>
+                  </td>
+
+                  {/* Drive folder status */}
+                  <td>
+                    <div className="space-y-1.5">
+                      <select
+                        value={d.booking.mediaFolderStatus}
+                        onChange={(e) => updateDriveStatus(d.booking.id, e.target.value)}
+                        className={cn(selectCls, folderStatusColor(d.booking.mediaFolderStatus))}
+                        disabled={isPending}
+                      >
+                        {FOLDER_STATUS_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                      {d.booking.driveFolderUrl ? (
+                        <a href={d.booking.driveFolderUrl} target="_blank" className="flex items-center gap-1 text-xs text-primary hover:underline">
+                          <Link2 className="w-3 h-3" /> Drive
+                        </a>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground">Not created</p>
+                      )}
+                    </div>
                   </td>
 
                   {/* Media URL */}
@@ -269,7 +320,7 @@ export function CustomerMediaTable({ deliveries, total, page, perPage, searchPar
                 {/* Expanded: per-add-on status controls */}
                 {expanded === d.id && (
                   <tr key={`${d.id}-expanded`} className="bg-muted/20">
-                    <td colSpan={7} className="px-4 py-3">
+                    <td colSpan={8} className="px-4 py-3">
                       <div className="space-y-2">
                         <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                           Per add-on delivery status

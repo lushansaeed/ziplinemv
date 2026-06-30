@@ -7,6 +7,7 @@ import { isWeightEligible, isAgeEligible } from "@/lib/utils";
 import { buildWaiverSharePayload, generateWaiverToken } from "@/lib/waivers/links";
 import { BookingSource, BookingStatus, CustomerType, PaymentMethod, PaymentStatus, Prisma, SlotStatus, WaiverStatus } from "@prisma/client";
 import QRCode from "qrcode";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export interface CreateBookingInput {
   // Slot + package
@@ -71,6 +72,8 @@ function normalizePaymentMethod(method?: string): PaymentMethod | null {
 
 export async function createBooking(input: CreateBookingInput): Promise<CreateBookingResult> {
   try {
+    await ensureBookingMediaColumns();
+
     const paymentMethod = normalizePaymentMethod(input.paymentMethod);
     const requestedSource: BookingSource = input.source ?? BookingSource.DIRECT;
     const customerType = input.riderType === "local" ? CustomerType.LOCAL : CustomerType.TOURIST;

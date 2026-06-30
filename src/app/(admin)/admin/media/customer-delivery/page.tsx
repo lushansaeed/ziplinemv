@@ -34,7 +34,7 @@ async function getDeliveries(params: Record<string, string | undefined>) {
       include: {
         booking: {
           select: {
-            reference: true, bookingDate: true,
+            id: true, reference: true, bookingDate: true, driveFolderUrl: true, mediaFolderStatus: true, mediaUploadedAt: true,
             customer:  { select: { name: true, phone: true, email: true } },
             addOns:    { include: { addOn: { select: { id: true, name: true } } } },
           },

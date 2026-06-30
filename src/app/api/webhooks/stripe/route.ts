@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma/client";
 import { sendBookingConfirmation } from "@/lib/notifications/email";
 import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
 import { PaymentStatus, BookingStatus } from "@prisma/client";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export async function POST(req: NextRequest) {
   const body      = await req.text();
@@ -20,6 +21,8 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    await ensureBookingMediaColumns();
+
     switch (event.type) {
       case "payment_intent.succeeded": {
         const pi        = event.data.object as any;

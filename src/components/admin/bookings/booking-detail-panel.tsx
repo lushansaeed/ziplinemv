@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import {
   Calendar, Clock, Users, Package, DollarSign,
   ShieldCheck, Image, User, Building2, Link2,
-  CheckCircle2, Loader2, Edit2, Mail, RefreshCw,
+  CheckCircle2, Loader2, Edit2, Mail, RefreshCw, ExternalLink, FolderOpen,
 } from "lucide-react";
 import {
   getBookingDetail,
@@ -18,6 +18,8 @@ import {
   resendWaiverWhatsApp,
   retryOdooSync,
   createTestSignedWaivers,
+  resendMediaFolderEmail,
+  updateMediaFolderStatus,
 } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -45,6 +47,13 @@ function Row({ label, value, icon: Icon }: DetailRow) {
 function formatOdooSyncStatus(status: string) {
   return status.toLowerCase();
 }
+
+const MEDIA_FOLDER_STATUS_LABELS: Record<string, string> = {
+  PENDING_UPLOAD: "Pending Upload",
+  PARTIALLY_UPLOADED: "Partially Uploaded",
+  UPLOADED: "Uploaded",
+  ISSUE_REPORTED: "Issue Reported",
+};
 
 export function BookingDetailPanel({
   bookingId,
@@ -263,6 +272,59 @@ export function BookingDetailPanel({
           {booking.customer.email && <Row label="Email" value={booking.customer.email} />}
           {booking.customer.nationality && <Row label="Nationality" value={booking.customer.nationality} />}
           {booking.customer.hotel && <Row label="Hotel / guesthouse" value={booking.customer.hotel} />}
+        </div>
+      </section>
+
+      {/* Google Drive media folder */}
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Google Drive media folder</p>
+          <button
+            onClick={() => startTransition(() => doAction(() => resendMediaFolderEmail(booking.id), "Media folder email sent"))}
+            disabled={isPending || !booking.customer.email || !booking.driveFolderUrl}
+            className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Mail className="h-3.5 w-3.5" />
+            Resend media email
+          </button>
+        </div>
+        <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
+          <Row icon={FolderOpen} label="Folder status" value={
+            booking.driveFolderUrl ? (
+              <span className="text-green-600">Created</span>
+            ) : (
+              <span className="text-muted-foreground">Not created yet</span>
+            )
+          } />
+          {booking.driveFolderUrl && (
+            <Row label="Drive link" value={
+              <a href={booking.driveFolderUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-end gap-1 text-primary hover:underline">
+                Open folder <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            } />
+          )}
+          {booking.driveFolderCreatedAt && <Row label="Created at" value={formatDateTime(booking.driveFolderCreatedAt)} />}
+          <Row label="Media status" value={
+            <select
+              value={booking.mediaFolderStatus}
+              onChange={(event) => startTransition(() => doAction(() => updateMediaFolderStatus(booking.id, event.target.value as any), "Media status updated"))}
+              disabled={isPending}
+              className="rounded-lg border border-border bg-background px-2 py-1 text-xs font-semibold"
+            >
+              {Object.entries(MEDIA_FOLDER_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          } />
+          {booking.mediaUploadedAt && <Row label="Uploaded at" value={formatDateTime(booking.mediaUploadedAt)} />}
+          <Row label="Email status" value={
+            booking.mediaLinkEmailSentAt ? (
+              <span className="text-green-600">Sent {formatDateTime(booking.mediaLinkEmailSentAt)}</span>
+            ) : (
+              <span className="text-muted-foreground">Not sent</span>
+            )
+          } />
+          {!booking.customer.email && <Row label="Email" value={<span className="text-muted-foreground">No customer email provided</span>} />}
         </div>
       </section>
 

@@ -9,6 +9,7 @@ import {
   type WristbandAssignmentInput,
 } from "@/lib/ride-tracking/check-in-gate";
 import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
+import { ensureMediaFolderForBooking } from "@/lib/booking/media-folder";
 
 type RequestBody = {
   assignments?: WristbandAssignmentInput[];
@@ -121,6 +122,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         riderCount: result.riderCount,
       },
     }).catch(() => {});
+
+    await ensureMediaFolderForBooking(params.id).catch((error) => {
+      console.error("[wristband-check-in:googleDrive]", error?.message ?? error);
+    });
 
     return NextResponse.json({
       success: true,

@@ -135,6 +135,13 @@ enum MediaDeliveryStatus {
   RESOLVED
 }
 
+enum MediaFolderStatus {
+  PENDING_UPLOAD
+  PARTIALLY_UPLOADED
+  UPLOADED
+  ISSUE_REPORTED
+}
+
 enum OdooSyncStatus {
   NOT_SYNCED     @map("not_synced")
   SYNCING        @map("syncing")
@@ -840,6 +847,12 @@ model Booking {
   bookingStatus              BookingStatus       @default(CONFIRMED) @map("booking_status")
   waiverStatus               WaiverStatus        @default(PENDING) @map("waiver_status")
   mediaStatus                MediaDeliveryStatus @default(NOT_APPLICABLE) @map("media_status")
+  driveFolderId              String?             @map("drive_folder_id")
+  driveFolderUrl             String?             @map("drive_folder_url")
+  driveFolderCreatedAt       DateTime?           @map("drive_folder_created_at")
+  mediaLinkEmailSentAt       DateTime?           @map("media_link_email_sent_at")
+  mediaFolderStatus          MediaFolderStatus   @default(PENDING_UPLOAD) @map("media_folder_status")
+  mediaUploadedAt            DateTime?           @map("media_uploaded_at")
   qrCode                     String?             @map("qr_code")
   confirmationEmailSent      Boolean             @default(false) @map("confirmation_email_sent")
   confirmationEmailSentAt    DateTime?           @map("confirmation_email_sent_at")
@@ -882,6 +895,8 @@ model Booking {
   @@index([currency, paymentStatus, createdAt])
   @@index([paymentStatus, createdAt])
   @@index([mediaStatus, createdAt])
+  @@index([mediaFolderStatus, bookingStatus])
+  @@index([mediaLinkEmailSentAt])
   @@index([odooSyncStatus, createdAt])
   @@index([odooSaleOrderId])
   @@index([odooInvoiceId])

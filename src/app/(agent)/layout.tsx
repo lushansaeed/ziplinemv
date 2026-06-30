@@ -3,6 +3,7 @@ import { getCurrentUser } from "@/lib/auth/actions";
 import { UserRole } from "@prisma/client";
 import { AgentShell } from "@/components/agent/agent-shell";
 import { getLogoData } from "@/components/shared/site-logo";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export default async function AgentLayout({
   children,
@@ -20,6 +21,8 @@ export default async function AgentLayout({
   if (user.agent?.status !== "APPROVED") {
     redirect("/auth/login?error=Your+agent+account+is+pending+approval.");
   }
+
+  await ensureBookingMediaColumns();
 
   return (
     <div className="theme-backend font-body min-h-screen">

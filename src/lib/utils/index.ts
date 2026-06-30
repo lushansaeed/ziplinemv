@@ -80,6 +80,8 @@ export function mediaStatusColor(status: string): string {
     ISSUE_REPORTED:   "bg-red-100 text-red-700",
     REFUNDED:         "bg-orange-100 text-orange-700",
     RESOLVED:         "bg-green-100 text-green-700",
+    PENDING_UPLOAD:     "bg-yellow-100 text-yellow-700",
+    PARTIALLY_UPLOADED: "bg-blue-100 text-blue-700",
   };
   return map[status] ?? "bg-gray-100 text-gray-600";
 }

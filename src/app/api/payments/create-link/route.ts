@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma/client";
 import { createPaymentLink } from "@/lib/payments/stripe";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export async function POST(req: NextRequest) {
   const supabase = createClient();
@@ -10,6 +11,7 @@ export async function POST(req: NextRequest) {
 
   const { bookingId } = await req.json();
   if (!bookingId) return NextResponse.json({ error: "bookingId required" }, { status: 400 });
+  await ensureBookingMediaColumns();
 
   const booking = await prisma.booking.findUnique({
     where:   { id: bookingId },

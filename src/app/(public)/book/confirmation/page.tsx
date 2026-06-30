@@ -7,10 +7,12 @@ import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate, bookingStatusColor, paymentStatusColor } from "@/lib/utils";
 import { buildWaiverSharePayload } from "@/lib/waivers/links";
 import { WaiverShareCard } from "@/components/waiver/waiver-share-card";
+import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 
 export const metadata: Metadata = { title: "Booking Confirmed — Zipline Maldives" };
 
 async function getBooking(reference: string) {
+  await ensureBookingMediaColumns();
   return prisma.booking.findUnique({
     where: { reference: reference.toUpperCase() },
     include: {

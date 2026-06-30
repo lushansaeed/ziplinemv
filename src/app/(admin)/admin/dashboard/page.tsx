@@ -10,7 +10,7 @@ import { requirePermission } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/prisma/client";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { bookingStatusColor, paymentStatusColor, sourceColor } from "@/lib/utils";
-import { BookingSource, BookingStatus, PaymentStatus, Prisma } from "@prisma/client";
+import { BookingSource, BookingStatus, MediaFolderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { DashboardFilterForm } from "@/components/admin/dashboard/dashboard-filter-form";
 
 export const metadata: Metadata = { title: "Dashboard | Admin" };
@@ -218,6 +218,7 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
   const [
     todayBookings,
     pendingMedia,
+    overdueMedia,
     recentBookings,
     agentCount,
     affiliateCount,
@@ -229,7 +230,24 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
     }),
     prisma.booking.count({
       where: {
-        mediaStatus: { in: ["PENDING", "PROCESSING"] },
+        mediaFolderStatus: { in: [MediaFolderStatus.PENDING_UPLOAD, MediaFolderStatus.PARTIALLY_UPLOADED, MediaFolderStatus.ISSUE_REPORTED] },
+      },
+    }),
+    prisma.booking.findMany({
+      where: {
+        bookingStatus: { in: [BookingStatus.COMPLETED, BookingStatus.COMPLETED_WITH_REMARKS] },
+        mediaFolderStatus: { not: MediaFolderStatus.UPLOADED },
+        updatedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+      take: 6,
+      orderBy: { updatedAt: "asc" },
+      select: {
+        id: true,
+        reference: true,
+        updatedAt: true,
+        mediaFolderStatus: true,
+        driveFolderUrl: true,
+        customer: { select: { name: true, phone: true } },
       },
     }),
     prisma.booking.findMany({
@@ -278,6 +296,7 @@ async function getDashboardData(searchParams?: Record<string, string | string[] 
     periodLabel: label,
     todayBookings,
     pendingMedia,
+    overdueMedia,
     recentBookings,
     agentCount,
     affiliateCount,
@@ -475,6 +494,29 @@ export default async function AdminDashboardPage({
             <span>No currency conversion applied</span>
           </div>
         </div>
+
+        {data.overdueMedia.length > 0 && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Media upload warning</p>
+                <p className="mt-1 text-sm">
+                  {data.overdueMedia.length} completed ride{data.overdueMedia.length !== 1 ? "s" : ""} still need media uploaded after 24 hours.
+                </p>
+                <div className="mt-3 grid gap-2 md:grid-cols-2">
+                  {data.overdueMedia.map((booking) => (
+                    <div key={booking.id} className="rounded-lg border border-amber-200 bg-white/70 px-3 py-2 text-xs">
+                      <p className="font-mono font-semibold text-amber-950">{booking.reference}</p>
+                      <p>{booking.customer.name} · {booking.customer.phone}</p>
+                      <p className="mt-1 text-amber-700">{booking.mediaFolderStatus.replace(/_/g, " ").toLowerCase()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Partners quick stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
