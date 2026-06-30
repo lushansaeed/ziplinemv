@@ -18,6 +18,8 @@ const BLOCKED_BOOKING_STATUSES = new Set<BookingStatus>([
   BookingStatus.REFUNDED,
 ]);
 
+const resolvedProductIds = new Map<string, OdooId>();
+
 function normalizeOdooId(value: unknown, label: string): OdooId {
   if (typeof value === "number") return value;
   if (Array.isArray(value) && typeof value[0] === "number") return value[0];
@@ -57,6 +59,46 @@ function productIdFor(key: string) {
   if (defaultId > 0) return defaultId;
 
   throw new Error(`ODOO_PRODUCT_MAP is missing a product id for "${key}".`);
+}
+
+async function saleOrderProductIdFor(key: string) {
+  const configuredId = productIdFor(key);
+  const cacheKey = `${key}:${configuredId}`;
+  const cached = resolvedProductIds.get(cacheKey);
+  if (cached) return cached;
+
+  const directProduct = await searchRead<{ id: OdooId }>(
+    "product.product",
+    [["id", "=", configuredId]],
+    ["id"],
+    1,
+  );
+
+  if (directProduct[0]?.id) {
+    resolvedProductIds.set(cacheKey, configuredId);
+    return configuredId;
+  }
+
+  const productVariant = await searchRead<{ id: OdooId }>(
+    "product.product",
+    [["product_tmpl_id", "=", configuredId]],
+    ["id"],
+    1,
+  );
+
+  if (productVariant[0]?.id) {
+    console.info("[odoo] resolved product template to sale-order product variant", {
+      key,
+      configuredId,
+      productId: productVariant[0].id,
+    });
+    resolvedProductIds.set(cacheKey, productVariant[0].id);
+    return productVariant[0].id;
+  }
+
+  throw new Error(
+    `Odoo product mapping "${key}" points to ${configuredId}, but no matching product.product record or template variant was found.`,
+  );
 }
 
 function addOnProductKey(name: string) {
@@ -143,12 +185,12 @@ function buildBookingNotes(booking: NonNullable<Awaited<ReturnType<typeof getBoo
   ].join("\n");
 }
 
-function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof getBookingForOdoo>>>) {
+async function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof getBookingForOdoo>>>) {
   const addOnsTotal = booking.addOns.reduce((sum, item) => sum + toNumber(item.total), 0);
   const packageTotal = Math.max(0, toNumber(booking.subtotal) - addOnsTotal);
   const orderLines: OdooCreateLineCommand[] = [
     [0, 0, {
-      product_id: productIdFor("zipline_ride"),
+      product_id: await saleOrderProductIdFor("zipline_ride"),
       name: `${booking.package.name} (${booking.reference})`,
       product_uom_qty: booking.numRiders,
       price_unit: packageTotal / Math.max(booking.numRiders, 1),
@@ -159,7 +201,7 @@ function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof getBooki
     const key = addOnProductKey(item.addOn.name);
     if (!key) throw new Error(`No Odoo product mapping key found for add-on "${item.addOn.name}".`);
     orderLines.push([0, 0, {
-      product_id: productIdFor(key),
+      product_id: await saleOrderProductIdFor(key),
       name: item.addOn.name,
       product_uom_qty: item.quantity,
       price_unit: toNumber(item.pricePerUnit),
@@ -168,7 +210,7 @@ function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof getBooki
 
   if (toNumber(booking.discountAmount) > 0) {
     orderLines.push([0, 0, {
-      product_id: productIdFor("discount"),
+      product_id: await saleOrderProductIdFor("discount"),
       name: `Discount (${booking.reference})`,
       product_uom_qty: 1,
       price_unit: -toNumber(booking.discountAmount),
@@ -235,7 +277,7 @@ export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options
       client_order_ref: booking.reference,
       origin: "Zipline Booking System",
       note: buildBookingNotes(booking),
-      order_line: buildOrderLines(booking),
+      order_line: await buildOrderLines(booking),
     }), "sales order");
 
     await prisma.booking.update({
