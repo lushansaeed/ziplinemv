@@ -19,6 +19,7 @@ import { formatDate } from "@/lib/utils";
 import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
 import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 import { createBooking } from "@/lib/booking/create";
 
 function testAddOnKey(name: string) {
@@ -372,6 +373,7 @@ export async function checkInBooking(bookingId: string, notes?: string) {
   try {
     user = await requirePermission("bookings", "edit");
     const userId = user.id;
+    await ensureRideTrackingLaunchLineColumn();
 
     await prisma.$transaction(async (tx) => {
       await completeCheckInTransaction(tx, { bookingId, userId, notes });

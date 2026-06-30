@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 import { ensureBookingRiders } from "@/lib/ride-tracking/check-in-gate";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("bookings", "view");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const q = req.nextUrl.searchParams.get("q")?.trim();
   if (!q) return NextResponse.json({ error: "query required" }, { status: 400 });

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
 import { checkRiderWaiver } from "@/lib/ride-tracking/waiver-check";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 const OPEN_STATUSES = ["CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "PARTIALLY_LAUNCHED", "PARTIALLY_LANDED"] as const;
 
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "edit");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const { searchParams } = new URL(req.url);
   const dateStr = searchParams.get("date") ?? new Date().toISOString().split("T")[0];
@@ -27,6 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "edit");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const { date, actions } = await req.json();
   // actions: [{ bookingId, action: "no_show"|"weather_cancelled"|"completed_with_remarks", remarks }]

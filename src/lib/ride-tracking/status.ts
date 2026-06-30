@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, RiderTrackingStatus } from "@prisma/client";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 const FINAL_STATUSES: RiderTrackingStatus[] = [
   "LANDED", "DID_NOT_FLY", "WEATHER_CANCELLED", "RESCHEDULED", "NO_SHOW",
@@ -8,6 +9,7 @@ const FINAL_STATUSES: RiderTrackingStatus[] = [
 const LAUNCHED_STATUSES: RiderTrackingStatus[] = ["LAUNCHED", "LANDED"];
 
 export async function recomputeBookingStatus(bookingId: string): Promise<BookingStatus> {
+  await ensureRideTrackingLaunchLineColumn();
   const trackings = await prisma.rideTracking.findMany({ where: { bookingId } });
 
   if (trackings.length === 0) return "CHECKED_IN";

@@ -5,6 +5,7 @@ import { fetchWindData, calculateRideMetrics } from "@/lib/ride-tracking/wind";
 import { updateBookingStatusFromTracking } from "@/lib/ride-tracking/status";
 import { checkRiderWaiver } from "@/lib/ride-tracking/waiver-check";
 import { parseScanDeviceSettings } from "@/lib/ride-tracking/scan-device-settings";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 // ── Scan sequence: what field must exist before this location ────────────────
 const REQUIRED_PREVIOUS: Record<ScanLocation, keyof Pick<{
@@ -35,6 +36,7 @@ const BLOCKED_BOOKING_STATUSES = ["CANCELLED", "COMPLETED", "NO_SHOW", "WEATHER_
 
 // ── POST: process a QR wristband scan ───────────────────────────────────────
 export async function POST(req: NextRequest) {
+  await ensureRideTrackingLaunchLineColumn();
   const body = await req.json();
   const { qrCode, deviceCode, devicePin } = body;
 
@@ -215,6 +217,7 @@ function normalizeLaunchLineNumber(value: unknown) {
 
 // ── PATCH: Did Not Fly — 5th floor only ─────────────────────────────────────
 export async function PATCH(req: NextRequest) {
+  await ensureRideTrackingLaunchLineColumn();
   const body = await req.json();
   const { qrCode, deviceCode, devicePin, reason, remarks } = body;
 

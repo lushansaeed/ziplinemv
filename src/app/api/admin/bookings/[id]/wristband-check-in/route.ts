@@ -6,6 +6,7 @@ import {
   completeCheckInTransaction,
   type WristbandAssignmentInput,
 } from "@/lib/ride-tracking/check-in-gate";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 type RequestBody = {
   assignments?: WristbandAssignmentInput[];
@@ -51,6 +52,7 @@ async function logFailedAttempt(input: {
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireApiPermission("ride_tracking", "create");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   let body: RequestBody;
   try {

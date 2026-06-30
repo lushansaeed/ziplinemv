@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
 import { WristbandStatus } from "@prisma/client";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 const WRISTBAND_STATUSES = new Set(Object.values(WristbandStatus));
 
@@ -43,6 +44,7 @@ function normalizeRows(body: any): NormalizedWristbandRow[] {
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "view");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const { searchParams } = new URL(req.url);
   const status  = searchParams.get("status");

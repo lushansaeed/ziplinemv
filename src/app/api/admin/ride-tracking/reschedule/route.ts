@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 export async function POST(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "edit");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const { bookingId, newRideDate, newSlotId, reason, remarks } = await req.json();
   if (!bookingId || !newRideDate || !reason) {

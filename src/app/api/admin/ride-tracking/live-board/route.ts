@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
 import { BookingStatus, RiderTrackingStatus, WristbandStatus } from "@prisma/client";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 const ACTIVE_BOOKING_STATUSES: BookingStatus[] = [
   BookingStatus.CHECKED_IN,
@@ -21,6 +22,7 @@ const FINAL_RIDER_STATUSES: RiderTrackingStatus[] = [
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "view");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const { searchParams } = new URL(req.url);
   const dateStr = searchParams.get("date") ?? new Date().toISOString().split("T")[0];

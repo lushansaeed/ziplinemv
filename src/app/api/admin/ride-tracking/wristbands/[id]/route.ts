@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission, logAudit } from "@/lib/auth/permissions";
 import { WristbandStatus } from "@prisma/client";
+import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const auth = await requireApiPermission("ride_tracking", "edit");
   if (!auth.ok) return auth.response;
+  await ensureRideTrackingLaunchLineColumn();
 
   const old = await prisma.qRWristband.findUnique({ where: { id: params.id } });
   if (!old) return NextResponse.json({ error: "Wristband not found" }, { status: 404 });
