@@ -9,7 +9,7 @@ import {
 import { toast } from "sonner";
 import { DataTable, type Column } from "../shared/data-table";
 import { TableFilters } from "../shared/table-filters";
-import { ActionDropdown } from "../shared/action-dropdown";
+import { ActionDropdown, type ActionItem } from "../shared/action-dropdown";
 import { StatusBadge } from "../shared/status-badge";
 import { DetailDrawer } from "../shared/detail-drawer";
 import { ConfirmModal } from "../shared/confirm-modal";
@@ -40,9 +40,10 @@ interface BookingsTableProps {
   page:         number;
   perPage:      number;
   searchParams: Record<string, string | undefined>;
+  canEditPayments: boolean;
 }
 
-export function BookingsTable({ bookings, total, page, perPage, searchParams }: BookingsTableProps) {
+export function BookingsTable({ bookings, total, page, perPage, searchParams, canEditPayments }: BookingsTableProps) {
   const router     = useRouter();
   const pathname   = usePathname();
   const sp         = useSearchParams();
@@ -179,9 +180,8 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     {
       key: "actions", header: "",
       className: "w-[5%] text-right",
-      cell: (r) => (
-        <ActionDropdown
-          items={[
+      cell: (r) => {
+        const items: ActionItem[] = [
             {
               label: "View booking", icon: Eye,
               onClick: () => { setSelectedId(r.id); setDrawerOpen(true); },
@@ -217,9 +217,14 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
               disabled: ["CANCELLED","COMPLETED","REFUNDED"].includes(r.bookingStatus),
               onClick: () => { setCancelId(r.id); setCancelOpen(true); },
             },
-          ]}
-        />
-      ),
+          ];
+
+        return (
+          <ActionDropdown
+            items={canEditPayments ? items : items.filter((item) => item.label !== "Mark paid")}
+          />
+        );
+      },
     },
   ];
 
@@ -303,7 +308,13 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
         subtitle={selectedId ? `Loading…` : undefined}
         width="max-w-2xl"
       >
-        {selectedId && <BookingDetailPanel bookingId={selectedId} onClose={() => setDrawerOpen(false)} />}
+        {selectedId && (
+          <BookingDetailPanel
+            bookingId={selectedId}
+            onClose={() => setDrawerOpen(false)}
+            canEditPayments={canEditPayments}
+          />
+        )}
       </DetailDrawer>
 
       {/* Cancel confirm */}

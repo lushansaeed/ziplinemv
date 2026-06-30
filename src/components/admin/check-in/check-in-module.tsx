@@ -48,7 +48,7 @@ function riderWaiverSigned(
   return isWaiverSignedForRider(rider, waivers, riders);
 }
 
-export function CheckInModule() {
+export function CheckInModule({ canEditPayments = false }: { canEditPayments?: boolean }) {
   const [query, setQuery]           = useState("");
   const [result, setResult]         = useState<BookingResult | null>(null);
   const [notFound, setNotFound]     = useState(false);
@@ -414,7 +414,7 @@ export function CheckInModule() {
               </button>
             )}
 
-            {result.paymentStatus === "UNPAID" && (
+            {canEditPayments && result.paymentStatus === "UNPAID" && (
               <button
                 onClick={() => startMarkPaidTransition(async () => {
                   const r = await updatePaymentStatus(result.id, "PAID" as any, "cash");

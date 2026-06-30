@@ -45,7 +45,15 @@ function formatOdooSyncStatus(status: string) {
   return status.toLowerCase();
 }
 
-export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
+export function BookingDetailPanel({
+  bookingId,
+  onClose,
+  canEditPayments = false,
+}: {
+  bookingId: string;
+  onClose: () => void;
+  canEditPayments?: boolean;
+}) {
   const [booking, setBooking] = useState<Awaited<ReturnType<typeof getBookingDetail>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -170,7 +178,7 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
             Complete
           </button>
         )}
-        {booking.paymentStatus !== "PAID" && (
+        {canEditPayments && booking.paymentStatus !== "PAID" && (
           <button
             onClick={() => startTransition(() => doAction(() => updatePaymentStatus(booking.id, "PAID" as any), "Marked paid!"))}
             disabled={isPending}

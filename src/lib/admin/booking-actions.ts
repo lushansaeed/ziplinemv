@@ -3,7 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
 import { BookingStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
-import { requirePermission } from "@/lib/auth/permissions";
+import {
+  logAudit,
+  requirePermission,
+  userHasPermission,
+  type PermissionAction,
+  type PermissionModule,
+} from "@/lib/auth/permissions";
+import { getCurrentUser } from "@/lib/auth/actions";
+import { ADMIN_ROLES } from "@/lib/auth/roles";
 import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
 import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notifications/email";
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
@@ -178,9 +186,35 @@ function normalizePaymentMethod(method?: string): PaymentMethod | undefined {
   return undefined;
 }
 
+async function requireActionPermission(module: PermissionModule, action: PermissionAction) {
+  const user = await getCurrentUser();
+  if (!user || user.status !== "ACTIVE" || !ADMIN_ROLES.includes(user.role as any)) {
+    return { ok: false as const, error: "You do not have permission to perform this action." };
+  }
+
+  const allowed = await userHasPermission(user.id, user.role, module, action);
+  if (!allowed) {
+    await logAudit({
+      userId: user.id,
+      action: "RESTRICTED_ACTION_ATTEMPT",
+      module,
+      newValue: { permission: `${module}.${action}` },
+    }).catch((error) => {
+      console.error("[requireActionPermission:audit]", error?.message ?? error);
+    });
+
+    return { ok: false as const, error: "You do not have permission to update payments." };
+  }
+
+  return { ok: true as const, user };
+}
+
 export async function updatePaymentStatus(bookingId: string, status: PaymentStatus, method?: string) {
   try {
-    const user = await requirePermission("payments", "edit");
+    const auth = await requireActionPermission("payments", "edit");
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    const user = auth.user;
     const paymentMethod = normalizePaymentMethod(method);
 
     const old = await prisma.booking.findUnique({

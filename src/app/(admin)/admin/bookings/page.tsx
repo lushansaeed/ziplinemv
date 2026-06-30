@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { prisma } from "@/lib/prisma/client";
-import { requirePermission } from "@/lib/auth/permissions";
+import { requirePermission, userHasPermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { BookingsTable } from "@/components/admin/bookings/bookings-table";
 import { TestBookingButton } from "@/components/admin/bookings/test-booking-button";
@@ -85,7 +85,8 @@ export default async function BookingsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  await requirePermission("bookings", "view");
+  const user = await requirePermission("bookings", "view");
+  const canEditPayments = await userHasPermission(user.id, user.role, "payments", "edit");
   const { bookings, total, page, perPage } = await getBookings(searchParams);
 
   return (
@@ -109,6 +110,7 @@ export default async function BookingsPage({
         page={page}
         perPage={perPage}
         searchParams={searchParams as Record<string, string | undefined>}
+        canEditPayments={canEditPayments}
       />
     </div>
   );
