@@ -261,11 +261,13 @@ export async function linkWristbandToRider(
 
   let wristband = await tx.qRWristband.findUnique({ where: { qrCode } });
   if (!wristband) {
-    throw new CheckInGateError(
-      "This wristband QR is not registered. Use a pre-printed wristband that exists in the system.",
-      "wristband_not_registered",
-      404
-    );
+    wristband = await tx.qRWristband.create({
+      data: {
+        qrCode,
+        status: WristbandStatus.AVAILABLE,
+        notes: "Auto-registered during reception wristband check-in.",
+      },
+    });
   }
 
   if (wristband.status !== WristbandStatus.AVAILABLE || wristband.currentRiderId || wristband.currentBookingId) {
