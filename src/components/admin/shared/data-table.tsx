@@ -30,12 +30,13 @@ interface DataTableProps<T> {
   loading?:   boolean;
   emptyText?: string;
   onRowClick?: (row: T) => void;
+  tableClassName?: string;
 }
 
 export function DataTable<T>({
   columns, data, keyField, total, page, perPage, onPage,
   sortKey, sortDir, onSort, loading, emptyText = "No records found.",
-  onRowClick,
+  onRowClick, tableClassName,
 }: DataTableProps<T>) {
   const totalPages = Math.ceil(total / perPage);
   const from       = (page - 1) * perPage + 1;
@@ -53,7 +54,7 @@ export function DataTable<T>({
     <div>
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="admin-table w-full">
+        <table className={cn("admin-table w-full", tableClassName)}>
           <thead>
             <tr>
               {columns.map((col) => (

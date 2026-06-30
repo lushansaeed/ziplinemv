@@ -208,7 +208,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
 
   return (
     <>
-      <div className="admin-card p-0 overflow-hidden mt-0 rounded-none border-x-0 border-t-0">
+      <div className="admin-card p-0 overflow-x-auto overflow-y-visible mt-0 rounded-none border-x-0 border-t-0">
         <TableFilters
           search={searchParams.search ?? ""}
           onSearch={(v) => updateParam("search", v)}
@@ -260,6 +260,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
           columns={columns}
           data={bookings}
           keyField="id"
+          tableClassName="min-w-[1440px]"
           total={total}
           page={page}
           perPage={perPage}
