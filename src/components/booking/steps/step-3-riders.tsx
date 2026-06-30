@@ -45,23 +45,23 @@ export function Step3Riders() {
             type="button"
             onClick={() => selectRiderType("tourist")}
             className={cn(
-              "flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all text-left",
+              "flex flex-col items-start gap-2 p-4 rounded-2xl border bg-white shadow-sm transition-all text-left",
               riderType === "tourist"
-                ? "border-brand-citrus/60 bg-brand-citrus/8 shadow-brand-sm"
-                : "border-white/10 bg-white/3 hover:border-brand-citrus/30 hover:bg-white/5"
+                ? "border-brand-citrus/70 bg-brand-citrus/10 shadow-brand-sm"
+                : "border-slate-200 hover:border-brand-citrus/40 hover:bg-brand-citrus/5"
             )}
           >
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-              riderType === "tourist" ? "bg-brand-citrus/20" : "bg-white/5"
+              riderType === "tourist" ? "bg-brand-citrus/20" : "bg-slate-100"
             )}>
-              <Globe className={cn("w-4 h-4", riderType === "tourist" ? "text-brand-citrus" : "text-white/40")} />
+              <Globe className={cn("w-4 h-4", riderType === "tourist" ? "text-brand-citrus" : "text-slate-500")} />
             </div>
             <div>
-              <p className={cn("text-sm font-semibold", riderType === "tourist" ? "text-white" : "text-white/70")}>
+              <p className="text-sm font-semibold site-heading">
                 Visitor / Tourist
               </p>
-              <p className="text-xs text-white/40 mt-0.5">International visitors</p>
+              <p className="text-xs site-text-muted mt-0.5">International visitors</p>
             </div>
             {riderType === "tourist" && (
               <span className="text-[10px] font-bold text-brand-citrus uppercase tracking-wider">✓ Selected</span>
@@ -72,23 +72,23 @@ export function Step3Riders() {
             type="button"
             onClick={() => selectRiderType("local")}
             className={cn(
-              "flex flex-col items-start gap-2 p-4 rounded-2xl border transition-all text-left",
+              "flex flex-col items-start gap-2 p-4 rounded-2xl border bg-white shadow-sm transition-all text-left",
               riderType === "local"
-                ? "border-brand-lime/60 bg-brand-lime/8 shadow-ocean-sm"
-                : "border-white/10 bg-white/3 hover:border-brand-lime/30 hover:bg-white/5"
+                ? "border-brand-lime/70 bg-brand-lime/10 shadow-ocean-sm"
+                : "border-slate-200 hover:border-brand-lime/40 hover:bg-brand-lime/5"
             )}
           >
             <div className={cn(
               "w-8 h-8 rounded-lg flex items-center justify-center transition-all",
-              riderType === "local" ? "bg-brand-lime/20" : "bg-white/5"
+              riderType === "local" ? "bg-brand-lime/20" : "bg-slate-100"
             )}>
-              <Anchor className={cn("w-4 h-4", riderType === "local" ? "text-brand-lime" : "text-white/40")} />
+              <Anchor className={cn("w-4 h-4", riderType === "local" ? "text-brand-lime" : "text-slate-500")} />
             </div>
             <div>
-              <p className={cn("text-sm font-semibold", riderType === "local" ? "text-white" : "text-white/70")}>
+              <p className="text-sm font-semibold site-heading">
                 Local / Work Permit
               </p>
-              <p className="text-xs text-white/40 mt-0.5">Maldivian residents</p>
+              <p className="text-xs site-text-muted mt-0.5">Maldivian residents</p>
             </div>
             {riderType === "local" && (
               <span className="text-[10px] font-bold text-brand-lime uppercase tracking-wider">✓ Local price</span>
@@ -112,7 +112,7 @@ export function Step3Riders() {
             className={cn(
               "w-14 h-14 rounded-full border text-2xl font-bold transition-all",
               numRiders <= 1
-                ? "border-white/10 text-white/20 cursor-not-allowed"
+                ? "border-slate-200 text-slate-300 cursor-not-allowed bg-white"
                 : "border-brand-citrus/40 text-brand-citrus hover:bg-brand-citrus/10 active:scale-95"
             )}
           >
@@ -132,7 +132,7 @@ export function Step3Riders() {
             className={cn(
               "w-14 h-14 rounded-full border text-2xl font-bold transition-all",
               numRiders >= MAX_RIDERS
-                ? "border-white/10 text-white/20 cursor-not-allowed"
+                ? "border-slate-200 text-slate-300 cursor-not-allowed bg-white"
                 : "border-brand-citrus/40 text-brand-citrus hover:bg-brand-citrus/10 active:scale-95"
             )}
           >
@@ -150,7 +150,7 @@ export function Step3Riders() {
                 "w-10 h-10 rounded-xl text-sm font-semibold transition-all",
                 numRiders === n
                   ? "bg-brand-citrus text-brand-deep"
-                  : "bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-brand-citrus/40 hover:bg-brand-citrus/10 hover:text-brand-citrus"
               )}
             >
               {n}
@@ -160,7 +160,7 @@ export function Step3Riders() {
       </div>
 
       {/* ── Requirements ─────────────────────────────────────────────────── */}
-      <div className="bg-white/3 border border-white/8 rounded-xl p-4 space-y-2">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-sm">
         <p className="text-white/50 text-xs font-semibold uppercase tracking-wider">Rider requirements</p>
         <div className="grid sm:grid-cols-3 gap-3 text-sm">
           {[

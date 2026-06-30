@@ -7,9 +7,9 @@ import { isWeightEligible, isAgeEligible } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 const inputCls = cn(
-  "w-full rounded-xl px-3 py-2.5 text-sm bg-white/5 border border-white/10",
+  "w-full rounded-xl px-3 py-2.5 text-sm bg-white border border-slate-200 shadow-sm",
   "text-white placeholder:text-white/25",
-  "focus:outline-none focus:ring-2 focus:ring-brand-citrus/40 focus:border-brand-citrus/30",
+  "focus:outline-none focus:ring-2 focus:ring-brand-citrus/30 focus:border-brand-citrus/50",
   "transition-all duration-150"
 );
 
@@ -53,8 +53,8 @@ export function Step7RiderDetails() {
             <div
               key={i}
               className={cn(
-                "bg-white/3 border rounded-2xl p-5 space-y-4",
-                (wErr || aErr) ? "border-brand-coral/40" : "border-white/8"
+                "bg-white border rounded-2xl p-5 space-y-4 shadow-sm",
+                (wErr || aErr) ? "border-brand-coral/50" : "border-slate-200"
               )}
             >
               {/* Rider header */}
@@ -64,7 +64,7 @@ export function Step7RiderDetails() {
                 </div>
                 <p className="font-semibold text-white text-sm">Rider {i + 1}</p>
                 {i === 0 && (
-                  <span className="text-[10px] text-white/25 border border-white/10 rounded px-1.5 py-0.5">Lead rider</span>
+                  <span className="text-[10px] site-text-muted border border-slate-200 rounded px-1.5 py-0.5">Lead rider</span>
                 )}
               </div>
 
