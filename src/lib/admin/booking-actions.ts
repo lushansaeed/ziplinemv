@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { BookingStatus, PaymentMethod, PaymentStatus, WristbandStatus } from "@prisma/client";
+import { BookingStatus, PaymentMethod, PaymentStatus, WaiverStatus, WristbandStatus } from "@prisma/client";
 import {
   logAudit,
   requirePermission,
@@ -12,12 +12,12 @@ import {
 } from "@/lib/auth/permissions";
 import { getCurrentUser } from "@/lib/auth/actions";
 import { ADMIN_ROLES } from "@/lib/auth/roles";
-import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waivers/links";
+import { buildWaiverSharePayload, generateWaiverToken, regenerateBookingWaiverLink } from "@/lib/waivers/links";
 import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notifications/email";
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
 import { formatDate } from "@/lib/utils";
 import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
-import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
+import { CheckInGateError, completeCheckInTransaction, ensureBookingRiders } from "@/lib/ride-tracking/check-in-gate";
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
 import { createBooking } from "@/lib/booking/create";
@@ -529,6 +529,127 @@ export async function regenerateWaiverLink(bookingId: string) {
 
   revalidatePath("/admin/bookings");
   return { success: true };
+}
+
+export async function createTestSignedWaivers(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+  const now = new Date();
+
+  const result = await prisma.$transaction(async (tx) => {
+    await ensureBookingRiders(tx, bookingId);
+
+    const booking = await tx.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        customer: true,
+        riders: { orderBy: { id: "asc" } },
+        waivers: { orderBy: { createdAt: "asc" } },
+        waiverLinks: { where: { isActive: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    });
+    if (!booking) return { success: false as const, error: "Booking not found" };
+    if (booking.riders.length === 0) return { success: false as const, error: "No riders found for this booking." };
+
+    const waiverLink = booking.waiverLinks[0] ?? await tx.bookingWaiverLink.create({
+      data: {
+        bookingId,
+        token: generateWaiverToken(),
+        maxSubmissions: booking.numRiders,
+      },
+    });
+
+    let signedCount = 0;
+    const usedWaiverIds = new Set<string>();
+
+    for (let index = 0; index < booking.riders.length; index += 1) {
+      const rider = booking.riders[index];
+      const existing = booking.waivers.find((waiver) => {
+        if (usedWaiverIds.has(waiver.id)) return false;
+        return waiver.riderName.trim().toLowerCase() === rider.name.trim().toLowerCase()
+          || waiver.status === "PENDING";
+      });
+
+      const waiverData = {
+        waiverLinkId: waiverLink.id,
+        riderName: rider.name || `Rider ${index + 1}`,
+        nationality: booking.customer.nationality ?? "Test",
+        phoneCountryCode: booking.customer.phoneCountry,
+        phoneNumber: booking.customer.phone,
+        emergencyContactName: "Test Emergency Contact",
+        emergencyContactPhone: booking.customer.phone,
+        weight: rider.weight,
+        healthDeclarationAnswers: {
+          testWaiver: true,
+          generatedBy: "admin_test_helper",
+          age: rider.age,
+          bookingReference: booking.reference,
+        },
+        riskAcknowledged: true,
+        safetyRulesAcknowledged: true,
+        mediaConsent: true,
+        signatureData: "TEST_WAIVER_SIGNATURE",
+        signedAt: now,
+        ipAddress: "admin-test-helper",
+        userAgent: "admin-test-helper",
+        deviceInfo: "Admin generated test waiver",
+        submissionMode: "TEST_ADMIN",
+        staffAssisted: true,
+        status: WaiverStatus.SIGNED,
+      };
+
+      if (existing) {
+        usedWaiverIds.add(existing.id);
+        await tx.waiver.update({
+          where: { id: existing.id },
+          data: waiverData,
+        });
+      } else {
+        const created = await tx.waiver.create({
+          data: {
+            bookingId,
+            ...waiverData,
+          },
+        });
+        usedWaiverIds.add(created.id);
+      }
+      signedCount += 1;
+    }
+
+    await tx.booking.update({
+      where: { id: bookingId },
+      data: { waiverStatus: WaiverStatus.SIGNED },
+    });
+
+    await tx.bookingWaiverLink.update({
+      where: { id: waiverLink.id },
+      data: {
+        currentSubmissions: Math.max(waiverLink.currentSubmissions, signedCount),
+        maxSubmissions: Math.max(waiverLink.maxSubmissions, booking.numRiders),
+      },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "TEST_WAIVERS_COMPLETED",
+        module: "waivers",
+        recordId: bookingId,
+        newValue: {
+          reference: booking.reference,
+          signedCount,
+          mode: "admin_test_helper",
+        },
+      },
+    });
+
+    return { success: true as const, signedCount, reference: booking.reference };
+  });
+
+  if (!result.success) return result;
+
+  revalidatePath("/admin/bookings");
+  revalidatePath("/admin/check-in");
+  return result;
 }
 
 export async function resendBookingConfirmationEmail(bookingId: string) {

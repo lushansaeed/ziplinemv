@@ -17,6 +17,7 @@ import {
   resendWaiverEmail,
   resendWaiverWhatsApp,
   retryOdooSync,
+  createTestSignedWaivers,
 } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -378,14 +379,28 @@ export function BookingDetailPanel({
       />
 
       {/* Waivers */}
-      {booking.waivers.length > 0 && (
-        <section id="admin-waiver-status" className="scroll-mt-4">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Waivers</p>
-            <button onClick={exportWaiversCsv} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
-              Export CSV
+      <section id="admin-waiver-status" className="scroll-mt-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Waivers</p>
+          <div className="flex items-center gap-2">
+            {booking.waivers.length > 0 && (
+              <button onClick={exportWaiversCsv} className="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted">
+                Export CSV
+              </button>
+            )}
+            <button
+              onClick={() => {
+                if (!window.confirm("Create signed TEST waivers for all riders in this booking? Use this only for test bookings.")) return;
+                startTransition(() => doAction(() => createTestSignedWaivers(booking.id), "Test waivers completed."));
+              }}
+              disabled={isPending}
+              className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:opacity-50"
+            >
+              Complete test waivers
             </button>
           </div>
+        </div>
+        {booking.waivers.length > 0 ? (
           <div className="space-y-2">
             {booking.waivers.map((w: any) => (
               <div key={w.id} className="flex items-center justify-between px-4 py-2.5 bg-muted/30 rounded-xl text-sm">
@@ -418,8 +433,12 @@ export function BookingDetailPanel({
               </div>
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="rounded-xl border border-dashed border-border p-4 text-sm text-muted-foreground">
+            No waiver rows yet. Use the test action above only for test bookings.
+          </div>
+        )}
+      </section>
 
       {/* Check-in info */}
       {booking.checkIn && (
