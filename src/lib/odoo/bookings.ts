@@ -1,9 +1,17 @@
 import { BookingStatus, OdooSyncStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
-import { isOdooSyncEnabled, odooExecuteKw } from "./client";
+import { create, isOdooSyncEnabled, searchRead } from "@/lib/odoo-client";
 
 type OdooId = number;
 type OdooCreateLineCommand = [0, 0, Record<string, unknown>];
+
+const FALLBACK_PRODUCT_MAP: Record<string, number> = {
+  zipline_ride: 2272,
+  insta360: 2293,
+  photography: 2294,
+  drone: 2295,
+  discount: 2296,
+};
 
 const BLOCKED_BOOKING_STATUSES = new Set<BookingStatus>([
   BookingStatus.CANCELLED,
@@ -25,10 +33,10 @@ function toNumber(value: unknown) {
 
 function parseProductMap() {
   const raw = process.env.ODOO_PRODUCT_MAP;
-  if (!raw) return {};
+  if (!raw) return FALLBACK_PRODUCT_MAP;
 
   try {
-    return JSON.parse(raw) as Record<string, number>;
+    return { ...FALLBACK_PRODUCT_MAP, ...(JSON.parse(raw) as Record<string, number>) };
   } catch {
     throw new Error("ODOO_PRODUCT_MAP must be valid JSON.");
   }
@@ -36,13 +44,14 @@ function parseProductMap() {
 
 function productIdFor(key: string) {
   const productMap = parseProductMap();
-  const id = Number(productMap[key]);
-  if (id > 0) return id;
 
   if (key === "discount") {
     const discountId = Number(process.env.ODOO_DISCOUNT_PRODUCT_ID);
     if (discountId > 0) return discountId;
   }
+
+  const id = Number(productMap[key]);
+  if (id > 0) return id;
 
   const defaultId = Number(process.env.ODOO_DEFAULT_PRODUCT_ID);
   if (defaultId > 0) return defaultId;
@@ -56,20 +65,6 @@ function addOnProductKey(name: string) {
   if (normalized.includes("photo")) return "photography";
   if (normalized.includes("drone")) return "drone";
   return null;
-}
-
-async function searchRead<T>(
-  model: string,
-  domain: unknown[],
-  fields: string[],
-  limit = 1,
-) {
-  return odooExecuteKw<T[]>(model, "search_read", [domain], { fields, limit });
-}
-
-async function findCurrencyId(currency: string) {
-  const existing = await searchRead<{ id: OdooId }>("res.currency", [["name", "=", currency]], ["id"], 1);
-  return existing[0]?.id ?? null;
 }
 
 function getPricelistId(customerType: string) {
@@ -104,32 +99,32 @@ async function getBookingForOdoo(bookingId: string) {
 
 async function findOrCreatePartner(booking: NonNullable<Awaited<ReturnType<typeof getBookingForOdoo>>>) {
   const customer = booking.customer;
-  const domain = customer.email
-    ? ["|", ["email", "=", customer.email], ["phone", "=", customer.phone]]
-    : [["phone", "=", customer.phone]];
 
-  const existing = await searchRead<{ id: OdooId }>("res.partner", domain, ["id"], 1);
-  if (existing[0]?.id) return existing[0].id;
+  if (customer.email) {
+    const byEmail = await searchRead<{ id: OdooId }>("res.partner", [["email", "=", customer.email]], ["id"], 1);
+    if (byEmail[0]?.id) return byEmail[0].id;
+  }
 
-  const created = await odooExecuteKw<unknown>("res.partner", "create", [{
+  if (customer.phone) {
+    const byPhone = await searchRead<{ id: OdooId }>("res.partner", [["phone", "=", customer.phone]], ["id"], 1);
+    if (byPhone[0]?.id) return byPhone[0].id;
+  }
+
+  const created = await create<unknown>("res.partner", {
     name: customer.name,
     email: customer.email || false,
     phone: customer.phone,
-    comment: [
-      customer.nationality ? `Nationality: ${customer.nationality}` : null,
-      customer.hotel ? `Hotel: ${customer.hotel}` : null,
-      `Zipline customer source: ${customer.source}`,
-    ].filter(Boolean).join("\n"),
-  }]);
+    customer_rank: 1,
+  });
 
   return normalizeOdooId(created, "partner");
 }
 
-async function markSkipped(bookingId: string, reason: string) {
+async function markSkippedUnpaid(bookingId: string, reason: string) {
   await prisma.booking.update({
     where: { id: bookingId },
     data: {
-      odooSyncStatus: OdooSyncStatus.SKIPPED,
+      odooSyncStatus: OdooSyncStatus.SKIPPED_UNPAID,
       odooSyncError: reason,
     },
   });
@@ -138,25 +133,49 @@ async function markSkipped(bookingId: string, reason: string) {
 
 function buildBookingNotes(booking: NonNullable<Awaited<ReturnType<typeof getBookingForOdoo>>>) {
   return [
-    `Zipline booking reference: ${booking.reference}`,
+    `Booking reference: ${booking.reference}`,
+    `Source: ${booking.source}`,
     `Ride date: ${booking.bookingDate.toISOString().slice(0, 10)}`,
     `Ride time: ${booking.slotLabel ?? booking.slot.startTime}`,
     `Riders: ${booking.numRiders}`,
-    `Booking status: ${booking.bookingStatus}`,
     `Payment status: ${booking.paymentStatus}`,
-    `Payment method: ${booking.paymentMethod ?? "Not selected"}`,
-    `Source: ${booking.source}`,
     `Customer type: ${booking.customerType}`,
-    booking.customer.nationality ? `Nationality: ${booking.customer.nationality}` : null,
-    booking.customer.hotel ? `Hotel: ${booking.customer.hotel}` : null,
-    booking.agent ? `Agent: ${booking.agent.businessName}` : null,
-    booking.affiliate ? `Affiliate: ${booking.affiliate.name}` : null,
-    booking.promoCode ? `Promo code: ${booking.promoCode.code}` : null,
-    booking.affiliateCoupon ? `Affiliate coupon: ${booking.affiliateCoupon.code}` : null,
-    booking.riders.length
-      ? `Riders:\n${booking.riders.map((rider, index) => `${index + 1}. ${rider.name || "Unnamed"}${rider.age ? `, age ${rider.age}` : ""}${rider.weight ? `, ${rider.weight}kg` : ""}`).join("\n")}`
-      : null,
-  ].filter(Boolean).join("\n");
+  ].join("\n");
+}
+
+function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof getBookingForOdoo>>>) {
+  const addOnsTotal = booking.addOns.reduce((sum, item) => sum + toNumber(item.total), 0);
+  const packageTotal = Math.max(0, toNumber(booking.subtotal) - addOnsTotal);
+  const orderLines: OdooCreateLineCommand[] = [
+    [0, 0, {
+      product_id: productIdFor("zipline_ride"),
+      name: `${booking.package.name} (${booking.reference})`,
+      product_uom_qty: booking.numRiders,
+      price_unit: packageTotal / Math.max(booking.numRiders, 1),
+    }],
+  ];
+
+  for (const item of booking.addOns) {
+    const key = addOnProductKey(item.addOn.name);
+    if (!key) throw new Error(`No Odoo product mapping key found for add-on "${item.addOn.name}".`);
+    orderLines.push([0, 0, {
+      product_id: productIdFor(key),
+      name: item.addOn.name,
+      product_uom_qty: item.quantity,
+      price_unit: toNumber(item.pricePerUnit),
+    }]);
+  }
+
+  if (toNumber(booking.discountAmount) > 0) {
+    orderLines.push([0, 0, {
+      product_id: productIdFor("discount"),
+      name: `Discount (${booking.reference})`,
+      product_uom_qty: 1,
+      price_unit: -toNumber(booking.discountAmount),
+    }]);
+  }
+
+  return orderLines;
 }
 
 export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options: { force?: boolean } = {}) {
@@ -165,22 +184,25 @@ export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options
   const booking = await getBookingForOdoo(bookingId);
   if (!booking) throw new Error("Booking not found.");
 
-  if (booking.odooSaleOrderId) {
-    return { synced: false, skipped: true, saleOrderId: booking.odooSaleOrderId, reason: "Booking already has an Odoo sale order." };
+  if (booking.odooSaleOrderId || booking.odooInvoiceId) {
+    return {
+      synced: false,
+      skipped: true,
+      saleOrderId: booking.odooSaleOrderId ?? undefined,
+      invoiceId: booking.odooInvoiceId ?? undefined,
+      reason: "Booking already has an Odoo record.",
+    };
   }
 
-  if (booking.paymentStatus !== PaymentStatus.PAID) {
-    return markSkipped(booking.id, `Booking is not paid. Current payment status: ${booking.paymentStatus}.`);
-  }
-
-  if (BLOCKED_BOOKING_STATUSES.has(booking.bookingStatus)) {
-    return markSkipped(booking.id, `Booking status ${booking.bookingStatus} is not eligible for revenue sync.`);
+  if (booking.paymentStatus !== PaymentStatus.PAID || BLOCKED_BOOKING_STATUSES.has(booking.bookingStatus)) {
+    return markSkippedUnpaid(booking.id, `Booking is not eligible for Odoo revenue sync. Payment: ${booking.paymentStatus}. Status: ${booking.bookingStatus}.`);
   }
 
   const claim = await prisma.booking.updateMany({
     where: {
       id: booking.id,
       odooSaleOrderId: null,
+      odooInvoiceId: null,
       ...(options.force ? {} : { odooSyncStatus: { not: OdooSyncStatus.SYNCING } }),
     },
     data: {
@@ -192,65 +214,29 @@ export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options
   if (claim.count === 0) {
     const latest = await prisma.booking.findUnique({
       where: { id: booking.id },
-      select: { odooSaleOrderId: true, odooSyncStatus: true },
+      select: { odooSaleOrderId: true, odooInvoiceId: true },
     });
     return {
       synced: false,
       skipped: true,
       saleOrderId: latest?.odooSaleOrderId ?? undefined,
-      reason: latest?.odooSaleOrderId
-        ? "Booking already has an Odoo sale order."
+      invoiceId: latest?.odooInvoiceId ?? undefined,
+      reason: latest?.odooSaleOrderId || latest?.odooInvoiceId
+        ? "Booking already has an Odoo record."
         : "Booking is already syncing to Odoo.",
     };
   }
 
   try {
     const partnerId = await findOrCreatePartner(booking);
-    const currencyId = await findCurrencyId(booking.currency);
-    if (!currencyId) throw new Error(`Odoo currency "${booking.currency}" was not found.`);
-    const pricelistId = getPricelistId(booking.customerType);
-    const addOnsTotal = booking.addOns.reduce((sum, item) => sum + toNumber(item.total), 0);
-    const packageTotal = Math.max(0, toNumber(booking.subtotal) - addOnsTotal);
-    const orderLines: OdooCreateLineCommand[] = [
-      [0, 0, {
-        product_id: productIdFor("zipline_ride"),
-        name: `${booking.package.name} (${booking.reference})`,
-        product_uom_qty: booking.numRiders,
-        price_unit: packageTotal / Math.max(booking.numRiders, 1),
-      }],
-    ];
-
-    for (const item of booking.addOns) {
-      const key = addOnProductKey(item.addOn.name);
-      if (!key) throw new Error(`No Odoo product mapping key found for add-on "${item.addOn.name}".`);
-      orderLines.push([0, 0, {
-        product_id: productIdFor(key),
-        name: item.addOn.name,
-        product_uom_qty: item.quantity,
-        price_unit: toNumber(item.pricePerUnit),
-      }]);
-    }
-
-    if (toNumber(booking.discountAmount) > 0) {
-      orderLines.push([0, 0, {
-        product_id: productIdFor("discount"),
-        name: `Discount (${booking.reference})`,
-        product_uom_qty: 1,
-        price_unit: -toNumber(booking.discountAmount),
-      }]);
-    }
-
-    const saleOrder: Record<string, unknown> = {
+    const saleOrderId = normalizeOdooId(await create<unknown>("sale.order", {
       partner_id: partnerId,
-      pricelist_id: pricelistId,
+      pricelist_id: getPricelistId(booking.customerType),
       client_order_ref: booking.reference,
       origin: "Zipline Booking System",
       note: buildBookingNotes(booking),
-      order_line: orderLines,
-    };
-
-    const created = await odooExecuteKw<unknown>("sale.order", "create", [saleOrder]);
-    const saleOrderId = normalizeOdooId(created, "sales order");
+      order_line: buildOrderLines(booking),
+    }), "sales order");
 
     await prisma.booking.update({
       where: { id: booking.id },

@@ -136,11 +136,11 @@ enum MediaDeliveryStatus {
 }
 
 enum OdooSyncStatus {
-  PENDING
-  SYNCING
-  SKIPPED
-  SYNCED
-  FAILED
+  NOT_SYNCED     @map("not_synced")
+  SYNCING        @map("syncing")
+  SYNCED         @map("synced")
+  FAILED         @map("failed")
+  SKIPPED_UNPAID @map("skipped_unpaid")
 }
 
 enum MediaType {
@@ -845,8 +845,9 @@ model Booking {
   confirmationEmailSentAt    DateTime?           @map("confirmation_email_sent_at")
   confirmationEmailError     String?             @map("confirmation_email_error") @db.Text
   confirmationEmailRecipient String?             @map("confirmation_email_recipient")
-  odooSyncStatus             OdooSyncStatus      @default(PENDING) @map("odoo_sync_status")
+  odooSyncStatus             OdooSyncStatus      @default(NOT_SYNCED) @map("odoo_sync_status")
   odooSaleOrderId            Int?                @map("odoo_sale_order_id")
+  odooInvoiceId              Int?                @map("odoo_invoice_id")
   odooSyncedAt               DateTime?           @map("odoo_synced_at")
   odooSyncError              String?             @map("odoo_sync_error") @db.Text
   notes                      String?
@@ -883,6 +884,7 @@ model Booking {
   @@index([mediaStatus, createdAt])
   @@index([odooSyncStatus, createdAt])
   @@index([odooSaleOrderId])
+  @@index([odooInvoiceId])
   @@index([waiverStatus, bookingDate])
   @@index([createdAt])
   @@map("bookings")

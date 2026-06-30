@@ -41,6 +41,10 @@ function Row({ label, value, icon: Icon }: DetailRow) {
   );
 }
 
+function formatOdooSyncStatus(status: string) {
+  return status.toLowerCase();
+}
+
 export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; onClose: () => void }) {
   const [booking, setBooking] = useState<Awaited<ReturnType<typeof getBookingDetail>> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,14 +222,15 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
               "status-badge",
               booking.odooSyncStatus === "SYNCED" && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
               booking.odooSyncStatus === "FAILED" && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
-              booking.odooSyncStatus === "SKIPPED" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
-              booking.odooSyncStatus === "PENDING" && "bg-muted text-muted-foreground",
+              booking.odooSyncStatus === "SKIPPED_UNPAID" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+              booking.odooSyncStatus === "NOT_SYNCED" && "bg-muted text-muted-foreground",
               booking.odooSyncStatus === "SYNCING" && "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
             )}>
-              {booking.odooSyncStatus}
+              {formatOdooSyncStatus(booking.odooSyncStatus)}
             </span>
           } />
           {booking.odooSaleOrderId && <Row label="Sale order ID" value={booking.odooSaleOrderId} />}
+          {booking.odooInvoiceId && <Row label="Invoice ID" value={booking.odooInvoiceId} />}
           {booking.odooSyncedAt && <Row label="Synced at" value={formatDateTime(booking.odooSyncedAt)} />}
           {booking.odooSyncError && <Row label="Last error" value={<span className="text-destructive">{booking.odooSyncError}</span>} />}
         </div>
