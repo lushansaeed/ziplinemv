@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Download, Filter, Wind, Clock } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Download, Filter, Wind, Clock, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
@@ -52,23 +52,58 @@ function offsetDate(days: number) {
 export function RideReports() {
   const [rows, setRows]         = useState<TrackingRow[]>([]);
   const [loading, setLoading]   = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   // Default: 3 days back → 3 days forward so nearby bookings always show
   const [dateFrom, setDateFrom] = useState(() => offsetDate(-3));
   const [dateTo, setDateTo]     = useState(() => offsetDate(3));
   const [status, setStatus]     = useState("");
+  const abortRef = useRef<AbortController | null>(null);
 
-  async function load(from: string, to: string, st: string) {
-    setLoading(true);
+  const load = useCallback(async (from: string, to: string, st: string, mode: "initial" | "background" = "initial") => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    if (mode === "initial") setLoading(true);
+    else setRefreshing(true);
+
     const params = new URLSearchParams({ dateFrom: from, dateTo: to });
     if (st) params.set("status", st);
-    const res  = await fetch(`/api/admin/ride-tracking/reports?${params}`);
-    const data = await res.json();
-    setRows(data);
-    setLoading(false);
-  }
+    try {
+      const res  = await fetch(`/api/admin/ride-tracking/reports?${params}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error("Failed to load ride reports");
+      const data = await res.json();
+      setRows(data);
+      setLastUpdatedAt(new Date());
+    } catch (error: any) {
+      if (error?.name !== "AbortError") console.error("[ride-reports] refresh failed", error);
+    } finally {
+      if (abortRef.current === controller) abortRef.current = null;
+      if (mode === "initial") setLoading(false);
+      else setRefreshing(false);
+    }
+  }, []);
 
   // Auto-load whenever any filter changes
-  useEffect(() => { load(dateFrom, dateTo, status); }, [dateFrom, dateTo, status]); // eslint-disable-line
+  useEffect(() => {
+    load(dateFrom, dateTo, status, "initial");
+    return () => abortRef.current?.abort();
+  }, [dateFrom, dateTo, status, load]);
+
+  // Quietly refresh while the page is open so scan updates appear without a reload.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        load(dateFrom, dateTo, status, "background");
+      }
+    }, 8000);
+
+    return () => window.clearInterval(interval);
+  }, [dateFrom, dateTo, status, load]);
 
   function handleExport() {
     const params = new URLSearchParams({ dateFrom, dateTo, csv: "1" });
@@ -97,7 +132,20 @@ export function RideReports() {
           <option value="">All rider statuses</option>
           {Object.entries(STATUS_CONFIG).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
-        {loading && <span className="text-xs text-muted-foreground animate-pulse">Loading…</span>}
+        {(loading || refreshing || lastUpdatedAt) && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <RefreshCw className={cn("h-3.5 w-3.5", (loading || refreshing) && "animate-spin")} />
+            {loading ? "Loading..." : refreshing ? "Refreshing..." : `Updated ${lastUpdatedAt?.toLocaleTimeString("en-MV", { hour: "2-digit", minute: "2-digit" })}`}
+          </span>
+        )}
+        <button
+          onClick={() => load(dateFrom, dateTo, status, rows.length ? "background" : "initial")}
+          disabled={loading || refreshing}
+          className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
+        >
+          <RefreshCw className={cn("w-4 h-4", (loading || refreshing) && "animate-spin")} />
+          Refresh
+        </button>
         <button onClick={handleExport}
           className="flex items-center gap-2 px-4 py-1.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-muted ml-auto">
           <Download className="w-4 h-4" />Export CSV
