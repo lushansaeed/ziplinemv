@@ -21,7 +21,7 @@ function testAddOnKey(name: string) {
   return null;
 }
 
-export async function createTestBooking() {
+async function createTestBookingInternal({ complimentary = false }: { complimentary?: boolean } = {}) {
   const user = await requirePermission("bookings", "create");
   const packageRecord = await prisma.package.findFirst({
     where: { active: true, activity: { slug: "zipline" } },
@@ -55,12 +55,12 @@ export async function createTestBooking() {
     riderType: "tourist",
     date: new Date().toISOString().slice(0, 10),
     numRiders: 2,
-    customerName: "Test Booking Customer",
+    customerName: complimentary ? "Complimentary Test Customer" : "Test Booking Customer",
     customerPhone: `+9607${String(timestamp).slice(-6)}`,
     customerPhoneCountry: "MV",
-    customerEmail: `test-booking-${timestamp}@example.com`,
+    customerEmail: `${complimentary ? "comp-test-customer" : "test-booking"}-${timestamp}@example.com`,
     customerNationality: "United States",
-    customerHotel: "Test Hotel",
+    customerHotel: complimentary ? "Complimentary Test Hotel" : "Test Hotel",
     riders: [
       { name: "Test Rider 1", age: "30", weight: "70" },
       { name: "Test Rider 2", age: "28", weight: "65" },
@@ -78,20 +78,42 @@ export async function createTestBooking() {
       where: { id: result.bookingId },
       data: {
         createdById: user.id,
-        notes: "TEST BOOKING - unpaid by default. Mark paid only when intentionally testing paid/Odoo flow.",
+        paymentStatus: complimentary ? PaymentStatus.COMPLIMENTARY : PaymentStatus.UNPAID,
+        paymentMethod: complimentary ? PaymentMethod.COMPLIMENTARY : PaymentMethod.CASH,
+        notes: complimentary
+          ? "COMPLIMENTARY TEST CUSTOMER - no paid revenue and no Odoo sync."
+          : "TEST BOOKING - unpaid by default. Mark paid only when intentionally testing paid/Odoo flow.",
       },
     }),
+    ...(complimentary
+      ? [
+          prisma.payment.create({
+            data: {
+              bookingId: result.bookingId,
+              amount: 0,
+              currency: result.currency ?? "USD",
+              method: PaymentMethod.COMPLIMENTARY,
+              status: PaymentStatus.COMPLIMENTARY,
+              reference: "Complimentary test customer",
+              metadata: {
+                testCustomer: true,
+                complimentary: true,
+              },
+            },
+          }),
+        ]
+      : []),
     prisma.auditLog.create({
       data: {
         userId: user.id,
-        action: "TEST_BOOKING_CREATED",
+        action: complimentary ? "COMPLIMENTARY_TEST_CUSTOMER_CREATED" : "TEST_BOOKING_CREATED",
         module: "bookings",
         recordId: result.bookingId,
         newValue: {
           reference: result.reference,
           total: result.total,
           currency: result.currency,
-          paymentStatus: "UNPAID",
+          paymentStatus: complimentary ? "COMPLIMENTARY" : "UNPAID",
         },
       },
     }),
@@ -105,6 +127,14 @@ export async function createTestBooking() {
     total: result.total,
     currency: result.currency,
   };
+}
+
+export async function createTestBooking() {
+  return createTestBookingInternal();
+}
+
+export async function createComplimentaryTestCustomer() {
+  return createTestBookingInternal({ complimentary: true });
 }
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
