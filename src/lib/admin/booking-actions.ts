@@ -11,6 +11,101 @@ import { formatDate } from "@/lib/utils";
 import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
 import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
+import { createBooking } from "@/lib/booking/create";
+
+function testAddOnKey(name: string) {
+  const normalized = name.toLowerCase();
+  if (normalized.includes("360") || normalized.includes("insta")) return "insta360";
+  if (normalized.includes("photo")) return "photography";
+  if (normalized.includes("drone")) return "drone";
+  return null;
+}
+
+export async function createTestBooking() {
+  const user = await requirePermission("bookings", "create");
+  const packageRecord = await prisma.package.findFirst({
+    where: { active: true, activity: { slug: "zipline" } },
+    orderBy: [{ featured: "desc" }, { displayOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true },
+  });
+
+  if (!packageRecord) {
+    return { success: false, error: "No active zipline package is configured." };
+  }
+
+  const addOns = await prisma.addOn.findMany({
+    where: { active: true, activity: { slug: "zipline" } },
+    orderBy: [{ displayOrder: "asc" }, { createdAt: "asc" }],
+    select: { id: true, name: true },
+  });
+  const addOnQuantities: Record<string, number> = {};
+
+  for (const addOn of addOns) {
+    const key = testAddOnKey(addOn.name);
+    if (key === "insta360") addOnQuantities[addOn.id] = 2;
+    if (key === "photography") addOnQuantities[addOn.id] = 1;
+    if (key === "drone") addOnQuantities[addOn.id] = 2;
+  }
+
+  const timestamp = Date.now();
+  const result = await createBooking({
+    packageId: packageRecord.id,
+    addOnIds: Object.keys(addOnQuantities),
+    addOnQuantities,
+    riderType: "tourist",
+    date: new Date().toISOString().slice(0, 10),
+    numRiders: 2,
+    customerName: "Test Booking Customer",
+    customerPhone: `+9607${String(timestamp).slice(-6)}`,
+    customerPhoneCountry: "MV",
+    customerEmail: `test-booking-${timestamp}@example.com`,
+    customerNationality: "United States",
+    customerHotel: "Test Hotel",
+    riders: [
+      { name: "Test Rider 1", age: "30", weight: "70" },
+      { name: "Test Rider 2", age: "28", weight: "65" },
+    ],
+    paymentMethod: "cash",
+    source: "WALK_IN",
+  });
+
+  if (!result.success || !result.bookingId) {
+    return { success: false, error: result.error ?? "Could not create test booking." };
+  }
+
+  await prisma.$transaction([
+    prisma.booking.update({
+      where: { id: result.bookingId },
+      data: {
+        createdById: user.id,
+        notes: "TEST BOOKING - unpaid by default. Mark paid only when intentionally testing paid/Odoo flow.",
+      },
+    }),
+    prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "TEST_BOOKING_CREATED",
+        module: "bookings",
+        recordId: result.bookingId,
+        newValue: {
+          reference: result.reference,
+          total: result.total,
+          currency: result.currency,
+          paymentStatus: "UNPAID",
+        },
+      },
+    }),
+  ]);
+
+  revalidatePath("/admin/bookings");
+  return {
+    success: true,
+    bookingId: result.bookingId,
+    reference: result.reference,
+    total: result.total,
+    currency: result.currency,
+  };
+}
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
   const user = await requirePermission("bookings", "edit");

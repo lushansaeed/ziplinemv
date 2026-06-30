@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma/client";
 import { requirePermission } from "@/lib/auth/permissions";
 import { PageHeader } from "@/components/shared/page-header";
 import { BookingsTable } from "@/components/admin/bookings/bookings-table";
+import { TestBookingButton } from "@/components/admin/bookings/test-booking-button";
 import { Prisma } from "@prisma/client";
 
 export const metadata: Metadata = { title: "Bookings | Admin" };
@@ -93,10 +94,13 @@ export default async function BookingsPage({
         title="Bookings"
         description={`${total} total bookings`}
         actions={
-          <Link href="/admin/bookings/walk-in" className="btn-brand text-sm px-4 py-2">
-            <Plus className="w-4 h-4" />
-            Walk-in booking
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <TestBookingButton />
+            <Link href="/admin/bookings/walk-in" className="btn-brand text-sm px-4 py-2">
+              <Plus className="w-4 h-4" />
+              Walk-in booking
+            </Link>
+          </div>
         }
       />
       <BookingsTable
