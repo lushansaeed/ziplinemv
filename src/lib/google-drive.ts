@@ -9,7 +9,7 @@ type DriveFile = {
 type DriveFolderPathInput = {
   bookingReference: string;
   customerPhone: string;
-  bookingDate: Date;
+  folderDate: Date;
 };
 
 const DRIVE_FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
@@ -147,11 +147,38 @@ async function findOrCreateFolder(parentId: string, name: string) {
   return createFolder(parentId, name);
 }
 
+const MEDIA_FOLDER_TIME_ZONE = "Indian/Maldives";
+
+function ordinalDay(day: number) {
+  const rem100 = day % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${day}th`;
+
+  switch (day % 10) {
+    case 1:
+      return `${day}st`;
+    case 2:
+      return `${day}nd`;
+    case 3:
+      return `${day}rd`;
+    default:
+      return `${day}th`;
+  }
+}
+
 function dateParts(date: Date) {
-  const year = String(date.getFullYear());
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return { year, month, day, date: `${year}-${month}-${day}` };
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: MEDIA_FOLDER_TIME_ZONE,
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value ?? String(date.getUTCFullYear());
+  const month = parts.find((part) => part.type === "month")?.value ?? "Unknown Month";
+  const day = Number(parts.find((part) => part.type === "day")?.value ?? "1");
+  const dateFolder = `${ordinalDay(day)} ${month}`;
+
+  return { year, month, date: dateFolder };
 }
 
 function safeFolderName(value: string) {
@@ -165,7 +192,7 @@ export function buildBookingMediaFolderName(input: DriveFolderPathInput) {
 
 export async function ensureBookingDriveFolder(input: DriveFolderPathInput) {
   const { parentFolderId } = driveConfig();
-  const parts = dateParts(input.bookingDate);
+  const parts = dateParts(input.folderDate);
   const folderName = buildBookingMediaFolderName(input);
 
   console.info("[google-drive] ensuring booking media folder", {

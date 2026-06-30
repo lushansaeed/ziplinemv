@@ -32,7 +32,7 @@ function mediaFolderHtml(input: {
   `;
 }
 
-export async function ensureMediaFolderForBooking(bookingId: string) {
+export async function ensureMediaFolderForBooking(bookingId: string, options: { force?: boolean } = {}) {
   await ensureBookingMediaColumns();
 
   const booking = await prisma.booking.findUnique({
@@ -44,11 +44,12 @@ export async function ensureMediaFolderForBooking(bookingId: string) {
       driveFolderId: true,
       driveFolderUrl: true,
       customer: { select: { phone: true } },
+      checkIn: { select: { checkedInAt: true } },
     },
   });
 
   if (!booking) throw new Error("Booking not found.");
-  if (booking.driveFolderId && booking.driveFolderUrl) {
+  if (!options.force && booking.driveFolderId && booking.driveFolderUrl) {
     return {
       created: false,
       folderId: booking.driveFolderId,
@@ -59,7 +60,7 @@ export async function ensureMediaFolderForBooking(bookingId: string) {
   const folder = await ensureBookingDriveFolder({
     bookingReference: booking.reference,
     customerPhone: booking.customer.phone,
-    bookingDate: booking.bookingDate,
+    folderDate: booking.checkIn?.checkedInAt ?? new Date(),
   });
 
   await prisma.booking.update({
@@ -74,7 +75,7 @@ export async function ensureMediaFolderForBooking(bookingId: string) {
 
   await prisma.auditLog.create({
     data: {
-      action: "GOOGLE_DRIVE_MEDIA_FOLDER_CREATED",
+      action: options.force ? "GOOGLE_DRIVE_MEDIA_FOLDER_RECREATED" : "GOOGLE_DRIVE_MEDIA_FOLDER_CREATED",
       module: "media",
       recordId: booking.id,
       newValue: {

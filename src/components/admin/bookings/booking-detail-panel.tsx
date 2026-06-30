@@ -19,6 +19,7 @@ import {
   retryOdooSync,
   createTestSignedWaivers,
   createMediaFolderForBooking,
+  recreateMediaFolderForBooking,
   resendMediaFolderEmail,
   updateMediaFolderStatus,
 } from "@/lib/admin/booking-actions";
@@ -289,6 +290,16 @@ export function BookingDetailPanel({
               >
                 <FolderOpen className="h-3.5 w-3.5" />
                 Create folder
+              </button>
+            )}
+            {booking.driveFolderUrl && (
+              <button
+                onClick={() => startTransition(() => doAction(() => recreateMediaFolderForBooking(booking.id), "Media folder recreated"))}
+                disabled={isPending}
+                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Recreate folder
               </button>
             )}
             <button
