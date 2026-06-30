@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { requireApiPermission } from "@/lib/auth/permissions";
-import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-guard";
+import { withRideTrackingLaunchLineGuard } from "@/lib/ride-tracking/schema-guard";
 
 function toCSV(rows: Record<string, unknown>[]): string {
   if (rows.length === 0) return "";
@@ -19,7 +19,6 @@ function toCSV(rows: Record<string, unknown>[]): string {
 export async function GET(req: NextRequest) {
   const auth = await requireApiPermission("ride_tracking", "view");
   if (!auth.ok) return auth.response;
-  await ensureRideTrackingLaunchLineColumn();
 
   const { searchParams } = new URL(req.url);
   const dateFrom  = searchParams.get("dateFrom");
@@ -36,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
   if (status) where.status = status;
 
-  const trackings = await prisma.rideTracking.findMany({
+  const trackings = await withRideTrackingLaunchLineGuard(() => prisma.rideTracking.findMany({
     where,
     include: {
       booking:     { select: { reference: true, bookingStatus: true } },
@@ -45,7 +44,7 @@ export async function GET(req: NextRequest) {
     },
     orderBy: [{ rideDate: "desc" }, { createdAt: "asc" }],
     take: csv ? 10000 : 200,
-  });
+  }));
 
   if (csv) {
     const rows = trackings.map((t) => ({

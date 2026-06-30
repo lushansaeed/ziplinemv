@@ -27,3 +27,22 @@ export async function ensureRideTrackingLaunchLineColumn() {
 
   return launchLineColumnPromise;
 }
+
+export function isMissingLaunchLineColumnError(error: unknown) {
+  const err = error as { code?: string; meta?: { column?: string }; message?: string };
+  const column = err.meta?.column ?? err.message ?? "";
+  return err.code === "P2022" && column.includes("launch_line_number");
+}
+
+export async function withRideTrackingLaunchLineGuard<T>(operation: () => Promise<T>) {
+  await ensureRideTrackingLaunchLineColumn();
+  try {
+    return await operation();
+  } catch (error) {
+    if (!isMissingLaunchLineColumnError(error)) throw error;
+
+    launchLineColumnPromise = null;
+    await ensureRideTrackingLaunchLineColumn();
+    return operation();
+  }
+}
