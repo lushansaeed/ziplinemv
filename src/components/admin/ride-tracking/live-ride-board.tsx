@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { RefreshCw, Calendar, Filter, ChevronDown, ChevronUp, QrCode, Wind, Users, Clock, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WristbandCheckInModal } from "./wristband-check-in-modal";
@@ -287,28 +287,51 @@ function BookingCard({ booking, onRefresh, isPreviousOpen }: { booking: Booking;
 export function LiveRideBoard() {
   const [bookings, setBookings]     = useState<Booking[]>([]);
   const [loading, setLoading]       = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [date, setDate]             = useState(todayKey());
   const [filter, setFilter]         = useState<BoardFilter>("default");
   const [showEod, setShowEod]       = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const today = todayKey();
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (mode: "initial" | "background" = "initial") => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    if (mode === "initial") setLoading(true);
+    else setRefreshing(true);
+
     try {
-      const res = await fetch(`/api/admin/ride-tracking/live-board?date=${date}`);
+      const res = await fetch(`/api/admin/ride-tracking/live-board?date=${date}`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error("Failed to load live ride board");
       const data = await res.json();
       setBookings(data);
+      setLastUpdatedAt(new Date());
+    } catch (error: any) {
+      if (error?.name !== "AbortError") console.error("[live-ride-board] refresh failed", error);
     } finally {
-      setLoading(false);
+      if (abortRef.current === controller) abortRef.current = null;
+      if (mode === "initial") setLoading(false);
+      else setRefreshing(false);
     }
   }, [date]);
 
-  useEffect(() => { load(); }, [load]);
-
-  // Auto-refresh every 30 seconds
   useEffect(() => {
-    const id = setInterval(load, 30_000);
-    return () => clearInterval(id);
+    load("initial");
+    return () => abortRef.current?.abort();
+  }, [load]);
+
+  // Refresh in the background while the board is visible; keep current cards on screen.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.visibilityState === "visible") load("background");
+    }, 8_000);
+    return () => window.clearInterval(id);
   }, [load]);
 
   const filtered = bookings.filter((booking) => {
@@ -389,13 +412,19 @@ export function LiveRideBoard() {
           </select>
         </div>
         <button
-          onClick={load}
-          disabled={loading}
+          onClick={() => load(bookings.length ? "background" : "initial")}
+          disabled={loading || refreshing}
           className="flex items-center gap-2 text-sm px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:bg-muted"
         >
-          <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          <RefreshCw className={cn("w-4 h-4", (loading || refreshing) && "animate-spin")} />
           Refresh
         </button>
+        {(loading || refreshing || lastUpdatedAt) && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+            <RefreshCw className={cn("h-3.5 w-3.5", (loading || refreshing) && "animate-spin")} />
+            {loading ? "Loading..." : refreshing ? "Refreshing..." : `Updated ${lastUpdatedAt?.toLocaleTimeString("en-MV", { hour: "2-digit", minute: "2-digit" })}`}
+          </span>
+        )}
         <button
           onClick={() => setShowEod(true)}
           className="ml-auto text-sm px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive border border-destructive/20 font-medium hover:bg-destructive/20"
@@ -468,7 +497,7 @@ export function LiveRideBoard() {
             <BookingCard
               key={b.id}
               booking={b}
-              onRefresh={load}
+              onRefresh={() => load("background")}
               isPreviousOpen={isPreviousDayOpenRide(b, today)}
             />
           ))}
@@ -476,7 +505,7 @@ export function LiveRideBoard() {
       )}
 
       {showEod && (
-        <EodClosureModal date={date} onClose={() => setShowEod(false)} onSuccess={() => { setShowEod(false); load(); }} />
+        <EodClosureModal date={date} onClose={() => setShowEod(false)} onSuccess={() => { setShowEod(false); load("background"); }} />
       )}
     </div>
   );
