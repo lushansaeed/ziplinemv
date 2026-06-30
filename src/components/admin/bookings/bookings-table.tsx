@@ -17,7 +17,7 @@ import { BookingDetailPanel } from "./booking-detail-panel";
 import {
   updateBookingStatus, updatePaymentStatus, cancelBooking, checkInBooking, completeBooking,
 } from "@/lib/admin/booking-actions";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, paymentStatusColor } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 
 interface BookingRow {
@@ -109,6 +109,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "package", header: "Package", hide: "md",
+      className: "hidden xl:table-cell",
       cell: (r) => <span className="text-sm">{r.package.name}</span>,
     },
     {
@@ -117,6 +118,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "customerType", header: "Type", hide: "lg",
+      className: "hidden 2xl:table-cell",
       cell: (r) => (
         <span className="rounded-full border border-border px-2 py-1 text-xs font-medium capitalize">
           {(r.customerType ?? "TOURIST").toLowerCase()}
@@ -139,10 +141,20 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
     },
     {
       key: "paymentStatus", header: "Payment",
-      cell: (r) => <StatusBadge value={r.paymentStatus} type="payment" />,
+      cell: (r) => r.paymentStatus === "COMPLIMENTARY" ? (
+        <span
+          title="Complimentary"
+          className={cn("status-badge capitalize", paymentStatusColor(r.paymentStatus))}
+        >
+          Comp.
+        </span>
+      ) : (
+        <StatusBadge value={r.paymentStatus} type="payment" />
+      ),
     },
     {
       key: "waiver", header: "Waiver", hide: "lg",
+      className: "hidden 2xl:table-cell",
       cell: (r) => {
         const status = waiverStatus(r);
         const signed = r.waivers?.filter((waiver) => waiver.status === "SIGNED").length ?? 0;
@@ -208,7 +220,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
 
   return (
     <>
-      <div className="admin-card p-0 overflow-x-auto overflow-y-visible mt-0 rounded-none border-x-0 border-t-0">
+      <div className="admin-card p-0 overflow-hidden mt-0 rounded-none border-x-0 border-t-0">
         <TableFilters
           search={searchParams.search ?? ""}
           onSearch={(v) => updateParam("search", v)}
@@ -260,7 +272,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams }: 
           columns={columns}
           data={bookings}
           keyField="id"
-          tableClassName="min-w-[1440px]"
+          tableClassName="table-fixed"
           total={total}
           page={page}
           perPage={perPage}
