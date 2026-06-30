@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Calendar, Clock, Users, Package, DollarSign,
   ShieldCheck, Image, User, Building2, Link2,
@@ -69,20 +69,41 @@ export function BookingDetailPanel({
   const [booking, setBooking] = useState<Awaited<ReturnType<typeof getBookingDetail>> | null>(null);
   const [loading, setLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const loadSeq = useRef(0);
 
-  async function load() {
-    setLoading(true);
-    const data = await getBookingDetail(bookingId);
-    setBooking(data);
-    setLoading(false);
-  }
+  const load = useCallback(async ({ silent = false }: { silent?: boolean } = {}) => {
+    const seq = ++loadSeq.current;
+    if (!silent) setLoading(true);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { load(); }, [bookingId]);
+    try {
+      const data = await getBookingDetail(bookingId);
+      if (seq === loadSeq.current) setBooking(data);
+    } finally {
+      if (seq === loadSeq.current && !silent) setLoading(false);
+    }
+  }, [bookingId]);
+
+  useEffect(() => {
+    load({ silent: false });
+
+    const interval = window.setInterval(() => {
+      load({ silent: true }).catch(() => {});
+    }, 10000);
+
+    const refreshOnFocus = () => {
+      load({ silent: true }).catch(() => {});
+    };
+    window.addEventListener("focus", refreshOnFocus);
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
+  }, [load]);
 
   async function doAction(fn: () => Promise<any>, msg: string) {
     const res = await fn();
-    if (res.success) { toast.success(msg); load(); }
+    if (res.success) { toast.success(msg); load({ silent: true }); }
     else toast.error(res.error ?? "Failed");
   }
 
