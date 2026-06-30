@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma/client";
-import { BookingStatus, PaymentMethod, PaymentStatus } from "@prisma/client";
+import { BookingStatus, PaymentMethod, PaymentStatus, WristbandStatus } from "@prisma/client";
 import {
   logAudit,
   requirePermission,
@@ -425,9 +425,36 @@ export async function completeBooking(bookingId: string) {
     return { success: false, error: waiverError };
   }
 
-  await prisma.booking.update({
-    where: { id: bookingId },
-    data:  { bookingStatus: BookingStatus.COMPLETED },
+  const now = new Date();
+  const releasedWristbands = await prisma.$transaction(async (tx) => {
+    await tx.booking.update({
+      where: { id: bookingId },
+      data:  { bookingStatus: BookingStatus.COMPLETED },
+    });
+
+    const wristbandIds = (await tx.rideTracking.findMany({
+      where: { bookingId, wristbandId: { not: null } },
+      select: { wristbandId: true },
+    }))
+      .map((tracking) => tracking.wristbandId)
+      .filter((id): id is string => Boolean(id));
+
+    if (wristbandIds.length > 0) {
+      await tx.qRWristband.updateMany({
+        where: {
+          id: { in: wristbandIds },
+          currentBookingId: bookingId,
+        },
+        data: {
+          status: WristbandStatus.AVAILABLE,
+          currentBookingId: null,
+          currentRiderId: null,
+          releasedAt: now,
+        },
+      });
+    }
+
+    return wristbandIds.length;
   });
 
   await prisma.auditLog.create({
@@ -436,6 +463,7 @@ export async function completeBooking(bookingId: string) {
       action:   "BOOKING_COMPLETED",
       module:   "bookings",
       recordId: bookingId,
+      newValue: { releasedWristbands },
     },
   });
 

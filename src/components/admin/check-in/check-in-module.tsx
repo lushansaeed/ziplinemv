@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Search, QrCode, CheckCircle2, XCircle, AlertTriangle,
   Loader2, User, Calendar, Clock, Package, Weight,
-  ShieldCheck, ShieldAlert, Link2,
+  ShieldCheck, ShieldAlert, Link2, Camera, X,
 } from "lucide-react";
+import jsQR from "jsqr";
 import { toast } from "sonner";
 import { checkInBooking, completeBooking, updatePaymentStatus } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
@@ -48,11 +49,178 @@ function riderWaiverSigned(
   return isWaiverSignedForRider(rider, waivers, riders);
 }
 
+function ScannerModal({
+  title,
+  description,
+  onScan,
+  onClose,
+}: {
+  title: string;
+  description: string;
+  onScan: (value: string) => void;
+  onClose: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const detectorRef = useRef<any>(null);
+  const frameRef = useRef<number | null>(null);
+  const lastScanRef = useRef("");
+  const [error, setError] = useState("");
+  const [starting, setStarting] = useState(true);
+
+  const stopCamera = useCallback(() => {
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    frameRef.current = null;
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function start() {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          throw new Error("Camera access is not available in this browser.");
+        }
+
+        if ("BarcodeDetector" in window) {
+          detectorRef.current = detectorRef.current ?? new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+        }
+
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            },
+            audio: false,
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.setAttribute("playsinline", "true");
+          await videoRef.current.play();
+        }
+        setStarting(false);
+      } catch (err: any) {
+        setError(err?.message ?? "Camera access failed. Use manual input instead.");
+        setStarting(false);
+      }
+    }
+
+    start();
+    return () => {
+      cancelled = true;
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function detect() {
+      if (cancelled) return;
+      const video = videoRef.current;
+      if (video && video.readyState >= 2) {
+        try {
+          let rawValue = "";
+          if (detectorRef.current) {
+            const codes = await detectorRef.current.detect(video);
+            rawValue = codes?.[0]?.rawValue?.trim() ?? "";
+          }
+          if (!rawValue) {
+            const canvas = canvasRef.current;
+            const context = canvas?.getContext("2d", { willReadFrequently: true });
+            if (canvas && context && video.videoWidth > 0 && video.videoHeight > 0) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+              rawValue = jsQR(imageData.data, imageData.width, imageData.height)?.data?.trim() ?? "";
+            }
+          }
+          if (rawValue && rawValue !== lastScanRef.current) {
+            lastScanRef.current = rawValue;
+            stopCamera();
+            onScan(rawValue);
+            return;
+          }
+        } catch (err: any) {
+          setError(err?.message ?? "Scanner paused. Close and try again.");
+        }
+      }
+      frameRef.current = requestAnimationFrame(detect);
+    }
+
+    frameRef.current = requestAnimationFrame(detect);
+    return () => {
+      cancelled = true;
+      if (frameRef.current) cancelAnimationFrame(frameRef.current);
+    };
+  }, [onScan, stopCamera]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6">
+      <div className="w-full max-w-lg overflow-hidden rounded-t-3xl border border-border bg-background shadow-2xl sm:rounded-3xl">
+        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
+          <div>
+            <p className="text-lg font-bold text-foreground">{title}</p>
+            <p className="text-sm text-muted-foreground">{description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => { stopCamera(); onClose(); }}
+            className="rounded-full border border-border p-2 text-muted-foreground hover:bg-muted"
+            aria-label="Close scanner"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="space-y-4 p-4">
+          <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-black">
+            <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+            <canvas ref={canvasRef} className="hidden" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,transparent_42%,rgba(0,0,0,0.58)_43%,rgba(0,0,0,0.72)_100%)]" />
+            <div className="absolute inset-x-12 top-1/2 aspect-square -translate-y-1/2 rounded-3xl border-2 border-primary shadow-[0_0_30px_rgba(20,184,166,0.35)]" />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5 text-center">
+              <p className="text-sm font-semibold text-white">
+                {starting ? "Starting camera..." : error ? "Camera unavailable" : "Point camera at the QR code"}
+              </p>
+            </div>
+          </div>
+
+          {error && (
+            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function CheckInModule({ canEditPayments = false }: { canEditPayments?: boolean }) {
   const [query, setQuery]           = useState("");
   const [result, setResult]         = useState<BookingResult | null>(null);
   const [notFound, setNotFound]     = useState(false);
   const [searching, setSearching]   = useState(false);
+  const [scanner, setScanner]       = useState<{ type: "booking" } | { type: "wristband"; riderId: string } | null>(null);
 
   // Wristband QR inputs per rider id
   const [qrInputs, setQrInputs] = useState<Record<string, string>>({});
@@ -62,17 +230,23 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
   const [isCompleting, startCompleteTransition] = useTransition();
   const [isMarkingPaid, startMarkPaidTransition] = useTransition();
 
-  async function search() {
-    if (!query.trim()) return;
+  async function search(value = query, mode: "manual" | "qr" = "manual") {
+    const lookup = value.trim();
+    if (!lookup) return;
     setSearching(true);
     setResult(null);
     setNotFound(false);
     setQrInputs({});
     try {
-      const res  = await fetch(`/api/admin/check-in/search?q=${encodeURIComponent(query.trim())}`);
+      const res  = await fetch(`/api/admin/check-in/search?q=${encodeURIComponent(lookup)}&mode=${mode}`);
       const data = await res.json();
-      if (data.booking) setResult(data.booking);
-      else setNotFound(true);
+      if (data.booking) {
+        setResult(data.booking);
+        setQuery(data.booking.reference);
+      } else {
+        setNotFound(true);
+        if (mode === "qr") toast.error("Invalid booking QR. Booking not found.");
+      }
     } catch {
       toast.error("Search failed");
     } finally {
@@ -82,6 +256,30 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "Enter") search();
+  }
+
+  function handleScan(value: string) {
+    if (!scanner) return;
+    if (scanner.type === "booking") {
+      setScanner(null);
+      setQuery(value);
+      search(value, "qr");
+      return;
+    }
+
+    const trimmed = value.trim();
+    const alreadyEntered = Object.entries(qrInputs).some(([riderId, qr]) =>
+      riderId !== scanner.riderId && qr.trim() === trimmed
+    );
+    if (alreadyEntered) {
+      toast.error("This wristband QR is already entered for another rider.");
+      setScanner(null);
+      return;
+    }
+
+    setQrInputs((p) => ({ ...p, [scanner.riderId]: trimmed }));
+    setScanner(null);
+    toast.success("Wristband QR captured.");
   }
 
   async function handleWristbandCheckIn() {
@@ -143,12 +341,30 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
   const allMissingWristbandsEntered = missingWristbandRiders.every((r) => Boolean(qrInputs[r.id]?.trim()));
   const canLinkWristbands   = isPaymentSettled && allWaiversDone && !allWristbandsLinked;
   const isReadyForCheckIn = isPaymentSettled && allWaiversDone && allWristbandsLinked && weightIssues.length === 0;
+  const bookingType = result?.source
+    ? result.source === "DIRECT"
+      ? "Public"
+      : result.source.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())
+    : "";
 
   return (
     <div className="space-y-6">
       {/* Search */}
       <div className="admin-card space-y-3">
-        <p className="text-sm font-semibold">Find booking</p>
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <p className="text-sm font-semibold">Check-in / Wristband Linking</p>
+            <p className="text-xs text-muted-foreground">Scan the customer booking QR, then scan one physical wristband QR for each rider.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScanner({ type: "booking" })}
+            className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90"
+          >
+            <Camera className="h-4 w-4" />
+            Scan Booking QR
+          </button>
+        </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -166,7 +382,7 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
             />
           </div>
           <button
-            onClick={search}
+            onClick={() => search()}
             disabled={searching || !query.trim()}
             className="flex items-center gap-2 px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
@@ -175,7 +391,7 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
           </button>
         </div>
         <p className="text-xs text-muted-foreground">
-          Enter a booking reference (e.g. ZL-ABC123), phone number, or customer name.
+          Manual fallback: enter a booking reference, confirmation URL, phone number, or customer name.
         </p>
       </div>
 
@@ -206,7 +422,11 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
               { icon: Calendar, label: "Date",    value: formatDate(result.bookingDate) },
               { icon: Clock,    label: "Time",    value: result.slot.startTime },
               { icon: Package,  label: "Package", value: result.package.name },
+              { icon: QrCode,   label: "Type",    value: bookingType },
               { icon: User,     label: "Riders",  value: `${result.numRiders}` },
+              { icon: ShieldCheck, label: "Waivers", value: allWaiversDone ? "Complete" : `${signedWaivers}/${result.numRiders} signed` },
+              { icon: Link2, label: "Wristbands", value: allWristbandsLinked ? "Linked" : `${result.riders.length - missingWristbandRiders.length}/${result.riders.length} linked` },
+              { icon: CheckCircle2, label: "Check-in", value: result.checkIn ? "Checked in" : "Pending" },
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -277,17 +497,38 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
                       </div>
                     ) : waiversOk ? (
                       <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                          <QrCode className="w-3 h-3" /> Physical wristband QR
-                        </label>
-                        <input
-                          type="text"
-                          value={qrInputs[rider.id] ?? ""}
-                          onChange={(e) => setQrInputs((p) => ({ ...p, [rider.id]: e.target.value }))}
-                          placeholder="Scan physical wristband QR…"
-                          autoComplete="off"
-                          className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary"
-                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                            <QrCode className="w-3 h-3" /> Physical wristband QR
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => setScanner({ type: "wristband", riderId: rider.id })}
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
+                          >
+                            <Camera className="h-3 w-3" />
+                            Scan Wristband
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={qrInputs[rider.id] ?? ""}
+                            onChange={(e) => setQrInputs((p) => ({ ...p, [rider.id]: e.target.value }))}
+                            placeholder="Scan or enter wristband QR..."
+                            autoComplete="off"
+                            className="w-full border border-border rounded-lg px-3 py-2 text-sm font-mono bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                          />
+                          {qrInputs[rider.id]?.trim() && (
+                            <button
+                              type="button"
+                              onClick={() => setQrInputs((p) => ({ ...p, [rider.id]: "" }))}
+                              className="rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <p className="text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
@@ -439,6 +680,18 @@ export function CheckInModule({ canEditPayments = false }: { canEditPayments?: b
             </button>
           </div>
         </div>
+      )}
+      {scanner && (
+        <ScannerModal
+          title={scanner.type === "booking" ? "Scan Booking QR" : "Scan Wristband QR"}
+          description={
+            scanner.type === "booking"
+              ? "Scan the QR code from the customer confirmation page."
+              : "Scan the pre-printed physical wristband QR code."
+          }
+          onScan={handleScan}
+          onClose={() => setScanner(null)}
+        />
       )}
     </div>
   );

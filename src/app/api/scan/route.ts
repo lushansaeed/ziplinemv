@@ -186,7 +186,12 @@ export async function POST(req: NextRequest) {
   if (location === "LANDING_TOWER") {
     await prisma.qRWristband.update({
       where: { id: wristband.id },
-      data:  { status: "COMPLETED", releasedAt: now },
+      data:  {
+        status: "AVAILABLE",
+        currentBookingId: null,
+        currentRiderId: null,
+        releasedAt: now,
+      },
     });
   }
 
@@ -258,7 +263,12 @@ export async function PATCH(req: NextRequest) {
 
   await prisma.qRWristband.update({
     where: { id: wristband.id },
-    data:  { status: "COMPLETED", releasedAt: now },
+    data:  {
+      status: "AVAILABLE",
+      currentBookingId: null,
+      currentRiderId: null,
+      releasedAt: now,
+    },
   });
 
   await updateBookingStatusFromTracking(tracking.bookingId);
