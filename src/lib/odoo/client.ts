@@ -112,11 +112,21 @@ function parseMethodResponse(xml: string) {
 
   if (response.fault) {
     const fault = parseValue(response.fault.value) as { faultCode?: unknown; faultString?: unknown };
-    throw new Error(String(fault?.faultString ?? "Odoo XML-RPC fault."));
+    throw new Error(cleanOdooFault(String(fault?.faultString ?? "Odoo XML-RPC fault.")));
   }
 
   const param = asArray<any>(response.params?.param)[0];
   return parseValue(param?.value);
+}
+
+function cleanOdooFault(message: string) {
+  const missingDb = message.match(/database "([^"]+)" does not exist/i);
+  if (missingDb) {
+    return `Odoo database "${missingDb[1]}" was not found at "${ODOO_URL}". This is an Odoo Online database-name/authentication issue; check ODOO_DB in Vercel.`;
+  }
+
+  const lines = message.split("\n").map((line) => line.trim()).filter(Boolean);
+  return lines.at(-1) ?? message;
 }
 
 async function xmlRpc<T>(

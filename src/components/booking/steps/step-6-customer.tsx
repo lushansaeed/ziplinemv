@@ -14,9 +14,9 @@ import {
 } from "@/lib/booking/email-utils";
 
 const inputCls = cn(
-  "w-full rounded-xl px-4 py-3 text-sm bg-white/5 border border-white/10",
+  "w-full rounded-xl px-4 py-3 text-sm bg-white border border-slate-200 shadow-sm",
   "text-white placeholder:text-white/25",
-  "focus:outline-none focus:ring-2 focus:ring-brand-citrus/40 focus:border-brand-citrus/30",
+  "focus:outline-none focus:ring-2 focus:ring-brand-citrus/30 focus:border-brand-citrus/50",
   "transition-all duration-150"
 );
 
@@ -80,9 +80,9 @@ function CountrySelector({ value, onChange, mode, placeholder, error }: Selector
         onClick={toggleOpen}
         className={cn(
           "w-full flex items-center justify-between gap-2",
-          "rounded-xl px-4 py-3 text-sm bg-white/5 border",
+          "rounded-xl px-4 py-3 text-sm bg-white border shadow-sm",
           "focus:outline-none focus:ring-2 focus:ring-brand-citrus/40 transition-all",
-          error ? "border-red-500/50" : open ? "border-brand-citrus/40" : "border-white/10",
+          error ? "border-red-500/50" : open ? "border-brand-citrus/50" : "border-slate-200",
           value ? "text-white" : "text-white/30"
         )}
       >
