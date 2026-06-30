@@ -50,6 +50,13 @@ export async function GET(req: NextRequest) {
       customer: { select: { name: true, phone: true } },
       package:  { select: { name: true } },
       slot:     { select: { startTime: true } },
+      addOns:   {
+        select: {
+          quantity: true,
+          addOn: { select: { name: true } },
+        },
+        orderBy: { id: "asc" },
+      },
       riders:   {
         include: {
           rideTracking: {

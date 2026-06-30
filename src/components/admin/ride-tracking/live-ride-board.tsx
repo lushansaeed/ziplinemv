@@ -73,6 +73,7 @@ interface Booking {
   customer: { name: string; phone: string };
   package:  { name: string };
   slot:     { startTime: string } | null;
+  addOns:   { quantity: number; addOn: { name: string } }[];
   riders: {
     id: string;
     name: string;
@@ -221,6 +222,18 @@ function BookingCard({ booking, onRefresh, isPreviousOpen }: { booking: Booking;
             <span>{booking.package.name}</span>
             <span>{booking.numRiders} rider{booking.numRiders !== 1 ? "s" : ""}</span>
           </div>
+          {booking.addOns.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {booking.addOns.map((item) => (
+                <span
+                  key={`${item.addOn.name}-${item.quantity}`}
+                  className="rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700"
+                >
+                  {item.quantity}x {item.addOn.name}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           {needsCheckIn && (
