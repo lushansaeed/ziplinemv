@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
   if (device.status !== "ACTIVE")      return scanError("This device is inactive. Contact your supervisor.", null, null, null, device.id);
 
   const location = device.assignedLocation;
+  const launchLineNumber = normalizeLaunchLineNumber(body.launchLineNumber);
+  if (location === "FIFTH_FLOOR" && !launchLineNumber) {
+    return scanError("Select launch line 1 or 2 before scanning.", null, null, qrCode, device.id);
+  }
 
   // 2. Find wristband
   const wristband = await prisma.qRWristband.findUnique({ where: { qrCode } });
@@ -139,7 +143,10 @@ export async function POST(req: NextRequest) {
 
   if (location === "FIRST_FLOOR")   updateData.firstFloorTime = now;
   if (location === "THIRD_FLOOR")   updateData.thirdFloorTime = now;
-  if (location === "FIFTH_FLOOR")   updateData.fifthFloorTime = now;
+  if (location === "FIFTH_FLOOR") {
+    updateData.fifthFloorTime = now;
+    updateData.launchLineNumber = launchLineNumber;
+  }
   if (location === "LANDING_TOWER") updateData.landingTime    = now;
 
   // Wind data at 5th floor (best-effort, never blocks scan)
@@ -194,10 +201,16 @@ export async function POST(req: NextRequest) {
     bookingId,
     rideDurationSeconds:  updated.rideDurationSeconds,
     rideSpeedKmph:        updated.rideSpeedKmph,
+    launchLineNumber:     updated.launchLineNumber,
     windSpeedKmh:         updated.windSpeedKmh,
     windDirectionCompass: updated.windDirectionCompass,
     status:               updated.status,
   });
+}
+
+function normalizeLaunchLineNumber(value: unknown) {
+  const line = Number(value);
+  return line === 1 || line === 2 ? line : null;
 }
 
 // ── PATCH: Did Not Fly — 5th floor only ─────────────────────────────────────

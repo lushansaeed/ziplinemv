@@ -82,6 +82,7 @@ interface Booking {
       thirdFloorTime: string | null;
       fifthFloorTime: string | null;
       landingTime: string | null;
+      launchLineNumber: number | null;
       windSpeedKmh: number | null;
       windDirectionCompass: string | null;
       rideDurationSeconds: number | null;
@@ -171,6 +172,7 @@ function RiderRow({ rider }: { rider: Booking["riders"][0] }) {
           <span title="1F">1F {fmt(rt.firstFloorTime)}</span>
           <span title="3F">3F {fmt(rt.thirdFloorTime)}</span>
           <span title="5F">5F {fmt(rt.fifthFloorTime)}</span>
+          <span title="Launch line">{rt.launchLineNumber ? `Line ${rt.launchLineNumber}` : "Line —"}</span>
           <span title="Land">⇩ {fmt(rt.landingTime)}</span>
           {rt.rideDurationSeconds && (
             <span className="text-green-600 font-medium">{rt.rideDurationSeconds}s · {Number(rt.rideSpeedKmph).toFixed(1)} km/h</span>

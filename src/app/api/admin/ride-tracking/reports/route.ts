@@ -54,6 +54,7 @@ export async function GET(req: NextRequest) {
       "First Floor Time":  t.firstFloorTime?.toISOString() ?? "",
       "Third Floor Time":  t.thirdFloorTime?.toISOString() ?? "",
       "Fifth Floor Time":  t.fifthFloorTime?.toISOString() ?? "",
+      "Launch Line":       t.launchLineNumber ? `Line ${t.launchLineNumber}` : "",
       "Landing Time":      t.landingTime?.toISOString() ?? "",
       "Ride Duration (s)": t.rideDurationSeconds ?? "",
       "Speed (m/s)":       t.rideSpeedMps?.toString() ?? "",

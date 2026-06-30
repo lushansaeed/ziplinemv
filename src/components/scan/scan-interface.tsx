@@ -35,6 +35,7 @@ interface ScanResult {
   status?: string;
   rideDurationSeconds?: number;
   rideSpeedKmph?: string | number;
+  launchLineNumber?: number | null;
   windSpeedKmh?: string | number;
   windDirectionCompass?: string;
 }
@@ -76,6 +77,11 @@ function ScanResultPanel({ result, compact = false }: { result: ScanResult; comp
                 <p className="text-emerald-300 mt-2 font-bold text-xl flex items-center gap-2">
                   <Clock className="w-5 h-5" />
                   {result.rideDurationSeconds}s · {Number(result.rideSpeedKmph).toFixed(1)} km/h
+                </p>
+              )}
+              {result.launchLineNumber && (
+                <p className="text-white/80 text-sm mt-1">
+                  Launch line: <span className="font-bold text-white">Line {result.launchLineNumber}</span>
                 </p>
               )}
               {result.windSpeedKmh && (
@@ -124,6 +130,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraPrompt, setCameraPrompt] = useState(false);
+  const [launchLineNumber, setLaunchLineNumber] = useState<1 | 2>(1);
   const inputRef                  = useRef<HTMLInputElement>(null);
   const videoRef                  = useRef<HTMLVideoElement>(null);
   const canvasRef                 = useRef<HTMLCanvasElement>(null);
@@ -180,7 +187,12 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       const res = await fetch("/api/scan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qrCode: code.trim(), deviceCode, devicePin: storedPin }),
+        body: JSON.stringify({
+          qrCode: code.trim(),
+          deviceCode,
+          devicePin: storedPin,
+          launchLineNumber: device.assignedLocation === "FIFTH_FLOOR" ? launchLineNumber : undefined,
+        }),
       });
       const data = await res.json();
       setResult(data);
@@ -192,7 +204,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       setTimeout(() => inputRef.current?.focus(), 100);
       setTimeout(() => setResult(null), 8000);
     }
-  }, [device, scanning, deviceCode]);
+  }, [device, scanning, deviceCode, launchLineNumber]);
 
   const stopCamera = useCallback(() => {
     if (scanLoopRef.current) cancelAnimationFrame(scanLoopRef.current);
@@ -404,6 +416,32 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
 
       {/* Main */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 max-w-lg mx-auto w-full space-y-6">
+
+        {/* Launch line selector (5th floor only) */}
+        {isFifthFloor && (
+          <div className="w-full rounded-2xl border border-red-500/40 bg-red-950/50 p-4 space-y-3">
+            <p className="text-center text-sm font-semibold uppercase tracking-wider text-red-100">
+              Select launch line before scanning
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {[1, 2].map((line) => (
+                <button
+                  key={line}
+                  type="button"
+                  onClick={() => setLaunchLineNumber(line as 1 | 2)}
+                  className={cn(
+                    "rounded-2xl border-2 py-4 text-lg font-black transition-colors",
+                    launchLineNumber === line
+                      ? "border-amber-300 bg-amber-400 text-gray-950 shadow-[0_0_28px_rgba(245,166,35,0.35)]"
+                      : "border-white/15 bg-white/5 text-white hover:bg-white/10"
+                  )}
+                >
+                  Line {line}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {showManualInput ? (
           <div className="w-full space-y-3">

@@ -25,6 +25,7 @@ interface TrackingRow {
   rideSpeedKmph: string | null;
   windSpeedKmh:  string | null;
   windDirectionCompass: string | null;
+  launchLineNumber: number | null;
   windApiStatus: string | null;
   didNotFlyReason: string | null;
   remarks: string | null;
@@ -112,7 +113,7 @@ export function RideReports() {
           <table className="w-full text-sm min-w-[1120px]">
             <thead>
               <tr className="border-b border-border bg-muted/30">
-                {["Date","Booking","Rider","Wristband","Status","1st Floor","3rd Floor","5th Floor","Landing","Duration","Speed","Wind","Remarks"].map((h) => (
+                {["Date","Booking","Rider","Wristband","Status","1st Floor","3rd Floor","5th Floor","Line","Landing","Duration","Speed","Wind","Remarks"].map((h) => (
                   <th
                     key={h}
                     className={cn(
@@ -140,6 +141,9 @@ export function RideReports() {
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.firstFloorTime)}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.thirdFloorTime)}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.fifthFloorTime)}</td>
+                    <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                      {r.launchLineNumber ? `Line ${r.launchLineNumber}` : "—"}
+                    </td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">{fmt(r.landingTime)}</td>
                     <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                       {r.rideDurationSeconds ? (

@@ -1381,6 +1381,7 @@ model RideTracking {
   rideSpeedKmph       Decimal? @map("ride_speed_kmph") @db.Decimal(10, 4)
 
   // Wind data (captured at 5th floor scan)
+  launchLineNumber     Int?      @map("launch_line_number")
   windSpeedMs          Decimal?  @map("wind_speed_ms") @db.Decimal(10, 4)
   windSpeedKmh         Decimal?  @map("wind_speed_kmh") @db.Decimal(10, 4)
   windDirectionDegrees Int?      @map("wind_direction_degrees")
