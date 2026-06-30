@@ -1,9 +1,17 @@
+import { XMLParser } from "fast-xml-parser";
+
 const ODOO_URL = process.env.ODOO_URL?.replace(/\/+$/, "");
 const ODOO_DB = process.env.ODOO_DB;
 const ODOO_USERNAME = process.env.ODOO_USERNAME;
 const ODOO_API_KEY = process.env.ODOO_API_KEY;
 
 let cachedUid: number | null = null;
+
+const parser = new XMLParser({
+  ignoreAttributes: false,
+  parseTagValue: false,
+  trimValues: false,
+});
 
 export function isOdooSyncEnabled() {
   return process.env.ODOO_SYNC_ENABLED === "true";
@@ -15,53 +23,146 @@ function assertOdooConfig() {
   }
 }
 
-async function jsonRpc<T>(
-  service: "common" | "object",
-  method: string,
-  args: unknown[],
-): Promise<T> {
+function endpoint(service: "common" | "object") {
   assertOdooConfig();
+  return `${ODOO_URL}/xmlrpc/2/${service}`;
+}
 
-  const response = await fetch(`${ODOO_URL}/jsonrpc`, {
+function escapeXml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function xmlValue(value: unknown): string {
+  if (value === null || value === undefined) return "<value><nil/></value>";
+  if (typeof value === "boolean") return `<value><boolean>${value ? 1 : 0}</boolean></value>`;
+  if (typeof value === "number") {
+    return Number.isInteger(value)
+      ? `<value><int>${value}</int></value>`
+      : `<value><double>${value}</double></value>`;
+  }
+  if (typeof value === "string") return `<value><string>${escapeXml(value)}</string></value>`;
+  if (value instanceof Date) return `<value><dateTime.iso8601>${value.toISOString()}</dateTime.iso8601></value>`;
+  if (Array.isArray(value)) {
+    return `<value><array><data>${value.map(xmlValue).join("")}</data></array></value>`;
+  }
+  if (typeof value === "object") {
+    const members = Object.entries(value as Record<string, unknown>)
+      .map(([key, entry]) => `<member><name>${escapeXml(key)}</name>${xmlValue(entry)}</member>`)
+      .join("");
+    return `<value><struct>${members}</struct></value>`;
+  }
+  return `<value><string>${escapeXml(String(value))}</string></value>`;
+}
+
+function methodCall(methodName: string, params: unknown[]) {
+  return `<?xml version="1.0"?>
+<methodCall>
+  <methodName>${escapeXml(methodName)}</methodName>
+  <params>${params.map((param) => `<param>${xmlValue(param)}</param>`).join("")}</params>
+</methodCall>`;
+}
+
+function asArray<T>(value: T | T[] | undefined): T[] {
+  if (value === undefined) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function parseScalar(value: any) {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
+  if ("string" in value) return value.string ?? "";
+  if ("int" in value) return Number(value.int);
+  if ("i4" in value) return Number(value.i4);
+  if ("double" in value) return Number(value.double);
+  if ("boolean" in value) return value.boolean === "1" || value.boolean === 1 || value.boolean === true;
+  if ("nil" in value) return null;
+  if ("dateTime.iso8601" in value) return String(value["dateTime.iso8601"]);
+  return value;
+}
+
+function parseValue(value: any): any {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "object") return value;
+
+  if ("array" in value) {
+    const data = value.array?.data;
+    return asArray(data?.value).map(parseValue);
+  }
+
+  if ("struct" in value) {
+    const result: Record<string, unknown> = {};
+    for (const member of asArray<any>(value.struct?.member)) {
+      result[String(member.name)] = parseValue(member.value);
+    }
+    return result;
+  }
+
+  return parseScalar(value);
+}
+
+function parseMethodResponse(xml: string) {
+  const parsed = parser.parse(xml);
+  const response = parsed.methodResponse;
+  if (!response) throw new Error("Odoo returned an invalid XML-RPC response.");
+
+  if (response.fault) {
+    const fault = parseValue(response.fault.value) as { faultCode?: unknown; faultString?: unknown };
+    throw new Error(String(fault?.faultString ?? "Odoo XML-RPC fault."));
+  }
+
+  const param = asArray<any>(response.params?.param)[0];
+  return parseValue(param?.value);
+}
+
+async function xmlRpc<T>(
+  service: "common" | "object",
+  methodName: string,
+  params: unknown[],
+): Promise<T> {
+  const url = endpoint(service);
+  console.info("[odoo] xml-rpc request", {
+    url,
+    database: ODOO_DB,
+    service,
+    method: methodName,
+  });
+
+  const response = await fetch(url, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "text/xml",
       "User-Agent": "zipline-booking-system",
     },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      method: "call",
-      params: { service, method, args },
-      id: Date.now(),
-    }),
+    body: methodCall(methodName, params),
   });
 
   const text = await response.text();
-  let data: any = null;
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
+  if (!response.ok) {
+    throw new Error(`Odoo ${service}/${methodName} failed over HTTPS: HTTP ${response.status} ${text.slice(0, 500)}`);
   }
 
-  if (!response.ok || data?.error) {
-    const message = data?.error?.data?.message ?? data?.error?.message ?? text;
-    throw new Error(`Odoo ${service}/${method} failed: ${message}`);
-  }
-
-  return data.result as T;
+  return parseMethodResponse(text) as T;
 }
 
 export async function odooAuthenticate() {
   if (cachedUid) return cachedUid;
 
-  const uid = await jsonRpc<number | false>("common", "login", [
+  const uid = await xmlRpc<number | false>("common", "authenticate", [
     ODOO_DB,
     ODOO_USERNAME,
     ODOO_API_KEY,
+    {},
   ]);
 
-  if (!uid) throw new Error("Odoo authentication failed.");
+  if (!uid) {
+    throw new Error(`Odoo authentication failed for database "${ODOO_DB}" at "${ODOO_URL}". Check ODOO_DB, ODOO_USERNAME, and the API key.`);
+  }
+
   cachedUid = uid;
   return uid;
 }
@@ -74,7 +175,7 @@ export async function odooExecuteKw<T = unknown>(
 ): Promise<T> {
   const uid = await odooAuthenticate();
 
-  return jsonRpc<T>("object", "execute_kw", [
+  return xmlRpc<T>("object", "execute_kw", [
     ODOO_DB,
     uid,
     ODOO_API_KEY,
