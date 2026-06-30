@@ -18,6 +18,7 @@ import {
   resendWaiverWhatsApp,
   retryOdooSync,
   createTestSignedWaivers,
+  createMediaFolderForBooking,
   resendMediaFolderEmail,
   updateMediaFolderStatus,
 } from "@/lib/admin/booking-actions";
@@ -279,14 +280,26 @@ export function BookingDetailPanel({
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Google Drive media folder</p>
-          <button
-            onClick={() => startTransition(() => doAction(() => resendMediaFolderEmail(booking.id), "Media folder email sent"))}
-            disabled={isPending || !booking.customer.email || !booking.driveFolderUrl}
-            className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Mail className="h-3.5 w-3.5" />
-            Resend media email
-          </button>
+          <div className="flex items-center gap-2">
+            {!booking.driveFolderUrl && (
+              <button
+                onClick={() => startTransition(() => doAction(() => createMediaFolderForBooking(booking.id), "Media folder created"))}
+                disabled={isPending}
+                className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Create folder
+              </button>
+            )}
+            <button
+              onClick={() => startTransition(() => doAction(() => resendMediaFolderEmail(booking.id), "Media folder email sent"))}
+              disabled={isPending || !booking.customer.email || !booking.driveFolderUrl}
+              className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Resend media email
+            </button>
+          </div>
         </div>
         <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
           <Row icon={FolderOpen} label="Folder status" value={

@@ -556,6 +556,19 @@ export async function resendMediaFolderEmail(bookingId: string) {
   }
 }
 
+export async function createMediaFolderForBooking(bookingId: string) {
+  await requirePermission("media", "edit");
+  try {
+    const result = await ensureMediaFolderForBooking(bookingId);
+    revalidatePath("/admin/bookings");
+    revalidatePath("/admin/dashboard");
+    return { success: true, folderUrl: result.folderUrl, created: result.created };
+  } catch (error: any) {
+    console.error("[createMediaFolderForBooking]", error?.message ?? error);
+    return { success: false, error: error?.message ?? "Could not create Google Drive media folder." };
+  }
+}
+
 export async function updateMediaFolderStatus(bookingId: string, status: MediaFolderStatus) {
   const user = await requirePermission("media", "edit");
   try {

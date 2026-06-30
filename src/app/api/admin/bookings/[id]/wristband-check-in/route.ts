@@ -123,13 +123,19 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     }).catch(() => {});
 
-    await ensureMediaFolderForBooking(params.id).catch((error) => {
+    let mediaFolderWarning: string | null = null;
+    const mediaFolder = await ensureMediaFolderForBooking(params.id).catch((error) => {
       console.error("[wristband-check-in:googleDrive]", error?.message ?? error);
+      mediaFolderWarning = error?.message ?? "Google Drive media folder could not be created.";
+      return null;
     });
 
     return NextResponse.json({
       success: true,
       message: "Check-in completed and wristbands linked successfully.",
+      mediaFolder: mediaFolder
+        ? { success: true, folderUrl: mediaFolder.folderUrl, created: mediaFolder.created }
+        : { success: false, warning: mediaFolderWarning },
     });
   } catch (error: any) {
     const gateError = error instanceof CheckInGateError
