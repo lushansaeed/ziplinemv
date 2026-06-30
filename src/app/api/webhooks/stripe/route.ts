@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { constructWebhookEvent } from "@/lib/payments/stripe";
 import { prisma } from "@/lib/prisma/client";
 import { sendBookingConfirmation } from "@/lib/notifications/email";
+import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
 import { PaymentStatus, BookingStatus } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
@@ -58,7 +59,12 @@ export async function POST(req: NextRequest) {
           return true;
         });
 
-        if (paymentCreated) await sendBookingConfirmation(bookingId);
+        if (paymentCreated) {
+          await sendBookingConfirmation(bookingId);
+          await syncPaidBookingToOdooSalesOrder(bookingId).catch((error) => {
+            console.error("[stripe webhook:odooSync]", error?.message ?? error);
+          });
+        }
         break;
       }
 
@@ -82,6 +88,9 @@ export async function POST(req: NextRequest) {
         await prisma.booking.update({
           where: { id: bookingId },
           data:  { paymentStatus: PaymentStatus.PAID },
+        });
+        await syncPaidBookingToOdooSalesOrder(bookingId).catch((error) => {
+          console.error("[stripe checkout webhook:odooSync]", error?.message ?? error);
         });
         break;
       }

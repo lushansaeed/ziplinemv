@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import {
   Calendar, Clock, Users, Package, DollarSign,
   ShieldCheck, Image, User, Building2, Link2,
-  CheckCircle2, Loader2, Edit2, Mail,
+  CheckCircle2, Loader2, Edit2, Mail, RefreshCw,
 } from "lucide-react";
 import {
   getBookingDetail,
@@ -16,6 +16,7 @@ import {
   resendBookingConfirmationEmail,
   resendWaiverEmail,
   resendWaiverWhatsApp,
+  retryOdooSync,
 } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
@@ -175,6 +176,16 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
             Mark paid
           </button>
         )}
+        {booking.paymentStatus === "PAID" && booking.odooSyncStatus !== "SYNCED" && (
+          <button
+            onClick={() => startTransition(() => doAction(() => retryOdooSync(booking.id), "Odoo sync retried."))}
+            disabled={isPending}
+            className="flex items-center gap-2 text-xs px-3 py-2 rounded-lg bg-blue-100 text-blue-800 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 transition-colors font-medium"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Retry Odoo sync
+          </button>
+        )}
         <a
           href={`/book/confirmation?ref=${booking.reference}`}
           target="_blank"
@@ -195,6 +206,28 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
           {booking.addOns.length > 0 && (
             <Row icon={Image} label="Add-ons" value={booking.addOns.map((a) => a.addOn.name).join(", ")} />
           )}
+        </div>
+      </section>
+
+      {/* Odoo */}
+      <section>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Odoo sync</p>
+        <div className="bg-muted/30 rounded-xl px-4 divide-y divide-border/50">
+          <Row label="Status" value={
+            <span className={cn(
+              "status-badge",
+              booking.odooSyncStatus === "SYNCED" && "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+              booking.odooSyncStatus === "FAILED" && "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
+              booking.odooSyncStatus === "SKIPPED" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400",
+              booking.odooSyncStatus === "PENDING" && "bg-muted text-muted-foreground",
+              booking.odooSyncStatus === "SYNCING" && "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400",
+            )}>
+              {booking.odooSyncStatus}
+            </span>
+          } />
+          {booking.odooSaleOrderId && <Row label="Sale order ID" value={booking.odooSaleOrderId} />}
+          {booking.odooSyncedAt && <Row label="Synced at" value={formatDateTime(booking.odooSyncedAt)} />}
+          {booking.odooSyncError && <Row label="Last error" value={<span className="text-destructive">{booking.odooSyncError}</span>} />}
         </div>
       </section>
 

@@ -8,6 +8,7 @@ import { buildWaiverSharePayload, regenerateBookingWaiverLink } from "@/lib/waiv
 import { sendBookingConfirmation, sendBookingWaiverLink } from "@/lib/notifications/email";
 import { sendBookingWaiverLinkWhatsApp } from "@/lib/notifications/whatsapp";
 import { formatDate } from "@/lib/utils";
+import { syncPaidBookingToOdooSalesOrder } from "@/lib/odoo/bookings";
 import { CheckInGateError, completeCheckInTransaction } from "@/lib/ride-tracking/check-in-gate";
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
 
@@ -104,6 +105,14 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
 
     revalidatePath("/admin/bookings");
     revalidatePath("/admin/check-in");
+
+    if (status === PaymentStatus.PAID) {
+      await syncPaidBookingToOdooSalesOrder(bookingId).catch((error) => {
+        console.error("[updatePaymentStatus:odooSync]", error?.message ?? error);
+      });
+      revalidatePath("/admin/bookings");
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error("[updatePaymentStatus]", error);
@@ -111,6 +120,40 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
       success: false,
       error: error?.message ?? "Could not update payment status. Please try again.",
     };
+  }
+}
+
+export async function retryOdooSync(bookingId: string) {
+  const user = await requirePermission("bookings", "edit");
+
+  try {
+    const result = await syncPaidBookingToOdooSalesOrder(bookingId, { force: true });
+
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "ODOO_SYNC_RETRIED",
+        module: "bookings",
+        recordId: bookingId,
+        newValue: result,
+      },
+    });
+
+    revalidatePath("/admin/bookings");
+    return { success: true, result };
+  } catch (error: any) {
+    await prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: "ODOO_SYNC_RETRY_FAILED",
+        module: "bookings",
+        recordId: bookingId,
+        newValue: { error: error?.message ?? "Odoo sync failed." },
+      },
+    }).catch(() => {});
+
+    revalidatePath("/admin/bookings");
+    return { success: false, error: error?.message ?? "Odoo sync failed." };
   }
 }
 
