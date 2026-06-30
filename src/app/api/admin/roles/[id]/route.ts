@@ -30,20 +30,26 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const nextName = existing.isAdmin ? existing.name : String(body.name ?? existing.name).trim();
   const nextDescription = body.description === undefined ? existing.description : body.description ? String(body.description) : null;
 
+  const nextPermissions = Array.isArray(body.permissions)
+    ? normalizedPermissions(body.permissions, existing.isAdmin)
+    : null;
+
   const role = await prisma.$transaction(async (tx) => {
-    const updated = await tx.staffRole.update({
+    await tx.staffRole.update({
       where: { id: params.id },
       data: { name: nextName, description: nextDescription, active: nextActive },
     });
 
-    if (Array.isArray(body.permissions)) {
-      for (const permission of normalizedPermissions(body.permissions, existing.isAdmin)) {
-        await tx.rolePermission.upsert({
-          where: { roleId_module_action: { roleId: params.id, module: permission.module, action: permission.action } },
-          update: { allowed: permission.allowed },
-          create: { roleId: params.id, ...permission },
-        });
-      }
+    if (nextPermissions) {
+      await tx.rolePermission.deleteMany({ where: { roleId: params.id } });
+      await tx.rolePermission.createMany({
+        data: nextPermissions.map((permission) => ({
+          roleId: params.id,
+          module: permission.module,
+          action: permission.action,
+          allowed: permission.allowed,
+        })),
+      });
     }
 
     return tx.staffRole.findUnique({
