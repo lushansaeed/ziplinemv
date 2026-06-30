@@ -1246,7 +1246,7 @@ model WebsiteTheme {
   primaryColor    String @default("#00A6B4") @map("primary_color")
   secondaryColor  String @default("#064E5F") @map("secondary_color")
   accentColor     String @default("#F6C85F") @map("accent_color")
-  backgroundColor String @default("#c3c3c3") @map("background_color")
+  backgroundColor String @default("#F8FAF9") @map("background_color")
   textColor       String @default("#263238") @map("text_color")
   textMutedColor  String @default("#6B7280") @map("text_muted_color")
   buttonColor     String @default("#00A6B4") @map("button_color")

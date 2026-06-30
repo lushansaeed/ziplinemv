@@ -17,7 +17,7 @@ const BRAND_DEFAULTS = {
   primaryColor:     "#00A6B4",
   secondaryColor:   "#064E5F",
   accentColor:      "#F6C85F",
-  backgroundColor:  "#c3c3c3",
+  backgroundColor:  "#F8FAF9",
   sectionBgColor:   "#FFFFFF",
   sectionAltBgColor:"#EEFAF8",
   cardBgColor:      "#FFFFFF",

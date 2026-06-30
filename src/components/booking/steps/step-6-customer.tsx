@@ -31,10 +31,11 @@ interface SelectorProps {
 }
 
 function CountrySelector({ value, onChange, mode, placeholder, error }: SelectorProps) {
-  const [open, setOpen]   = useState(false);
-  const [query, setQuery] = useState("");
-  const ref               = useRef<HTMLDivElement>(null);
-  const searchRef         = useRef<HTMLInputElement>(null);
+  const [open, setOpen]         = useState(false);
+  const [query, setQuery]       = useState("");
+  const [openUp, setOpenUp]     = useState(false);
+  const ref                     = useRef<HTMLDivElement>(null);
+  const searchRef               = useRef<HTMLInputElement>(null);
 
   const results = mode === "phone"
     ? searchCountries(query)
@@ -62,11 +63,21 @@ function CountrySelector({ value, onChange, mode, placeholder, error }: Selector
     if (open) setTimeout(() => searchRef.current?.focus(), 50);
   }, [open]);
 
+  function toggleOpen() {
+    if (!open && ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      const roomBelow = window.innerHeight - rect.bottom;
+      const roomAbove = rect.top;
+      setOpenUp(roomBelow < 280 && roomAbove > roomBelow);
+    }
+    setOpen((current) => !current);
+  }
+
   return (
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={toggleOpen}
         className={cn(
           "w-full flex items-center justify-between gap-2",
           "rounded-xl px-4 py-3 text-sm bg-white/5 border",
@@ -80,44 +91,49 @@ function CountrySelector({ value, onChange, mode, placeholder, error }: Selector
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-brand-deep border border-white/15 rounded-xl shadow-xl overflow-hidden">
+        <div
+          className={cn(
+            "absolute left-0 right-0 z-[80] overflow-hidden rounded-xl border border-brand-citrus/25 bg-white text-brand-deep shadow-2xl ring-1 ring-black/5",
+            openUp ? "bottom-full mb-1" : "top-full mt-1"
+          )}
+        >
           {/* Search */}
-          <div className="p-2 border-b border-white/8">
+          <div className="p-2 border-b border-brand-citrus/15">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 ref={searchRef}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={mode === "phone" ? "Search country or +code…" : "Search nationality…"}
-                className="w-full pl-8 pr-8 py-2 text-sm bg-white/5 rounded-lg border border-white/8 text-white placeholder:text-white/25 focus:outline-none focus:ring-1 focus:ring-brand-citrus/40"
+                className="w-full pl-8 pr-8 py-2 text-sm rounded-lg border border-border bg-white text-brand-deep placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-brand-citrus/30"
               />
               {query && (
                 <button onClick={() => setQuery("")} className="absolute right-2 top-1/2 -translate-y-1/2">
-                  <X className="w-3.5 h-3.5 text-white/30" />
+                  <X className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               )}
             </div>
           </div>
           {/* List */}
-          <div className="max-h-52 overflow-y-auto no-scrollbar">
+          <div className="max-h-64 overflow-y-auto no-scrollbar">
             {results.length === 0 ? (
-              <p className="text-white/30 text-sm text-center py-4">No results</p>
+              <p className="text-muted-foreground text-sm text-center py-4">No results</p>
             ) : results.map((c) => (
               <button
                 key={c.iso}
                 type="button"
                 onClick={() => { onChange(c); setOpen(false); setQuery(""); }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-white/5 transition-colors",
-                  value === c.iso && "bg-brand-citrus/10 text-brand-citrus"
+                  "w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left text-brand-deep hover:bg-brand-citrus/10 transition-colors",
+                  value === c.iso && "bg-brand-citrus/15 text-brand-citrus"
                 )}
               >
                 <span className="text-lg flex-shrink-0">{c.flag}</span>
                 <span className="flex-1 truncate">
                   {mode === "phone" ? c.name : c.nationality}
                 </span>
-                <span className="text-white/40 flex-shrink-0 text-xs font-mono">
+                <span className="text-muted-foreground flex-shrink-0 text-xs font-mono">
                   {mode === "phone" ? c.dialCode : c.iso}
                 </span>
                 {value === c.iso && <Check className="w-3.5 h-3.5 flex-shrink-0" />}
