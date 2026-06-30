@@ -260,33 +260,22 @@ async function createInvoiceForSaleOrder(saleOrderId: OdooId) {
     return existingInvoice[0].invoice_ids[0];
   }
 
-  try {
-    const invoiceIds = await callOdoo<unknown>("sale.order", "_create_invoices", {
-      ids: [saleOrderId],
-      final: true,
-    });
-    const invoiceId = normalizeOdooId(invoiceIds, "invoice");
-    console.info("[odoo] created invoice from sale.order", { saleOrderId, invoiceId });
-    return invoiceId;
-  } catch (error: any) {
-    console.warn("[odoo] direct sale.order invoice creation failed; trying advance payment wizard", {
-      saleOrderId,
-      error: error?.message ?? error,
-    });
-  }
-
-  const wizardId = normalizeOdooId(await create<unknown>("sale.advance.payment.inv", {
-    advance_payment_method: "percentage",
-    amount: 100,
+  const context = {
+    active_model: "sale.order",
+    active_id: saleOrderId,
+    active_ids: [saleOrderId],
+  };
+  const wizardId = normalizeOdooId(await callOdoo<unknown>("sale.advance.payment.inv", "create", {
+    vals_list: {
+      advance_payment_method: "percentage",
+      amount: 100,
+    },
+    context,
   }), "invoice wizard");
 
   const result = await callOdoo<unknown>("sale.advance.payment.inv", "create_invoices", {
     ids: [wizardId],
-    context: {
-      active_model: "sale.order",
-      active_id: saleOrderId,
-      active_ids: [saleOrderId],
-    },
+    context,
   });
 
   const invoiceIds = await searchRead<{ invoice_ids?: number[] }>(
