@@ -317,6 +317,13 @@ export async function completeCheckInTransaction(
 
   for (const [bookingRiderId, wristbandQrCode] of Array.from(assignmentByRider.entries())) {
     const wristband = await linkWristbandToRider(tx, booking.id, bookingRiderId, wristbandQrCode, input.userId);
+    await tx.rideTracking.updateMany({
+      where: {
+        wristbandId: wristband.id,
+        bookingRiderId: { not: bookingRiderId },
+      },
+      data: { wristbandId: null },
+    });
     await tx.rideTracking.upsert({
       where: { bookingRiderId },
       update: { wristbandId: wristband.id, status: RiderTrackingStatus.CHECKED_IN },
