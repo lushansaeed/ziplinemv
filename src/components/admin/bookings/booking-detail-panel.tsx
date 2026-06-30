@@ -180,7 +180,7 @@ export function BookingDetailPanel({ bookingId, onClose }: { bookingId: string; 
             Mark paid
           </button>
         )}
-        {booking.paymentStatus === "PAID" && booking.odooSyncStatus !== "SYNCED" && (
+        {booking.paymentStatus === "PAID" && (!booking.odooInvoiceId || booking.odooSyncStatus !== "SYNCED") && (
           <button
             onClick={() => startTransition(() => doAction(() => retryOdooSync(booking.id), "Odoo sync retried."))}
             disabled={isPending}

@@ -1,9 +1,10 @@
 import { BookingStatus, OdooSyncStatus, PaymentStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma/client";
-import { create, isOdooSyncEnabled, searchRead } from "@/lib/odoo-client";
+import { action, callOdoo, create, isOdooSyncEnabled, searchRead } from "@/lib/odoo-client";
 
 type OdooId = number;
 type OdooCreateLineCommand = [0, 0, Record<string, unknown>];
+type OdooMany2One = false | [number, string];
 
 const FALLBACK_PRODUCT_MAP: Record<string, number> = {
   zipline_ride: 2272,
@@ -79,21 +80,26 @@ async function saleOrderProductIdFor(key: string) {
     return configuredId;
   }
 
-  const productVariant = await searchRead<{ id: OdooId }>(
-    "product.product",
-    [["product_tmpl_id", "=", configuredId]],
-    ["id"],
+  const productTemplate = await searchRead<{ id: OdooId; name?: string; default_code?: string | false; product_variant_id?: OdooMany2One }>(
+    "product.template",
+    [["id", "=", configuredId]],
+    ["id", "name", "default_code", "product_variant_id"],
     1,
   );
+  const variantId = Array.isArray(productTemplate[0]?.product_variant_id)
+    ? productTemplate[0].product_variant_id[0]
+    : null;
 
-  if (productVariant[0]?.id) {
+  if (variantId) {
     console.info("[odoo] resolved product template to sale-order product variant", {
       key,
       configuredId,
-      productId: productVariant[0].id,
+      templateName: productTemplate[0]?.name,
+      templateReference: productTemplate[0]?.default_code || null,
+      productId: variantId,
     });
-    resolvedProductIds.set(cacheKey, productVariant[0].id);
-    return productVariant[0].id;
+    resolvedProductIds.set(cacheKey, variantId);
+    return variantId;
   }
 
   throw new Error(
@@ -220,24 +226,132 @@ async function buildOrderLines(booking: NonNullable<Awaited<ReturnType<typeof ge
   return orderLines;
 }
 
+async function confirmSaleOrder(saleOrderId: OdooId) {
+  const existing = await searchRead<{ id: OdooId; state?: string }>(
+    "sale.order",
+    [["id", "=", saleOrderId]],
+    ["id", "state"],
+    1,
+  );
+  const state = existing[0]?.state;
+  if (state === "sale" || state === "done") {
+    console.info("[odoo] sale.order already confirmed", { saleOrderId, state });
+    return;
+  }
+
+  await action("sale.order", "action_confirm", [saleOrderId]);
+  console.info("[odoo] confirmed sale.order", { saleOrderId });
+}
+
+async function createInvoiceForSaleOrder(saleOrderId: OdooId) {
+  const existingInvoice = await searchRead<{ invoice_ids?: number[] }>(
+    "sale.order",
+    [["id", "=", saleOrderId]],
+    ["invoice_ids"],
+    1,
+  );
+  if (existingInvoice[0]?.invoice_ids?.[0]) {
+    return existingInvoice[0].invoice_ids[0];
+  }
+
+  try {
+    const invoiceIds = await callOdoo<unknown>("sale.order", "_create_invoices", {
+      ids: [saleOrderId],
+      final: true,
+    });
+    const invoiceId = normalizeOdooId(invoiceIds, "invoice");
+    console.info("[odoo] created invoice from sale.order", { saleOrderId, invoiceId });
+    return invoiceId;
+  } catch (error: any) {
+    console.warn("[odoo] direct sale.order invoice creation failed; trying advance payment wizard", {
+      saleOrderId,
+      error: error?.message ?? error,
+    });
+  }
+
+  const wizardId = normalizeOdooId(await create<unknown>("sale.advance.payment.inv", {
+    advance_payment_method: "delivered",
+  }), "invoice wizard");
+
+  const result = await callOdoo<unknown>("sale.advance.payment.inv", "create_invoices", {
+    ids: [wizardId],
+    context: {
+      active_model: "sale.order",
+      active_id: saleOrderId,
+      active_ids: [saleOrderId],
+    },
+  });
+
+  const invoiceIds = await searchRead<{ invoice_ids?: number[] }>(
+    "sale.order",
+    [["id", "=", saleOrderId]],
+    ["invoice_ids"],
+    1,
+  );
+  const invoiceId = invoiceIds[0]?.invoice_ids?.[0] ?? normalizeOdooId(result, "invoice");
+  console.info("[odoo] created invoice from sale.order wizard", { saleOrderId, invoiceId });
+  return invoiceId;
+}
+
 export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options: { force?: boolean } = {}) {
   if (!isOdooSyncEnabled()) return { synced: false, skipped: true, reason: "Odoo sync is disabled." };
 
   const booking = await getBookingForOdoo(bookingId);
   if (!booking) throw new Error("Booking not found.");
 
-  if (booking.odooSaleOrderId || booking.odooInvoiceId) {
+  if (booking.odooInvoiceId) {
     return {
       synced: false,
       skipped: true,
       saleOrderId: booking.odooSaleOrderId ?? undefined,
       invoiceId: booking.odooInvoiceId ?? undefined,
-      reason: "Booking already has an Odoo record.",
+      reason: "Booking already has an Odoo invoice.",
     };
   }
 
   if (booking.paymentStatus !== PaymentStatus.PAID || BLOCKED_BOOKING_STATUSES.has(booking.bookingStatus)) {
     return markSkippedUnpaid(booking.id, `Booking is not eligible for Odoo revenue sync. Payment: ${booking.paymentStatus}. Status: ${booking.bookingStatus}.`);
+  }
+
+  if (booking.odooSaleOrderId) {
+    try {
+      await confirmSaleOrder(booking.odooSaleOrderId);
+      const invoiceId = await createInvoiceForSaleOrder(booking.odooSaleOrderId);
+
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          odooSyncStatus: OdooSyncStatus.SYNCED,
+          odooInvoiceId: invoiceId,
+          odooSyncedAt: new Date(),
+          odooSyncError: null,
+        },
+      });
+
+      console.info("[odoo] synced existing sale.order to invoice", {
+        bookingId: booking.id,
+        reference: booking.reference,
+        saleOrderId: booking.odooSaleOrderId,
+        invoiceId,
+      });
+      return { synced: true, saleOrderId: booking.odooSaleOrderId, invoiceId };
+    } catch (error: any) {
+      const message = error?.message ?? "Odoo invoice sync failed.";
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          odooSyncStatus: OdooSyncStatus.FAILED,
+          odooSyncError: message,
+        },
+      });
+      console.error("[odoo] existing sale.order invoice sync failed", {
+        bookingId: booking.id,
+        reference: booking.reference,
+        saleOrderId: booking.odooSaleOrderId,
+        error: message,
+      });
+      throw error;
+    }
   }
 
   const claim = await prisma.booking.updateMany({
@@ -279,19 +393,22 @@ export async function syncPaidBookingToOdooSalesOrder(bookingId: string, options
       note: buildBookingNotes(booking),
       order_line: await buildOrderLines(booking),
     }), "sales order");
+    await confirmSaleOrder(saleOrderId);
+    const invoiceId = await createInvoiceForSaleOrder(saleOrderId);
 
     await prisma.booking.update({
       where: { id: booking.id },
       data: {
         odooSyncStatus: OdooSyncStatus.SYNCED,
         odooSaleOrderId: saleOrderId,
+        odooInvoiceId: invoiceId,
         odooSyncedAt: new Date(),
         odooSyncError: null,
       },
     });
 
-    console.info("[odoo] synced booking to sale.order", { bookingId: booking.id, reference: booking.reference, saleOrderId });
-    return { synced: true, saleOrderId };
+    console.info("[odoo] synced booking to sale.order and invoice", { bookingId: booking.id, reference: booking.reference, saleOrderId, invoiceId });
+    return { synced: true, saleOrderId, invoiceId };
   } catch (error: any) {
     const message = error?.message ?? "Odoo sync failed.";
     await prisma.booking.update({
