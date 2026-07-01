@@ -57,17 +57,92 @@ const MEDIA_FOLDER_STATUS_LABELS: Record<string, string> = {
   ISSUE_REPORTED: "Issue Reported",
 };
 
+type BookingPreview = {
+  id: string;
+  reference: string;
+  bookingDate: Date;
+  bookingStatus: string;
+  paymentStatus: string;
+  source: string;
+  customerType?: string;
+  numRiders: number;
+  total: number;
+  currency: string;
+  customer: { name: string; phone: string; email: string | null };
+  package: { name: string };
+  slot: { startTime: string; endTime: string };
+  agent: { businessName: string } | null;
+  affiliate: { name: string } | null;
+  addOns: Array<{ addOn: { name: string } }>;
+  waivers?: Array<{ status: string }>;
+};
+
+function buildPreviewBooking(row: BookingPreview): Awaited<ReturnType<typeof getBookingDetail>> {
+  return {
+    ...row,
+    createdAt: row.bookingDate,
+    updatedAt: row.bookingDate,
+    qrCode: null,
+    subtotal: row.total,
+    discountAmount: 0,
+    paymentMethod: null,
+    notes: null,
+    odooSyncStatus: "NOT_SYNCED",
+    odooSaleOrderId: null,
+    odooInvoiceId: null,
+    odooSyncedAt: null,
+    odooSyncError: null,
+    driveFolderId: null,
+    driveFolderUrl: null,
+    driveFolderCreatedAt: null,
+    mediaLinkEmailSentAt: null,
+    mediaFolderStatus: "PENDING_UPLOAD",
+    mediaUploadedAt: null,
+    confirmationEmailSent: false,
+    confirmationEmailSentAt: null,
+    confirmationEmailRecipient: null,
+    confirmationEmailError: null,
+    riders: Array.from({ length: row.numRiders }, (_, index) => ({
+      id: `preview-rider-${index + 1}`,
+      name: `Rider ${index + 1}`,
+      age: null,
+      weight: null,
+    })),
+    addOns: row.addOns.map((addOn, index) => ({
+      id: `preview-addon-${index + 1}`,
+      total: 0,
+      addOn: { ...addOn.addOn },
+    })),
+    waivers: (row.waivers ?? []).map((waiver, index) => ({
+      id: `preview-waiver-${index + 1}`,
+      riderName: `Rider ${index + 1}`,
+      status: waiver.status,
+      signedAt: null,
+    })),
+    payments: [],
+    checkIn: null,
+    agentCommission: null,
+    affiliateCommission: null,
+    mediaDelivery: null,
+    waiverShare: null,
+  } as any;
+}
+
 export function BookingDetailPanel({
   bookingId,
+  initialBooking,
   onClose,
   canEditPayments = false,
 }: {
   bookingId: string;
+  initialBooking?: BookingPreview;
   onClose: () => void;
   canEditPayments?: boolean;
 }) {
-  const [booking, setBooking] = useState<Awaited<ReturnType<typeof getBookingDetail>> | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState<Awaited<ReturnType<typeof getBookingDetail>> | null>(
+    initialBooking ? buildPreviewBooking(initialBooking) : null
+  );
+  const [loading, setLoading] = useState(!initialBooking);
   const [isPending, startTransition] = useTransition();
   const loadSeq = useRef(0);
 
@@ -84,7 +159,10 @@ export function BookingDetailPanel({
   }, [bookingId]);
 
   useEffect(() => {
-    load({ silent: false });
+    const hasPreview = Boolean(initialBooking);
+    setBooking(initialBooking ? buildPreviewBooking(initialBooking) : null);
+    setLoading(!hasPreview);
+    load({ silent: hasPreview });
 
     const interval = window.setInterval(() => {
       load({ silent: true }).catch(() => {});
@@ -99,7 +177,7 @@ export function BookingDetailPanel({
       window.clearInterval(interval);
       window.removeEventListener("focus", refreshOnFocus);
     };
-  }, [load]);
+  }, [initialBooking, load]);
 
   async function doAction(fn: () => Promise<any>, msg: string) {
     const res = await fn();
@@ -161,7 +239,7 @@ export function BookingDetailPanel({
     : null;
 
   return (
-    <div className="space-y-6 [&>section]:border-t [&>section]:border-border/60 [&>section]:pt-6 [&>section:first-of-type]:border-t-0 [&>section:first-of-type]:pt-0">
+    <div className="space-y-7 [&>section]:border-t-2 [&>section]:border-border [&>section]:pt-7 [&>section:first-of-type]:border-t-0 [&>section:first-of-type]:pt-0">
       {/* Reference + status row */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>

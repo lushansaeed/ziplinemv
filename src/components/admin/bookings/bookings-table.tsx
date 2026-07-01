@@ -53,6 +53,7 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams, ca
   const [selectedId, setSelectedId]   = useState<string | null>(null);
   const [cancelOpen, setCancelOpen]   = useState(false);
   const [cancelId, setCancelId]       = useState<string | null>(null);
+  const selectedBooking = selectedId ? bookings.find((booking) => booking.id === selectedId) : null;
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(sp.toString());
@@ -305,12 +306,13 @@ export function BookingsTable({ bookings, total, page, perPage, searchParams, ca
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         title="Booking details"
-        subtitle={selectedId ? `Loading…` : undefined}
+        subtitle={selectedBooking ? `${selectedBooking.reference} · ${selectedBooking.customer.name}` : undefined}
         width="max-w-2xl"
       >
         {selectedId && (
           <BookingDetailPanel
             bookingId={selectedId}
+            initialBooking={selectedBooking ?? undefined}
             onClose={() => setDrawerOpen(false)}
             canEditPayments={canEditPayments}
           />
