@@ -67,7 +67,7 @@ export async function getDayEndReport(filters: DayEndFilters) {
       orderBy: { effectiveDate: "desc" },
     }).catch(() => null),
     prisma.dayEndClosing.findFirst({
-      where: { reportDate, location, cashierId: filters.cashierId ?? null },
+      where: { reportDate, location, ...(filters.cashierId ? { cashierId: filters.cashierId } : {}) },
       orderBy: { createdAt: "desc" },
     }).catch(() => null),
   ]);
