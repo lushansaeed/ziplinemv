@@ -23,6 +23,8 @@ type SearchParams = {
   source?: string;
 };
 
+type SourceSales = Record<string, { local: number; tourist: number; localRiders: number; touristRiders: number }>;
+
 function Stat({ label, value, tone = "default" }: { label: string; value: string | number; tone?: "default" | "good" | "bad" }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-3">
@@ -48,6 +50,19 @@ function MoneyStat({ label, mvr, usd }: { label: string; mvr: number; usd: numbe
           <span>{usd.toFixed(2)}</span>
         </div>
       </div>
+    </div>
+  );
+}
+
+function CompactMoneyRows({ rows }: { rows: Array<{ label: string; value: string }> }) {
+  return (
+    <div className="mt-2 space-y-1 text-xs font-semibold">
+      {rows.map((row) => (
+        <div key={row.label} className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">{row.label}</span>
+          <span className="text-right tabular-nums">{row.value}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -87,6 +102,23 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
     (report.paymentBreakdown.card.USD ?? 0) +
     (report.paymentBreakdown.bankTransfer.USD ?? 0) +
     (report.paymentBreakdown.complimentary.USD ?? 0);
+  const localTicketSales = report.ticketSales.byCustomerType.LOCAL?.total ?? 0;
+  const touristTicketSales = report.ticketSales.byCustomerType.TOURIST?.total ?? 0;
+  const localAddOnSales = report.addOnSales.reduce((sum, item) => sum + item.localTotal, 0);
+  const touristAddOnSales = report.addOnSales.reduce((sum, item) => sum + item.touristTotal, 0);
+  const sourceSales: SourceSales = report.transactions.reduce<SourceSales>((acc, row) => {
+    const source = String(row.source);
+    const customerType = String(row.customerType);
+    acc[source] ??= { local: 0, tourist: 0, localRiders: 0, touristRiders: 0 };
+    if (customerType === "LOCAL") {
+      acc[source].local += Number(row.totalPayable);
+      acc[source].localRiders += Number(row.riders);
+    } else {
+      acc[source].tourist += Number(row.totalPayable);
+      acc[source].touristRiders += Number(row.riders);
+    }
+    return acc;
+  }, {});
 
   const exportHref = `/api/admin/reports/export?type=day-end&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`;
 
@@ -143,8 +175,8 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           <Stat label="Riders" value={report.summary.riders} />
           <Stat label="MVR sales total" value={`MVR ${mvrSalesTotal.toFixed(2)}`} />
           <Stat label="USD sales total" value={`USD ${usdSalesTotal.toFixed(2)}`} />
-          <Stat label="Ticket value" value={formatCurrency(report.summary.totalTicketSales)} />
-          <Stat label="Add-ons" value={formatCurrency(report.summary.totalAddOnSales)} />
+          <MoneyStat label="Ticket sales" mvr={localTicketSales} usd={touristTicketSales} />
+          <MoneyStat label="Add-on sales" mvr={localAddOnSales} usd={touristAddOnSales} />
           <Stat label={report.summary.reconciled ? "Reconciled" : "Difference"} value={formatCurrency(report.summary.difference)} tone={report.summary.reconciled ? "good" : "bad"} />
         </div>
 
@@ -176,11 +208,27 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
         </Section>
 
         <Section title="Ticket Sales">
-          <div className="grid gap-3 md:grid-cols-4">
-            <Stat label="Local tickets (MVR)" value={`${report.ticketSales.localQty} riders`} />
-            <Stat label="Tourist tickets" value={`${report.ticketSales.touristQty} riders`} />
-            {Object.entries(report.ticketSales.bySource).map(([source, value]) => (
-              <Stat key={source} label={`${source.toLowerCase()} sales`} value={formatCurrency(value.total)} />
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-border bg-card/60 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Local tickets</p>
+              <p className="mt-1 text-lg font-bold">{report.ticketSales.localQty} riders</p>
+              <p className="text-xs font-semibold text-muted-foreground">{formatCurrency(localTicketSales, "MVR")}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card/60 p-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tourist tickets</p>
+              <p className="mt-1 text-lg font-bold">{report.ticketSales.touristQty} riders</p>
+              <p className="text-xs font-semibold text-muted-foreground">{formatCurrency(touristTicketSales, "USD")}</p>
+            </div>
+            {Object.entries(sourceSales).map(([source, value]) => (
+              <div key={source} className="rounded-xl border border-border bg-card/60 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{source.toLowerCase().replace("_", " ")} sales</p>
+                <CompactMoneyRows
+                  rows={[
+                    { label: `Local (${value.localRiders} riders)`, value: formatCurrency(value.local, "MVR") },
+                    { label: `Tourist (${value.touristRiders} riders)`, value: formatCurrency(value.tourist, "USD") },
+                  ]}
+                />
+              </div>
             ))}
           </div>
         </Section>
@@ -188,10 +236,10 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
         <Section title="Add-On Sales">
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Add-on</th><th>Qty</th><th>Total</th><th>Local</th><th>Tourist</th></tr></thead>
+              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Add-on</th><th>Qty</th><th>Total</th><th>Local MVR</th><th>Tourist USD</th></tr></thead>
               <tbody className="divide-y divide-border">
                 {report.addOnSales.map((item) => (
-                  <tr key={item.name}><td className="py-2 font-medium">{item.name}</td><td>{item.quantity}</td><td>{formatCurrency(item.total)}</td><td>{formatCurrency(item.localTotal)}</td><td>{formatCurrency(item.touristTotal)}</td></tr>
+                  <tr key={item.name}><td className="py-2 font-medium">{item.name}</td><td>{item.quantity}</td><td>{formatCurrency(item.total)}</td><td>{formatCurrency(item.localTotal, "MVR")}</td><td>{formatCurrency(item.touristTotal, "USD")}</td></tr>
                 ))}
               </tbody>
             </table>
@@ -258,40 +306,40 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
 
         <Section title="Transactions">
           <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="min-w-[1500px] text-sm">
+            <table className="min-w-[1420px] text-xs">
               <thead className="bg-muted/40">
-                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                  <th className="px-4 py-3">Reference</th>
-                  <th className="px-4 py-3">Customer</th>
-                  <th className="px-4 py-3">Type</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Payment</th>
-                  <th className="px-4 py-3 text-right">Tickets</th>
-                  <th className="px-4 py-3">Add-ons</th>
-                  <th className="px-4 py-3 text-right">Add-on total</th>
-                  <th className="px-4 py-3 text-right">Total</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Agent</th>
+                <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2.5">Reference</th>
+                  <th className="px-3 py-2.5">Customer</th>
+                  <th className="px-3 py-2.5">Type</th>
+                  <th className="px-3 py-2.5">Source</th>
+                  <th className="px-3 py-2.5">Payment</th>
+                  <th className="px-3 py-2.5 text-right">Tickets</th>
+                  <th className="px-3 py-2.5">Add-ons</th>
+                  <th className="px-3 py-2.5 text-right">Add-on total</th>
+                  <th className="px-3 py-2.5 text-right">Total</th>
+                  <th className="px-3 py-2.5">Status</th>
+                  <th className="px-3 py-2.5">Agent</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {report.transactions.map((row) => (
                   <tr key={String(row.reference)} className="align-top hover:bg-muted/20">
-                    <td className="px-4 py-4 font-mono text-primary">{String(row.reference)}</td>
-                    <td className="px-4 py-4">
-                      <div className="max-w-[240px] whitespace-normal font-medium leading-snug">{String(row.customer)}</div>
+                    <td className="px-3 py-3 font-mono text-primary">{String(row.reference)}</td>
+                    <td className="px-3 py-3">
+                      <div className="max-w-[220px] whitespace-normal font-medium leading-snug">{String(row.customer)}</div>
                     </td>
-                    <td className="px-4 py-4">{String(row.customerType)}</td>
-                    <td className="px-4 py-4">{String(row.source).replace("_", " ")}</td>
-                    <td className="px-4 py-4">{String(row.paymentMethod).replace("_", " ")}</td>
-                    <td className="px-4 py-4 text-right tabular-nums">{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
-                    <td className="px-4 py-4">
-                      <div className="max-w-[320px] whitespace-normal leading-snug">{String(row.addOns || "-")}</div>
+                    <td className="px-3 py-3">{String(row.customerType)}</td>
+                    <td className="px-3 py-3">{String(row.source).replace("_", " ")}</td>
+                    <td className="px-3 py-3">{String(row.paymentMethod).replace("_", " ")}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
+                    <td className="px-3 py-3">
+                      <div className="max-w-[300px] whitespace-normal leading-snug">{String(row.addOns || "-")}</div>
                     </td>
-                    <td className="px-4 py-4 text-right tabular-nums">{formatCurrency(Number(row.addOnAmount), String(row.currency))}</td>
-                    <td className="px-4 py-4 text-right font-semibold tabular-nums">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
-                    <td className="px-4 py-4">{String(row.paymentStatus).replace("_", " ")}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(Number(row.addOnAmount), String(row.currency))}</td>
+                    <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
+                    <td className="px-3 py-3">{String(row.paymentStatus).replace("_", " ")}</td>
+                    <td className="px-3 py-3">
                       <div className="max-w-[220px] whitespace-normal leading-snug">{String(row.agent || "-")}</div>
                     </td>
                   </tr>
