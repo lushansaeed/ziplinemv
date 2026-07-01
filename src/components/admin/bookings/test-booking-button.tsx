@@ -37,7 +37,13 @@ export function TestBookingButton() {
       }
       const sent = result.results.filter((item) => item.success);
       const failed = result.results.filter((item) => !item.success);
-      toast.success(`Media test emails sent: ${sent.length}${failed.length ? `, failed: ${failed.length}` : ""}`);
+      const detail = result.results
+        .map((item) => `${item.email}: ${item.success ? `accepted ${item.messageId ?? ""}` : item.error ?? "failed"}`)
+        .join(" | ");
+      toast.success(`Media test emails sent: ${sent.length}${failed.length ? `, failed: ${failed.length}` : ""}`, {
+        description: detail,
+        duration: 12000,
+      });
       router.refresh();
     });
   }

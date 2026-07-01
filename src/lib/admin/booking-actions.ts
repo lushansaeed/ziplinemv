@@ -175,6 +175,8 @@ export async function createMediaEmailTestBookings() {
     success: boolean;
     error?: string;
     messageId?: string;
+    accepted?: string[];
+    rejected?: string[];
   }> = [];
 
   for (const email of MEDIA_TEST_EMAILS) {
@@ -202,9 +204,20 @@ export async function createMediaEmailTestBookings() {
         success: Boolean(emailResult.sent),
         error: emailResult.sent ? undefined : emailResult.reason ?? emailResult.error ?? "Media email was not sent.",
         messageId: emailResult.messageId,
+        accepted: emailResult.accepted,
+        rejected: emailResult.rejected,
+      });
+      console.info("[mediaEmailTest]", {
+        email,
+        reference: created.reference,
+        sent: emailResult.sent,
+        messageId: emailResult.messageId,
+        accepted: emailResult.accepted,
+        rejected: emailResult.rejected,
       });
     } catch (error: any) {
       results.push({ email, success: false, error: error?.message ?? "Media email test failed." });
+      console.error("[mediaEmailTest]", { email, error: error?.message ?? error });
     }
   }
 

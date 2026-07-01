@@ -286,7 +286,14 @@ export async function sendMediaFolderEmail(bookingId: string, options: { force?:
     },
   }).catch(() => {});
 
-  return { sent: true, skipped: false, folderUrl: folder.folderUrl, messageId: sendResult.messageId };
+  return {
+    sent: true,
+    skipped: false,
+    folderUrl: folder.folderUrl,
+    messageId: sendResult.messageId,
+    accepted: sendResult.accepted,
+    rejected: sendResult.rejected,
+  };
 }
 
 export async function markMediaFolderStatus(bookingId: string, status: MediaFolderStatus, userId?: string) {
