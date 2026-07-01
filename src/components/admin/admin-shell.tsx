@@ -254,15 +254,15 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex h-screen overflow-hidden bg-background print:block print:h-auto print:overflow-visible print:bg-white">
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex flex-shrink-0">
+      <div className="hidden lg:flex flex-shrink-0 print:hidden">
         {Sidebar}
       </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 flex">
+        <div className="lg:hidden fixed inset-0 z-50 flex print:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
           <div className="relative z-10 flex flex-shrink-0">
             {Sidebar}
@@ -271,9 +271,9 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:block print:overflow-visible">
         {/* Mobile header */}
-        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
+        <div className="lg:hidden flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0 print:hidden">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg hover:bg-muted transition-colors"
@@ -287,8 +287,8 @@ export function AdminShell({ user, logo, permissions, children }: AdminShellProp
         </div>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="page-enter">
+        <main className="flex-1 overflow-y-auto print:block print:overflow-visible">
+          <div className="page-enter print:contents">
             {children}
           </div>
         </main>

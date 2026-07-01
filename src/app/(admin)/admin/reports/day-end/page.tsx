@@ -38,7 +38,7 @@ function formatSourceName(value: string) {
 
 function PaperSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="border-t border-black/10 pt-5">
+    <section className="print-avoid-break border-t border-black/10 pt-5">
       <h2 className="mb-3 text-[13px] font-semibold text-zinc-900">{title}</h2>
       {children}
     </section>
@@ -317,6 +317,13 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
             </div>
           </PaperSection>
 
+          <div className="mt-6 hidden items-center justify-between border-t border-black/10 pt-3 text-[10px] uppercase tracking-[0.08em] text-zinc-400 print:flex">
+            <span>Confidential - internal use only</span>
+            <span>Page 1 of 2</span>
+          </div>
+
+          <div className="hidden print-page-break-before print:block" />
+
           <PaperSection title="Bookings by package">
             <MiniTable>
               <thead>
@@ -391,7 +398,8 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
 
           <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-black/10 pt-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400 sm:flex-row">
             <span>Confidential - internal use only</span>
-            <span>Zipline Maldives</span>
+            <span className="print:hidden">Zipline Maldives</span>
+            <span className="hidden print:inline">Page 2 of 2</span>
           </footer>
         </div>
 
