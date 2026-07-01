@@ -186,7 +186,9 @@ export async function updateBookingStatus(bookingId: string, status: BookingStat
     });
   }
   if (status === BookingStatus.COMPLETED || status === BookingStatus.COMPLETED_WITH_REMARKS) {
-    sendMediaFolderEmail(bookingId, { userId: user.id }).catch((error) => {
+    sendMediaFolderEmail(bookingId, { userId: user.id }).then((result) => {
+      if (result.skipped) console.info("[updateBookingStatus:mediaFolderEmailSkipped]", result.reason);
+    }).catch((error) => {
       console.error("[updateBookingStatus:mediaFolderEmail]", error?.message ?? error);
     });
   }
@@ -508,7 +510,7 @@ export async function completeBooking(bookingId: string) {
     },
   });
 
-  await sendMediaFolderEmail(bookingId, { userId: user.id }).catch(async (error) => {
+  const mediaEmailResult = await sendMediaFolderEmail(bookingId, { userId: user.id }).catch(async (error) => {
     console.error("[completeBooking:mediaFolderEmail]", error?.message ?? error);
     await prisma.auditLog.create({
       data: {
@@ -519,7 +521,11 @@ export async function completeBooking(bookingId: string) {
         newValue: { error: error?.message ?? "Media folder email failed." },
       },
     }).catch(() => {});
+    return { sent: false, skipped: false, error: error?.message ?? "Media folder email failed." };
   });
+  if (mediaEmailResult.skipped) {
+    console.info("[completeBooking:mediaFolderEmailSkipped]", "reason" in mediaEmailResult ? mediaEmailResult.reason : "Unknown reason");
+  }
 
   revalidatePath("/admin/bookings");
   return { success: true };
