@@ -88,7 +88,6 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
   );
   const [dirty, setDirty]            = useState<Record<string, boolean>>({});
   const [themeDirty, setThemeDirty]  = useState(false);
-  const [testRecipient, setTestRecipient] = useState("");
   const [isPending, startTransition]  = useTransition();
 
   function handleChange(key: string, value: string) {
@@ -218,23 +217,6 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
       [DAY_END_EMAIL_HTML_KEY]: `${prev[DAY_END_EMAIL_HTML_KEY] ?? ""}${placeholder}`,
     }));
     setDirty((prev) => ({ ...prev, [DAY_END_EMAIL_HTML_KEY]: true }));
-  }
-
-  async function sendDayEndTestEmail() {
-    if (!testRecipient.trim()) {
-      toast.error("Enter a test recipient email");
-      return;
-    }
-    startTransition(async () => {
-      const res = await fetch("/api/admin/reports/day-end/test-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ testRecipient: testRecipient.trim(), location: "Main Counter" }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) toast.success(`Test email accepted by SMTP${data.messageId ? ` (${data.messageId})` : ""}`);
-      else toast.error(data.error ?? "Failed to send test email");
-    });
   }
 
   function parseValue(key: string, val: string) {
@@ -551,32 +533,13 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
           <div className="admin-card space-y-4 xl:sticky xl:top-20">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-primary" />
-              <p className="font-semibold text-sm">Day-end preview and test</p>
+              <p className="font-semibold text-sm">Day-end preview</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Subject</p>
               <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium">
                 {dayEndSubject.replace(/\{\{(\w+)\}\}/g, (_match, key) => dayEndSampleValues[key] ?? "")}
               </p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs text-muted-foreground font-medium">Send test email</label>
-              <div className="flex gap-2">
-                <input
-                  value={testRecipient}
-                  onChange={(e) => setTestRecipient(e.target.value)}
-                  placeholder="you@example.com"
-                  className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-                <button
-                  onClick={sendDayEndTestEmail}
-                  disabled={isPending}
-                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
-                >
-                  Send test
-                </button>
-              </div>
-              <p className="text-[11px] text-muted-foreground">Uses today&apos;s Main Counter report and attaches the generated PDF.</p>
             </div>
             <div className="max-h-[640px] overflow-auto rounded-lg border border-border bg-white p-3">
               <iframe
