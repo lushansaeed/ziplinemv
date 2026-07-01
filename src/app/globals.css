@@ -488,8 +488,7 @@ html:has(.theme-public) {
 
   table,
   tr,
-  img,
-  section {
+  img {
     break-inside: avoid;
     page-break-inside: avoid;
   }
