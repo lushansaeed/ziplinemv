@@ -25,6 +25,12 @@ import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 import { ensureMediaFolderForBooking, markMediaFolderStatus, sendMediaFolderEmail } from "@/lib/booking/media-folder";
 import { ensureDayEndReportingSchema } from "@/lib/reports/day-end-schema-guard";
 
+const MEDIA_TEST_EMAILS = [
+  "lushansaeed@gmail.com",
+  "lushan.saeed@outlook.com",
+  "lushansaeed@icloud.com",
+];
+
 function testAddOnKey(name: string) {
   const normalized = name.toLowerCase();
   if (normalized.includes("360") || normalized.includes("insta")) return "insta360";
@@ -33,7 +39,17 @@ function testAddOnKey(name: string) {
   return null;
 }
 
-async function createTestBookingInternal({ complimentary = false }: { complimentary?: boolean } = {}) {
+async function createTestBookingInternal({
+  complimentary = false,
+  customerEmail,
+  customerName,
+  notes,
+}: {
+  complimentary?: boolean;
+  customerEmail?: string;
+  customerName?: string;
+  notes?: string;
+} = {}) {
   const user = await requirePermission("bookings", "create");
   const packageRecord = await prisma.package.findFirst({
     where: { active: true, activity: { slug: "zipline" } },
@@ -67,10 +83,10 @@ async function createTestBookingInternal({ complimentary = false }: { compliment
     riderType: "tourist",
     date: new Date().toISOString().slice(0, 10),
     numRiders: 2,
-    customerName: complimentary ? "Complimentary Test Customer" : "Test Booking Customer",
+    customerName: customerName ?? (complimentary ? "Complimentary Test Customer" : "Test Booking Customer"),
     customerPhone: `+9607${String(timestamp).slice(-6)}`,
     customerPhoneCountry: "MV",
-    customerEmail: `${complimentary ? "comp-test-customer" : "test-booking"}-${timestamp}@example.com`,
+    customerEmail: customerEmail ?? `${complimentary ? "comp-test-customer" : "test-booking"}-${timestamp}@example.com`,
     customerNationality: "United States",
     customerHotel: complimentary ? "Complimentary Test Hotel" : "Test Hotel",
     riders: [
@@ -92,9 +108,9 @@ async function createTestBookingInternal({ complimentary = false }: { compliment
         createdById: user.id,
         paymentStatus: complimentary ? PaymentStatus.COMPLIMENTARY : PaymentStatus.UNPAID,
         paymentMethod: complimentary ? PaymentMethod.COMPLIMENTARY : PaymentMethod.CASH,
-        notes: complimentary
+        notes: notes ?? (complimentary
           ? "COMPLIMENTARY TEST CUSTOMER - no paid revenue and no Odoo sync."
-          : "TEST BOOKING - unpaid by default. Mark paid only when intentionally testing paid/Odoo flow.",
+          : "TEST BOOKING - unpaid by default. Mark paid only when intentionally testing paid/Odoo flow."),
       },
     }),
     ...(complimentary
@@ -149,6 +165,64 @@ export async function createTestBooking() {
 
 export async function createComplimentaryTestCustomer() {
   return createTestBookingInternal({ complimentary: true });
+}
+
+export async function createMediaEmailTestBookings() {
+  const user = await requirePermission("bookings", "create");
+  const results: Array<{
+    email: string;
+    reference?: string;
+    success: boolean;
+    error?: string;
+    messageId?: string;
+  }> = [];
+
+  for (const email of MEDIA_TEST_EMAILS) {
+    try {
+      const created = await createTestBookingInternal({
+        complimentary: true,
+        customerEmail: email,
+        customerName: `Media Email Test - ${email}`,
+        notes: "MEDIA EMAIL TEST - complimentary booking with add-ons. Created completed to test customer media email delivery.",
+      });
+      if (!created.success || !created.bookingId) {
+        results.push({ email, success: false, error: created.error ?? "Could not create test booking." });
+        continue;
+      }
+
+      await prisma.booking.update({
+        where: { id: created.bookingId },
+        data: { bookingStatus: BookingStatus.COMPLETED },
+      });
+
+      const emailResult = await sendMediaFolderEmail(created.bookingId, { force: true, userId: user.id });
+      results.push({
+        email,
+        reference: created.reference,
+        success: Boolean(emailResult.sent),
+        error: emailResult.sent ? undefined : emailResult.reason ?? emailResult.error ?? "Media email was not sent.",
+        messageId: emailResult.messageId,
+      });
+    } catch (error: any) {
+      results.push({ email, success: false, error: error?.message ?? "Media email test failed." });
+    }
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      action: "MEDIA_EMAIL_TEST_BOOKINGS_CREATED",
+      module: "media",
+      newValue: { results },
+    },
+  }).catch(() => {});
+
+  revalidatePath("/admin/bookings");
+  return {
+    success: results.some((result) => result.success),
+    results,
+    error: results.every((result) => !result.success) ? "No media test emails were sent." : undefined,
+  };
 }
 
 export async function updateBookingStatus(bookingId: string, status: BookingStatus) {
