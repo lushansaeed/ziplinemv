@@ -458,7 +458,7 @@ html:has(.theme-public) {
 @media print {
   @page {
     size: letter;
-    margin: 0;
+    margin: 0.05in 0.25in 0.15in;
   }
 
   html,
