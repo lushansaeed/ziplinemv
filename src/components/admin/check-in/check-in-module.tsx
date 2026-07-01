@@ -4,15 +4,16 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   Search, QrCode, CheckCircle2, XCircle, AlertTriangle,
   Loader2, User, Calendar, Clock, Package, Weight,
-  ShieldCheck, ShieldAlert, Link2, Camera, X,
+  ShieldCheck, ShieldAlert, Link2, Camera,
 } from "lucide-react";
-import jsQR from "jsqr";
 import { toast } from "sonner";
 import { checkInBooking, completeBooking, updatePaymentStatus } from "@/lib/admin/booking-actions";
 import { StatusBadge } from "../shared/status-badge";
 import { formatCurrency, formatDate, isWeightEligible } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { isWaiverSignedForRider } from "@/lib/ride-tracking/waiver-matching";
+import { QrScannerShell } from "@/components/shared/qr-scanner-shell";
+import { decodeQrFromImageFile, decodeQrFromVideoFrame } from "@/lib/qr-decode";
 
 interface RideTracking {
   bookingRiderId: string;
@@ -68,12 +69,17 @@ function ScannerModal({
   const lastScanRef = useRef("");
   const [error, setError] = useState("");
   const [starting, setStarting] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
 
   const stopCamera = useCallback(() => {
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setTorchAvailable(false);
+    setTorchOn(false);
   }, []);
 
   useEffect(() => {
@@ -96,6 +102,7 @@ function ScannerModal({
               facingMode: { ideal: "environment" },
               width: { ideal: 1280 },
               height: { ideal: 720 },
+              frameRate: { ideal: 30, max: 60 },
             },
             audio: false,
           });
@@ -109,6 +116,9 @@ function ScannerModal({
         }
 
         streamRef.current = stream;
+        const videoTrack = stream.getVideoTracks()[0];
+        const capabilities = videoTrack?.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean } | undefined;
+        setTorchAvailable(Boolean(capabilities?.torch));
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
           videoRef.current.muted = true;
@@ -129,6 +139,44 @@ function ScannerModal({
     };
   }, [stopCamera]);
 
+  const closeScanner = useCallback(() => {
+    stopCamera();
+    onClose();
+  }, [onClose, stopCamera]);
+
+  const toggleTorch = useCallback(async () => {
+    const videoTrack = streamRef.current?.getVideoTracks()[0];
+    if (!videoTrack) return;
+    try {
+      const nextValue = !torchOn;
+      await videoTrack.applyConstraints({ advanced: [{ torch: nextValue } as MediaTrackConstraintSet] });
+      setTorchOn(nextValue);
+    } catch (err: any) {
+      setError(err?.message ?? "Light is not available on this device.");
+      setTorchAvailable(false);
+    }
+  }, [torchOn]);
+
+  const processImageFile = useCallback(async (file: File) => {
+    const canvas = canvasRef.current;
+    if (!canvas || processing) return;
+    setError("");
+    setProcessing(true);
+    try {
+      const rawValue = await decodeQrFromImageFile(file, canvas, detectorRef.current);
+      if (!rawValue) {
+        setError("No QR code found in that image.");
+        return;
+      }
+      stopCamera();
+      onScan(rawValue);
+    } catch (err: any) {
+      setError(err?.message ?? "Could not read QR code from that image.");
+    } finally {
+      setProcessing(false);
+    }
+  }, [onScan, processing, stopCamera]);
+
   useEffect(() => {
     let cancelled = false;
 
@@ -138,21 +186,8 @@ function ScannerModal({
       if (video && video.readyState >= 2) {
         try {
           let rawValue = "";
-          if (detectorRef.current) {
-            const codes = await detectorRef.current.detect(video);
-            rawValue = codes?.[0]?.rawValue?.trim() ?? "";
-          }
-          if (!rawValue) {
-            const canvas = canvasRef.current;
-            const context = canvas?.getContext("2d", { willReadFrequently: true });
-            if (canvas && context && video.videoWidth > 0 && video.videoHeight > 0) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              context.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-              rawValue = jsQR(imageData.data, imageData.width, imageData.height)?.data?.trim() ?? "";
-            }
-          }
+          const canvas = canvasRef.current;
+          if (canvas) rawValue = await decodeQrFromVideoFrame(video, canvas, detectorRef.current);
           if (rawValue && rawValue !== lastScanRef.current) {
             lastScanRef.current = rawValue;
             stopCamera();
@@ -174,43 +209,21 @@ function ScannerModal({
   }, [onScan, stopCamera]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 p-0 sm:items-center sm:p-6">
-      <div className="w-full max-w-lg overflow-hidden rounded-t-3xl border border-border bg-background shadow-2xl sm:rounded-3xl">
-        <div className="flex items-start justify-between gap-4 border-b border-border p-4">
-          <div>
-            <p className="text-lg font-bold text-foreground">{title}</p>
-            <p className="text-sm text-muted-foreground">{description}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => { stopCamera(); onClose(); }}
-            className="rounded-full border border-border p-2 text-muted-foreground hover:bg-muted"
-            aria-label="Close scanner"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-4 p-4">
-          <div className="relative aspect-[3/4] overflow-hidden rounded-3xl bg-black">
-            <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
-            <canvas ref={canvasRef} className="hidden" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,transparent_42%,rgba(0,0,0,0.58)_43%,rgba(0,0,0,0.72)_100%)]" />
-            <div className="absolute inset-x-12 top-1/2 aspect-square -translate-y-1/2 rounded-3xl border-2 border-primary shadow-[0_0_30px_rgba(20,184,166,0.35)]" />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-5 text-center">
-              <p className="text-sm font-semibold text-white">
-                {starting ? "Starting camera..." : error ? "Camera unavailable" : "Point camera at the QR code"}
-              </p>
-            </div>
-          </div>
-
-          {error && (
-            <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="fixed inset-0 z-50 bg-black">
+      <QrScannerShell
+        title="Scan QR Code"
+        instruction={description || "Align the QR Code within the frame to scan"}
+        videoRef={videoRef}
+        canvasRef={canvasRef}
+        starting={starting}
+        processing={processing}
+        error={error}
+        lightAvailable={torchAvailable}
+        lightOn={torchOn}
+        onClose={closeScanner}
+        onAlbumFile={processImageFile}
+        onToggleLight={toggleTorch}
+      />
     </div>
   );
 }

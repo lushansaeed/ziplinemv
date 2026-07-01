@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes qrScanLine {
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  100% {
+    top: calc(100% - 1px);
+    opacity: 0;
+  }
+}
+
+.qr-scan-line {
+  top: 0;
+  animation: qrScanLine 2.15s ease-in-out infinite;
+}
+
 /* ─── Brand Fonts ───────────────────────────────────────────────────── */
 /* Public website: Agrandir Variable loaded via next/font/local.          */
 /* Backend portals: Raleway, configured under .theme-backend.             */

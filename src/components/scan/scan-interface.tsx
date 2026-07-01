@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { CheckCircle2, XCircle, AlertTriangle, Scan, Wind, Clock, User, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
-import jsQR from "jsqr";
 import { cn } from "@/lib/utils";
+import { QrScannerShell } from "@/components/shared/qr-scanner-shell";
+import { decodeQrFromImageFile, decodeQrFromVideoFrame } from "@/lib/qr-decode";
 
 const LOCATION_LABELS: Record<string, string> = {
   FIRST_FLOOR:   "First Floor",
@@ -130,6 +131,8 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraStarting, setCameraStarting] = useState(false);
   const [cameraPrompt, setCameraPrompt] = useState(false);
+  const [torchAvailable, setTorchAvailable] = useState(false);
+  const [torchOn, setTorchOn] = useState(false);
   const [launchLineNumber, setLaunchLineNumber] = useState<1 | 2>(1);
   const inputRef                  = useRef<HTMLInputElement>(null);
   const videoRef                  = useRef<HTMLVideoElement>(null);
@@ -213,6 +216,8 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
     streamRef.current = null;
     setCameraActive(false);
     setCameraStarting(false);
+    setTorchAvailable(false);
+    setTorchOn(false);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -236,6 +241,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
             facingMode: { ideal: "environment" },
             width: { ideal: 1280 },
             height: { ideal: 720 },
+            frameRate: { ideal: 30, max: 60 },
           },
           audio: false,
         });
@@ -244,6 +250,9 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       }
 
       streamRef.current = stream;
+      const videoTrack = stream.getVideoTracks()[0];
+      const capabilities = videoTrack?.getCapabilities?.() as MediaTrackCapabilities & { torch?: boolean } | undefined;
+      setTorchAvailable(Boolean(capabilities?.torch));
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.muted = true;
@@ -259,6 +268,35 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       setCameraStarting(false);
     }
   }, [device, scanning]);
+
+  const toggleTorch = useCallback(async () => {
+    const videoTrack = streamRef.current?.getVideoTracks()[0];
+    if (!videoTrack) return;
+    try {
+      const nextValue = !torchOn;
+      await videoTrack.applyConstraints({ advanced: [{ torch: nextValue } as MediaTrackConstraintSet] });
+      setTorchOn(nextValue);
+    } catch (error: any) {
+      setCameraError(error?.message ? `Light could not be changed: ${error.message}` : "Light is not available on this device.");
+      setTorchAvailable(false);
+    }
+  }, [torchOn]);
+
+  const processImageFile = useCallback(async (file: File) => {
+    const canvas = canvasRef.current;
+    if (!canvas || scanning) return;
+    setCameraError("");
+    try {
+      const rawValue = await decodeQrFromImageFile(file, canvas, detectorRef.current);
+      if (!rawValue) {
+        setCameraError("No QR code found in that image.");
+        return;
+      }
+      await processQr(rawValue);
+    } catch (error: any) {
+      setCameraError(error?.message ? `Could not read image: ${error.message}` : "Could not read QR code from that image.");
+    }
+  }, [processQr, scanning]);
 
   useEffect(() => {
     if (!device || device.scanMode === "manual") {
@@ -280,25 +318,11 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       }
 
       const video = videoRef.current;
-      const detector = detectorRef.current;
       if (video && video.readyState >= 2) {
         try {
           let rawValue = "";
-          if (detector) {
-            const codes = await detector.detect(video);
-            rawValue = codes?.[0]?.rawValue?.trim() ?? "";
-          }
-          if (!rawValue) {
-            const canvas = canvasRef.current;
-            const context = canvas?.getContext("2d", { willReadFrequently: true });
-            if (canvas && context && video.videoWidth > 0 && video.videoHeight > 0) {
-              canvas.width = video.videoWidth;
-              canvas.height = video.videoHeight;
-              context.drawImage(video, 0, 0, canvas.width, canvas.height);
-              const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-              rawValue = jsQR(imageData.data, imageData.width, imageData.height)?.data?.trim() ?? "";
-            }
-          }
+          const canvas = canvasRef.current;
+          if (canvas) rawValue = await decodeQrFromVideoFrame(video, canvas, detectorRef.current);
           if (rawValue && rawValue !== lastDetectedRef.current) {
             lastDetectedRef.current = rawValue;
             await processQr(rawValue);
@@ -471,12 +495,21 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
           </div>
         ) : (
           <div className="w-full space-y-4">
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-black aspect-[3/4] shadow-2xl">
-              <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
-              <canvas ref={canvasRef} className="hidden" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0,transparent_42%,rgba(0,0,0,0.62)_43%,rgba(0,0,0,0.72)_100%)]" />
-              <div className="absolute inset-x-10 top-1/2 aspect-square -translate-y-1/2 rounded-3xl border-2 border-amber-300/90 shadow-[0_0_40px_rgba(245,166,35,0.32)]" />
-              <div className="absolute left-12 right-12 top-1/2 h-0.5 -translate-y-1/2 bg-amber-300 shadow-[0_0_18px_rgba(245,166,35,0.9)]" />
+            <div className="relative -mx-6 min-h-[calc(100dvh-13rem)] w-[calc(100%+3rem)] overflow-hidden rounded-none border border-white/10 bg-black shadow-2xl sm:-mx-0 sm:w-full sm:rounded-[2rem]">
+              <QrScannerShell
+                title="Scan QR Code"
+                instruction={scanning ? "Processing wristband..." : cameraActive ? "Align the QR Code within the frame to scan" : cameraPrompt ? "Tap Start Camera to scan" : "Camera is not active"}
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                starting={cameraStarting}
+                processing={scanning}
+                error={cameraError}
+                lightAvailable={torchAvailable}
+                lightOn={torchOn}
+                onAlbumFile={processImageFile}
+                onToggleLight={toggleTorch}
+                className="min-h-[calc(100dvh-13rem)]"
+              />
               {!cameraActive && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50 p-8">
                   <button
@@ -488,23 +521,12 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
                   </button>
                 </div>
               )}
-              <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black/80 to-transparent">
-                <p className="text-center text-sm font-semibold text-white">
-                  {scanning ? "Processing wristband..." : cameraActive ? "Point camera at wristband QR" : cameraPrompt ? "Tap Start Camera to scan" : "Camera is not active"}
-                </p>
-              </div>
               {result && (
                 <div className="absolute inset-x-3 bottom-16 z-20">
                   <ScanResultPanel result={result} compact />
                 </div>
               )}
             </div>
-
-            {cameraError && (
-              <div className="rounded-2xl border border-orange-500/40 bg-orange-950/70 p-4 text-sm text-orange-200">
-                {cameraError}
-              </div>
-            )}
           </div>
         )}
 
