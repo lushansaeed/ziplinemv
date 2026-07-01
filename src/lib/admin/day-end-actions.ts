@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma/client";
 import { logAudit, requirePermission } from "@/lib/auth/permissions";
 import { ensureDayEndReportingSchema } from "@/lib/reports/day-end-schema-guard";
 import { getDayEndReport } from "@/lib/reports/day-end";
+import { sendDayEndReportEmail } from "@/lib/reports/day-end-email";
 
 function decimalInput(value: FormDataEntryValue | null) {
   const parsed = Number(value ?? 0);
@@ -109,6 +110,20 @@ export async function submitDayEndClosing(formData: FormData) {
     module: "reports",
     recordId: closing.id,
     newValue: { date, location },
+  }).catch(() => {});
+
+  const emailResult = await sendDayEndReportEmail({
+    date,
+    location,
+    submittedBy: user.name,
+  }).catch((error: any) => ({ sent: false, error: error?.message ?? "Day-end report email failed" }));
+
+  await logAudit({
+    userId: user.id,
+    action: emailResult.sent ? "DAY_END_REPORT_EMAIL_SENT" : "DAY_END_REPORT_EMAIL_FAILED",
+    module: "reports",
+    recordId: closing.id,
+    newValue: emailResult,
   }).catch(() => {});
 
   revalidatePath("/admin/reports/day-end");

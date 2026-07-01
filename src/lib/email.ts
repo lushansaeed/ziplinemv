@@ -5,6 +5,12 @@ export type EmailMessage = {
   subject: string;
   html: string;
   text?: string;
+  attachments?: Array<{
+    filename: string;
+    content: Buffer | string;
+    contentType?: string;
+    encoding?: string;
+  }>;
 };
 
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
@@ -54,5 +60,6 @@ export async function sendEmail(message: EmailMessage) {
     subject: message.subject,
     html: message.html,
     text: message.text,
+    attachments: message.attachments,
   });
 }

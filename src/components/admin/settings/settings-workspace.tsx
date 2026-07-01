@@ -8,6 +8,14 @@ import {
   DEFAULT_BOOKING_CONFIRMATION_SUBJECT,
   DEFAULT_BOOKING_CONFIRMATION_TEMPLATE,
 } from "@/lib/notifications/booking-confirmation-template";
+import {
+  DAY_END_EMAIL_HTML_KEY,
+  DAY_END_EMAIL_PLACEHOLDERS,
+  DAY_END_EMAIL_RECIPIENTS_KEY,
+  DAY_END_EMAIL_SUBJECT_KEY,
+  DEFAULT_DAY_END_EMAIL_SUBJECT,
+  DEFAULT_DAY_END_EMAIL_TEMPLATE,
+} from "@/lib/reports/day-end-email-template";
 import type { Setting } from "@prisma/client";
 
 const GROUP_LABELS: Record<string, string> = {
@@ -80,6 +88,7 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
   );
   const [dirty, setDirty]            = useState<Record<string, boolean>>({});
   const [themeDirty, setThemeDirty]  = useState(false);
+  const [testRecipient, setTestRecipient] = useState("");
   const [isPending, startTransition]  = useTransition();
 
   function handleChange(key: string, value: string) {
@@ -167,6 +176,67 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
     setDirty((prev) => ({ ...prev, email_booking_confirmation_html: true }));
   }
 
+  async function saveDayEndEmailTemplate() {
+    startTransition(async () => {
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          [DAY_END_EMAIL_RECIPIENTS_KEY]: values[DAY_END_EMAIL_RECIPIENTS_KEY] ?? "",
+          [DAY_END_EMAIL_SUBJECT_KEY]: values[DAY_END_EMAIL_SUBJECT_KEY] || DEFAULT_DAY_END_EMAIL_SUBJECT,
+          [DAY_END_EMAIL_HTML_KEY]: values[DAY_END_EMAIL_HTML_KEY] || DEFAULT_DAY_END_EMAIL_TEMPLATE,
+        }),
+      });
+      if (res.ok) {
+        setDirty((prev) => ({
+          ...prev,
+          [DAY_END_EMAIL_RECIPIENTS_KEY]: false,
+          [DAY_END_EMAIL_SUBJECT_KEY]: false,
+          [DAY_END_EMAIL_HTML_KEY]: false,
+        }));
+        toast.success("Day-end email settings saved");
+      } else toast.error("Failed to save day-end email settings");
+    });
+  }
+
+  function resetDayEndEmailTemplate() {
+    setValues((prev) => ({
+      ...prev,
+      [DAY_END_EMAIL_SUBJECT_KEY]: DEFAULT_DAY_END_EMAIL_SUBJECT,
+      [DAY_END_EMAIL_HTML_KEY]: DEFAULT_DAY_END_EMAIL_TEMPLATE,
+    }));
+    setDirty((prev) => ({
+      ...prev,
+      [DAY_END_EMAIL_SUBJECT_KEY]: true,
+      [DAY_END_EMAIL_HTML_KEY]: true,
+    }));
+  }
+
+  function insertDayEndPlaceholder(placeholder: string) {
+    setValues((prev) => ({
+      ...prev,
+      [DAY_END_EMAIL_HTML_KEY]: `${prev[DAY_END_EMAIL_HTML_KEY] ?? ""}${placeholder}`,
+    }));
+    setDirty((prev) => ({ ...prev, [DAY_END_EMAIL_HTML_KEY]: true }));
+  }
+
+  async function sendDayEndTestEmail() {
+    if (!testRecipient.trim()) {
+      toast.error("Enter a test recipient email");
+      return;
+    }
+    startTransition(async () => {
+      const res = await fetch("/api/admin/reports/day-end/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ testRecipient: testRecipient.trim(), location: "Main Counter" }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) toast.success("Test day-end report email sent");
+      else toast.error(data.error ?? "Failed to send test email");
+    });
+  }
+
   function parseValue(key: string, val: string) {
     const setting = settings.find((s) => s.key === key);
     if (!setting) return val;
@@ -197,6 +267,31 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
     qrCodeBlock: "<div style=\"padding:12px;border:1px solid #ddd;display:inline-block;\">QR code preview</div>",
   };
   const previewHtml = emailHtml.replace(/\{\{(\w+)\}\}/g, (_match, key) => sampleValues[key] ?? "");
+  const dayEndSubject = values[DAY_END_EMAIL_SUBJECT_KEY] ?? DEFAULT_DAY_END_EMAIL_SUBJECT;
+  const dayEndHtml = values[DAY_END_EMAIL_HTML_KEY] ?? DEFAULT_DAY_END_EMAIL_TEMPLATE;
+  const dayEndSampleValues: Record<string, string> = {
+    reportDate: "01 Jul",
+    reportDateLong: "Wednesday, 01 July 2026",
+    generatedTime: "18:30",
+    location: "Main Counter",
+    submittedBy: "Operations",
+    bookingCount: "7",
+    riderCount: "13",
+    mvrCollected: "MVR 3,020.00",
+    usdCollected: "$550",
+    mvrCashExpected: "MVR 1,510.00",
+    usdCashExpected: "$150",
+    mvrCard: "MVR 0.00",
+    usdCard: "$260",
+    mvrBank: "MVR 1,510.00",
+    usdBank: "$140",
+    complimentaryMvr: "MVR 0.00",
+    complimentaryUsd: "$60",
+    reportUrl: "/admin/reports/day-end",
+    pdfFileName: "Daily-Sales-Report_2026-07-01.pdf",
+    attentionBlock: "<div style=\"padding:12px 28px 0;\"><div style=\"background:#FAEEDA;border-radius:8px;padding:12px 14px;color:#854F0B;\">Complimentary value recorded: $60.</div></div>",
+  };
+  const dayEndPreviewHtml = dayEndHtml.replace(/\{\{(\w+)\}\}/g, (_match, key) => dayEndSampleValues[key] ?? "");
 
   return (
     <div className="p-6 space-y-6">
@@ -285,6 +380,7 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
 
       {/* ── Email templates ── */}
       {activeTab === "email" && (
+        <div className="space-y-6">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <div className="admin-card space-y-5">
             <div>
@@ -373,6 +469,124 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
               />
             </div>
           </div>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="admin-card space-y-5">
+            <div>
+              <p className="font-semibold text-sm">Day-end report email</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Sent automatically when operations staff submit and lock the daily reconciliation. The PDF report is attached.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Recipients</label>
+              <textarea
+                value={values[DAY_END_EMAIL_RECIPIENTS_KEY] ?? ""}
+                onChange={(e) => handleChange(DAY_END_EMAIL_RECIPIENTS_KEY, e.target.value)}
+                rows={3}
+                placeholder="finance@example.com, manager@example.com"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="text-[11px] text-muted-foreground">Separate emails with commas, semicolons, or new lines.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">Subject</label>
+              <input
+                value={dayEndSubject}
+                onChange={(e) => handleChange(DAY_END_EMAIL_SUBJECT_KEY, e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground font-medium">Placeholders</p>
+              <div className="flex flex-wrap gap-2">
+                {DAY_END_EMAIL_PLACEHOLDERS.map((placeholder) => (
+                  <button
+                    key={placeholder}
+                    type="button"
+                    onClick={() => insertDayEndPlaceholder(placeholder)}
+                    className="rounded-lg border border-border px-2 py-1 text-xs font-mono hover:bg-muted"
+                  >
+                    {placeholder}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs text-muted-foreground font-medium">HTML template</label>
+              <textarea
+                value={dayEndHtml}
+                onChange={(e) => handleChange(DAY_END_EMAIL_HTML_KEY, e.target.value)}
+                rows={22}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
+                spellCheck={false}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={saveDayEndEmailTemplate}
+                disabled={isPending}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                {isPending ? "Saving..." : "Save day-end email"}
+              </button>
+              <button
+                onClick={resetDayEndEmailTemplate}
+                type="button"
+                className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset template
+              </button>
+            </div>
+          </div>
+
+          <div className="admin-card space-y-4 xl:sticky xl:top-20">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <p className="font-semibold text-sm">Day-end preview and test</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Subject</p>
+              <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium">
+                {dayEndSubject.replace(/\{\{(\w+)\}\}/g, (_match, key) => dayEndSampleValues[key] ?? "")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-muted-foreground font-medium">Send test email</label>
+              <div className="flex gap-2">
+                <input
+                  value={testRecipient}
+                  onChange={(e) => setTestRecipient(e.target.value)}
+                  placeholder="you@example.com"
+                  className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <button
+                  onClick={sendDayEndTestEmail}
+                  disabled={isPending}
+                  className="rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+                >
+                  Send test
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Uses today&apos;s Main Counter report and attaches the generated PDF.</p>
+            </div>
+            <div className="max-h-[640px] overflow-auto rounded-lg border border-border bg-white p-3">
+              <iframe
+                title="Day-end report email preview"
+                srcDoc={dayEndPreviewHtml}
+                className="h-[600px] w-full rounded bg-white"
+              />
+            </div>
+          </div>
+        </div>
         </div>
       )}
 

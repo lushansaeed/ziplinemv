@@ -223,6 +223,7 @@ enum NotificationType {
   REFUND_PROCESSED
   ADMIN_NEW_BOOKING
   AFFILIATE_CONVERSION
+  DAY_END_REPORT
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

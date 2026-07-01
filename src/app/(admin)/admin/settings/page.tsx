@@ -8,6 +8,13 @@ import {
   DEFAULT_BOOKING_CONFIRMATION_SUBJECT,
   DEFAULT_BOOKING_CONFIRMATION_TEMPLATE,
 } from "@/lib/notifications/booking-confirmation-template";
+import {
+  DAY_END_EMAIL_HTML_KEY,
+  DAY_END_EMAIL_RECIPIENTS_KEY,
+  DAY_END_EMAIL_SUBJECT_KEY,
+  DEFAULT_DAY_END_EMAIL_SUBJECT,
+  DEFAULT_DAY_END_EMAIL_TEMPLATE,
+} from "@/lib/reports/day-end-email-template";
 
 export const metadata: Metadata = { title: "Settings | Admin" };
 
@@ -23,6 +30,9 @@ async function getAllSettings() {
     { key: "usd_to_mvr_exchange_rate", value: 20, type: "number", group: "payments", label: "USD to MVR exchange rate" },
     { key: "email_booking_confirmation_subject", value: DEFAULT_BOOKING_CONFIRMATION_SUBJECT, type: "string", group: "email_templates", label: "Booking confirmation subject" },
     { key: "email_booking_confirmation_html", value: DEFAULT_BOOKING_CONFIRMATION_TEMPLATE, type: "string", group: "email_templates", label: "Booking confirmation HTML" },
+    { key: DAY_END_EMAIL_RECIPIENTS_KEY, value: "", type: "string", group: "email_templates", label: "Day-end report recipients" },
+    { key: DAY_END_EMAIL_SUBJECT_KEY, value: DEFAULT_DAY_END_EMAIL_SUBJECT, type: "string", group: "email_templates", label: "Day-end report subject" },
+    { key: DAY_END_EMAIL_HTML_KEY, value: DEFAULT_DAY_END_EMAIL_TEMPLATE, type: "string", group: "email_templates", label: "Day-end report HTML" },
   ];
   await Promise.all(defaults.map((setting) =>
     prisma.setting.upsert({
