@@ -1,5 +1,4 @@
 import { format } from "date-fns";
-import PDFDocument from "pdfkit";
 import { prisma } from "@/lib/prisma/client";
 import { sendEmail } from "@/lib/email";
 import { formatCurrency } from "@/lib/utils";
@@ -76,34 +75,64 @@ function buildAttentionBlock(complimentaryMvr: number, complimentaryUsd: number)
   </div>`;
 }
 
-function pdfBufferFromDoc(doc: PDFKit.PDFDocument) {
-  return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
-    doc.on("error", reject);
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.end();
-  });
+type PdfLine = {
+  text: string;
+  size?: number;
+  bold?: boolean;
+  gapAfter?: number;
+};
+
+function escapePdfText(value: string) {
+  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+function buildSimplePdf(lines: PdfLine[]) {
+  const pageHeight = 792;
+  const x = 36;
+  let y = 760;
+  const content: string[] = ["BT"];
+
+  for (const line of lines) {
+    const size = line.size ?? 10;
+    const font = line.bold ? "F2" : "F1";
+    content.push(`/${font} ${size} Tf`);
+    content.push(`${x} ${y} Td (${escapePdfText(line.text)}) Tj`);
+    content.push(`${-x} ${-y} Td`);
+    y -= line.gapAfter ?? Math.round(size * 1.55);
+    if (y < 42) break;
+  }
+
+  content.push("ET");
+  const stream = content.join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 ${pageHeight}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
+    `<< /Length ${Buffer.byteLength(stream, "ascii")} >>\nstream\n${stream}\nendstream`,
+  ];
+
+  const parts = ["%PDF-1.4\n"];
+  const offsets: number[] = [0];
+  for (let i = 0; i < objects.length; i += 1) {
+    offsets.push(Buffer.byteLength(parts.join(""), "ascii"));
+    parts.push(`${i + 1} 0 obj\n${objects[i]}\nendobj\n`);
+  }
+  const xrefOffset = Buffer.byteLength(parts.join(""), "ascii");
+  parts.push(`xref\n0 ${objects.length + 1}\n`);
+  parts.push("0000000000 65535 f \n");
+  for (let i = 1; i < offsets.length; i += 1) {
+    parts.push(`${String(offsets[i]).padStart(10, "0")} 00000 n \n`);
+  }
+  parts.push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
+  return Buffer.from(parts.join(""), "ascii");
 }
 
 export async function buildDayEndPdf(date: string, location: string) {
   const report = await getDayEndReport({ date, location });
-  const doc = new PDFDocument({ size: "LETTER", margins: { top: 18, bottom: 28, left: 36, right: 36 } });
-
-  doc.font("Helvetica-Bold").fontSize(18).text("Zipline Maldives - Daily Sales Report");
-  doc.moveDown(0.4);
-  doc.font("Helvetica").fontSize(10).fillColor("#666").text(`${format(new Date(date), "EEE, dd MMM yyyy")} - ${location}`);
-  doc.moveDown(0.8);
-  doc.moveTo(36, doc.y).lineTo(576, doc.y).strokeColor("#D85A30").lineWidth(2).stroke();
-  doc.moveDown();
-
   const paidMvr = report.cashDrawer.mvrCashSales + report.cardReconciliation.expectedMvr + report.bankTransferReconciliation.expectedMvr;
   const paidUsd = report.cashDrawer.usdCashSales + report.cardReconciliation.expectedUsd + report.bankTransferReconciliation.expectedUsd;
-
-  doc.fillColor("#111").font("Helvetica-Bold").fontSize(12).text("Counter must match");
-  doc.moveDown(0.4);
-  doc.fontSize(22).text(moneyValue(paidMvr, "MVR"), { continued: true }).text(`    ${moneyValue(paidUsd, "USD")}`);
-  doc.moveDown();
 
   const rows = [
     ["Opening float", moneyValue(report.openingFloat.mvr, "MVR"), moneyValue(report.openingFloat.usd, "USD")],
@@ -113,24 +142,23 @@ export async function buildDayEndPdf(date: string, location: string) {
     ["Bank receipts", moneyValue(report.bankTransferReconciliation.expectedMvr, "MVR"), moneyValue(report.bankTransferReconciliation.expectedUsd, "USD")],
     ["Complimentary value", moneyValue(report.paymentBreakdown.complimentary.MVR, "MVR"), moneyValue(report.paymentBreakdown.complimentary.USD, "USD")],
   ];
-  for (const [label, mvr, usd] of rows) {
-    doc.font("Helvetica").fontSize(10).fillColor("#555").text(label, 36, doc.y, { continued: false });
-    doc.font("Helvetica-Bold").fillColor("#111").text(mvr, 300, doc.y - 12, { width: 120, align: "right" });
-    doc.text(usd, 456, doc.y - 12, { width: 120, align: "right" });
-    doc.moveDown(0.6);
-  }
-
-  doc.moveDown().font("Helvetica-Bold").fontSize(12).text("Bookings");
-  doc.font("Helvetica").fontSize(10).fillColor("#111").text(`${report.summary.bookings} bookings - ${report.summary.riders} riders`);
-  doc.moveDown();
-
-  doc.font("Helvetica-Bold").fontSize(12).text("Add-on sales");
-  for (const item of report.addOnSales) {
-    doc.font("Helvetica").fontSize(10).text(`${item.name}: ${item.quantity} qty - ${moneyValue(item.localTotal, "MVR")} / ${moneyValue(item.touristTotal, "USD")}`);
-  }
-
-  doc.moveDown().font("Helvetica").fontSize(8).fillColor("#999").text("Confidential - internal use only", 36, 740);
-  return pdfBufferFromDoc(doc);
+  return buildSimplePdf([
+    { text: "Zipline Maldives - Daily Sales Report", size: 18, bold: true, gapAfter: 24 },
+    { text: `${format(new Date(date), "EEE, dd MMM yyyy")} - ${location}`, size: 10, gapAfter: 24 },
+    { text: "Counter must match", size: 12, bold: true },
+    { text: `${moneyValue(paidMvr, "MVR")}    ${moneyValue(paidUsd, "USD")}`, size: 18, bold: true, gapAfter: 26 },
+    ...rows.map(([label, mvr, usd]) => ({ text: `${label}: ${mvr} / ${usd}`, size: 10 })),
+    { text: "", size: 10, gapAfter: 14 },
+    { text: "Bookings", size: 12, bold: true },
+    { text: `${report.summary.bookings} bookings - ${report.summary.riders} riders`, size: 10, gapAfter: 18 },
+    { text: "Add-on sales", size: 12, bold: true },
+    ...report.addOnSales.map((item) => ({
+      text: `${item.name}: ${item.quantity} qty - ${moneyValue(item.localTotal, "MVR")} / ${moneyValue(item.touristTotal, "USD")}`,
+      size: 10,
+    })),
+    { text: "", size: 10, gapAfter: 24 },
+    { text: "Confidential - internal use only", size: 8 },
+  ]);
 }
 
 export async function sendDayEndReportEmail(input: {
