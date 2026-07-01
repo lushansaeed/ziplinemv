@@ -39,6 +39,16 @@ function parseRecipients(value: unknown) {
     .filter(Boolean);
 }
 
+function normalizeEmail(value: string) {
+  const match = value.toLowerCase().match(/<([^>]+)>/);
+  return (match?.[1] ?? value).trim().toLowerCase();
+}
+
+function missingAcceptedRecipients(recipients: string[], accepted: string[]) {
+  const acceptedSet = new Set(accepted.map(normalizeEmail));
+  return recipients.filter((recipient) => !acceptedSet.has(normalizeEmail(recipient)));
+}
+
 function generatedTime() {
   return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Indian/Maldives",
@@ -202,12 +212,18 @@ export async function sendDayEndReportEmail(input: {
   const pdf = await buildDayEndPdf(input.date, input.location);
 
   try {
-    await sendEmail({
+    const sendResult = await sendEmail({
       to: recipients.join(", "),
       subject,
       html,
       attachments: [{ filename: values.pdfFileName, content: pdf, contentType: "application/pdf" }],
     });
+    const notAccepted = missingAcceptedRecipients(recipients, sendResult.accepted);
+    if (sendResult.rejected.length > 0 || notAccepted.length > 0) {
+      throw new Error(
+        `SMTP did not accept all recipients. Accepted: ${sendResult.accepted.join(", ") || "none"}. Rejected: ${sendResult.rejected.join(", ") || notAccepted.join(", ") || "none"}.`
+      );
+    }
     await ensureDayEndNotificationType();
     await prisma.notificationLog.create({
       data: {
@@ -217,10 +233,24 @@ export async function sendDayEndReportEmail(input: {
         subject,
         status: "sent",
         sentAt: new Date(),
-        metadata: { date: input.date, location: input.location, test: Boolean(input.testRecipient) },
+        metadata: {
+          date: input.date,
+          location: input.location,
+          test: Boolean(input.testRecipient),
+          messageId: sendResult.messageId,
+          accepted: sendResult.accepted,
+          response: sendResult.response,
+        },
       },
     });
-    return { sent: true, recipients };
+    console.info("[day-end-email] sent", {
+      date: input.date,
+      location: input.location,
+      recipients,
+      messageId: sendResult.messageId,
+      accepted: sendResult.accepted,
+    });
+    return { sent: true, recipients, messageId: sendResult.messageId, accepted: sendResult.accepted };
   } catch (error: any) {
     const message = error?.message ?? "Day-end report email failed";
     await ensureDayEndNotificationType();
@@ -232,7 +262,7 @@ export async function sendDayEndReportEmail(input: {
         subject,
         status: "failed",
         error: message,
-        metadata: { date: input.date, location: input.location, test: Boolean(input.testRecipient) },
+        metadata: { date: input.date, location: input.location, test: Boolean(input.testRecipient), recipients },
       },
     }).catch(() => {});
     console.error("[day-end-email] failed", { date: input.date, location: input.location, recipients, error: message });

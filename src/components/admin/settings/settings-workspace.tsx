@@ -232,7 +232,7 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
         body: JSON.stringify({ testRecipient: testRecipient.trim(), location: "Main Counter" }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) toast.success("Test day-end report email sent");
+      if (res.ok) toast.success(`Test email accepted by SMTP${data.messageId ? ` (${data.messageId})` : ""}`);
       else toast.error(data.error ?? "Failed to send test email");
     });
   }

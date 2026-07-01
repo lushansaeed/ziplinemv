@@ -13,6 +13,13 @@ export type EmailMessage = {
   }>;
 };
 
+export type EmailSendResult = {
+  messageId?: string;
+  accepted: string[];
+  rejected: string[];
+  response?: string;
+};
+
 let transporter: ReturnType<typeof nodemailer.createTransport> | null = null;
 
 function smtpConfig() {
@@ -41,11 +48,12 @@ function getTransporter() {
     const config = smtpConfig();
     transporter = nodemailer.createTransport({
       host: config.host,
-      port: config.port,
-      secure: config.secure,
-      auth: {
-        user: config.user,
-        pass: config.pass,
+    port: config.port,
+    secure: config.secure,
+    requireTLS: !config.secure,
+    auth: {
+      user: config.user,
+      pass: config.pass,
       },
     });
   }
@@ -54,7 +62,7 @@ function getTransporter() {
 
 export async function sendEmail(message: EmailMessage) {
   const config = smtpConfig();
-  return getTransporter().sendMail({
+  const result = await getTransporter().sendMail({
     from: config.from,
     to: message.to,
     subject: message.subject,
@@ -62,4 +70,10 @@ export async function sendEmail(message: EmailMessage) {
     text: message.text,
     attachments: message.attachments,
   });
+  return {
+    messageId: result.messageId,
+    accepted: (result.accepted ?? []).map(String),
+    rejected: (result.rejected ?? []).map(String),
+    response: result.response,
+  } satisfies EmailSendResult;
 }

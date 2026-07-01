@@ -32,5 +32,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: result.error ?? result.reason ?? "Test email was not sent." }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true, recipients: result.recipients });
+  return NextResponse.json({
+    success: true,
+    recipients: result.recipients,
+    accepted: result.accepted,
+    messageId: result.messageId,
+  });
 }
