@@ -120,6 +120,7 @@ function buildPreviewBooking(row: BookingPreview): Awaited<ReturnType<typeof get
       signedAt: null,
     })),
     payments: [],
+    paymentMethodChanges: [],
     checkIn: null,
     agentCommission: null,
     affiliateCommission: null,
@@ -494,6 +495,28 @@ export function BookingDetailPanel({
           )}
         </div>
       </section>
+
+      {booking.paymentMethodChanges.length > 0 && (
+        <section>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Payment method history</p>
+          <div className="space-y-2">
+            {booking.paymentMethodChanges.map((change: any) => (
+              <div key={change.id} className="rounded-xl bg-muted/30 px-4 py-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-medium">
+                    {change.previousMethod ?? "None"} → {change.newMethod ?? "None"}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{formatDateTime(change.createdAt)}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Status: {change.previousStatus ?? "None"} → {change.newStatus ?? "None"}
+                  {change.note ? ` · ${change.note}` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Attribution */}
       {(booking.agent || booking.affiliate) && (

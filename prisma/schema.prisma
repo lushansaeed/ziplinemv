@@ -118,6 +118,18 @@ enum PaymentMethod {
   COMPLIMENTARY
 }
 
+enum CounterFloatStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DayEndClosingStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REOPENED
+}
+
 enum WaiverStatus {
   PENDING
   SIGNED
@@ -872,6 +884,7 @@ model Booking {
   riders              BookingRider[]
   addOns              BookingAddOn[]
   payments            Payment[]
+  paymentMethodChanges PaymentMethodChange[]
   refunds             Refund[]
   waivers             Waiver[]
   waiverLinks         BookingWaiverLink[]
@@ -1008,6 +1021,12 @@ model Payment {
   amount     Decimal       @db.Decimal(10, 2)
   currency   String        @default("USD")
   method     PaymentMethod
+  collectedAmount   Decimal? @map("collected_amount") @db.Decimal(10, 2)
+  collectedCurrency String?  @map("collected_currency")
+  exchangeRate      Decimal? @map("exchange_rate") @db.Decimal(10, 4)
+  receivedByUserId  String?  @map("received_by_user_id")
+  approvedByUserId  String?  @map("approved_by_user_id")
+  reason            String?  @db.Text
   reference  String?
   gatewayRef String?       @unique @map("gateway_ref")
   status     PaymentStatus
@@ -1020,7 +1039,82 @@ model Payment {
   @@index([status, createdAt])
   @@index([currency, status, createdAt])
   @@index([method, status])
+  @@index([collectedCurrency, method, status, createdAt])
+  @@index([receivedByUserId, createdAt])
   @@map("payments")
+}
+
+model PaymentMethodChange {
+  id             String         @id @default(cuid())
+  bookingId      String         @map("booking_id")
+  booking        Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  previousMethod PaymentMethod? @map("previous_method")
+  newMethod      PaymentMethod? @map("new_method")
+  previousStatus PaymentStatus? @map("previous_status")
+  newStatus      PaymentStatus? @map("new_status")
+  changedByUserId String?       @map("changed_by_user_id")
+  note           String?        @db.Text
+  createdAt      DateTime       @default(now()) @map("created_at")
+
+  @@index([bookingId, createdAt])
+  @@index([changedByUserId, createdAt])
+  @@map("payment_method_changes")
+}
+
+model CounterFloat {
+  id              String             @id @default(cuid())
+  location        String             @default("Main Counter")
+  mvrAmount       Decimal            @default(0) @map("mvr_amount") @db.Decimal(10, 2)
+  usdAmount       Decimal            @default(0) @map("usd_amount") @db.Decimal(10, 2)
+  effectiveDate   DateTime           @map("effective_date") @db.Date
+  status          CounterFloatStatus @default(ACTIVE)
+  notes           String?            @db.Text
+  createdByUserId String?            @map("created_by_user_id")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@index([location, status, effectiveDate])
+  @@index([effectiveDate])
+  @@map("counter_floats")
+}
+
+model DayEndClosing {
+  id                         String              @id @default(cuid())
+  reportDate                 DateTime            @map("report_date") @db.Date
+  location                   String              @default("Main Counter")
+  cashierId                  String?             @map("cashier_id")
+  status                     DayEndClosingStatus @default(DRAFT)
+  openingMvrFloat            Decimal             @default(0) @map("opening_mvr_float") @db.Decimal(10, 2)
+  openingUsdFloat            Decimal             @default(0) @map("opening_usd_float") @db.Decimal(10, 2)
+  expectedMvrCash            Decimal             @default(0) @map("expected_mvr_cash") @db.Decimal(10, 2)
+  expectedUsdCash            Decimal             @default(0) @map("expected_usd_cash") @db.Decimal(10, 2)
+  actualMvrCash              Decimal?            @map("actual_mvr_cash") @db.Decimal(10, 2)
+  actualUsdCash              Decimal?            @map("actual_usd_cash") @db.Decimal(10, 2)
+  actualMvrCard              Decimal?            @map("actual_mvr_card") @db.Decimal(10, 2)
+  actualUsdCard              Decimal?            @map("actual_usd_card") @db.Decimal(10, 2)
+  actualMvrBankTransfer      Decimal?            @map("actual_mvr_bank_transfer") @db.Decimal(10, 2)
+  actualUsdBankTransfer      Decimal?            @map("actual_usd_bank_transfer") @db.Decimal(10, 2)
+  mvrCashDifference          Decimal?            @map("mvr_cash_difference") @db.Decimal(10, 2)
+  usdCashDifference          Decimal?            @map("usd_cash_difference") @db.Decimal(10, 2)
+  mvrCardDifference          Decimal?            @map("mvr_card_difference") @db.Decimal(10, 2)
+  usdCardDifference          Decimal?            @map("usd_card_difference") @db.Decimal(10, 2)
+  mvrBankTransferDifference  Decimal?            @map("mvr_bank_transfer_difference") @db.Decimal(10, 2)
+  usdBankTransferDifference  Decimal?            @map("usd_bank_transfer_difference") @db.Decimal(10, 2)
+  notes                      String?             @db.Text
+  submittedByUserId          String?             @map("submitted_by_user_id")
+  submittedAt                DateTime?           @map("submitted_at")
+  approvedByUserId           String?             @map("approved_by_user_id")
+  approvedAt                 DateTime?           @map("approved_at")
+  reopenedByUserId           String?             @map("reopened_by_user_id")
+  reopenedAt                 DateTime?           @map("reopened_at")
+  reopenReason               String?             @map("reopen_reason") @db.Text
+  createdAt                  DateTime            @default(now()) @map("created_at")
+  updatedAt                  DateTime            @updatedAt @map("updated_at")
+
+  @@unique([reportDate, location, cashierId])
+  @@index([reportDate, location])
+  @@index([status, reportDate])
+  @@map("day_end_closings")
 }
 
 model Refund {

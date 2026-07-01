@@ -350,6 +350,8 @@ export async function createBooking(input: CreateBookingInput): Promise<CreateBo
             amount: priceResult.total,
             currency: priceResult.currency,
             method: PaymentMethod.BANK_TRANSFER,
+            collectedAmount: priceResult.total,
+            collectedCurrency: priceResult.currency,
             status: PaymentStatus.UNPAID,
             metadata: {
               transferSlipUrl: input.transferSlipUrl ?? null,

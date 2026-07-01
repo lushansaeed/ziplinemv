@@ -8,7 +8,7 @@ import {
   BarChart3, Settings, Tag, Clock, UserCheck, Handshake,
   ChevronLeft, ChevronRight, Menu,
   QrCode, ShieldCheck, ClipboardList, Palette,
-  KeyRound, Wind, Radio, Scan, Moon, Sun,
+  KeyRound, Wind, Radio, Scan, Moon, Sun, DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { UserMenu } from "@/components/auth/user-menu";
@@ -101,6 +101,7 @@ const NAV_SECTIONS: NavSection[] = [
     title: "Reporting",
     items: [
       { label: "Reports",       href: "/admin/reports",    icon: BarChart3, module: "reports" },
+      { label: "Day-End Sales",  href: "/admin/reports/day-end", icon: DollarSign, module: "reports" },
       { label: "Audit Log",     href: "/admin/audit-log",  icon: ClipboardList, module: "audit" },
     ],
   },

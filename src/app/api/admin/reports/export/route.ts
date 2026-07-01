@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma/client";
 import { format } from "date-fns";
 import { logAudit, requireApiPermission } from "@/lib/auth/permissions";
+import { dayEndReportToCsv } from "@/lib/reports/day-end";
 
 function toCSV(rows: Record<string, any>[]): string {
   if (rows.length === 0) return "";
@@ -28,6 +29,8 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get("type") ?? "bookings";
   const from = searchParams.get("from");
   const to   = searchParams.get("to");
+  const date = searchParams.get("date");
+  const location = searchParams.get("location") ?? "Main Counter";
 
   const dateFilter = {
     gte: from ? new Date(from) : undefined,
@@ -131,11 +134,21 @@ export async function GET(req: NextRequest) {
     })));
   }
 
+  if (type === "day-end") {
+    csv = await dayEndReportToCsv({
+      date: date ?? format(new Date(), "yyyy-MM-dd"),
+      location,
+      paymentMethod: searchParams.get("paymentMethod") ?? undefined,
+      currency: searchParams.get("currency") ?? undefined,
+      source: searchParams.get("source") ?? undefined,
+    });
+  }
+
   await logAudit({
     userId: auth.dbUser.id,
     action: "REPORT_EXPORTED",
     module: "reports",
-    newValue: { type, from, to },
+    newValue: { type, from, to, date, location },
   });
 
   return new NextResponse(csv, {

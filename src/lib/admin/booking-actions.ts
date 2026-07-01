@@ -23,6 +23,7 @@ import { ensureRideTrackingLaunchLineColumn } from "@/lib/ride-tracking/schema-g
 import { createBooking } from "@/lib/booking/create";
 import { ensureBookingMediaColumns } from "@/lib/booking/media-schema-guard";
 import { ensureMediaFolderForBooking, markMediaFolderStatus, sendMediaFolderEmail } from "@/lib/booking/media-folder";
+import { ensureDayEndReportingSchema } from "@/lib/reports/day-end-schema-guard";
 
 function testAddOnKey(name: string) {
   const normalized = name.toLowerCase();
@@ -101,9 +102,11 @@ async function createTestBookingInternal({ complimentary = false }: { compliment
           prisma.payment.create({
             data: {
               bookingId: result.bookingId,
-              amount: 0,
+              amount: result.total ?? 0,
               currency: result.currency ?? "USD",
               method: PaymentMethod.COMPLIMENTARY,
+              approvedByUserId: user.id,
+              reason: "Complimentary test customer",
               status: PaymentStatus.COMPLIMENTARY,
               reference: "Complimentary test customer",
               metadata: {
@@ -228,25 +231,43 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
     if (!auth.ok) return { success: false, error: auth.error };
 
     const user = auth.user;
+    await ensureDayEndReportingSchema();
     const paymentMethod = normalizePaymentMethod(method);
 
     const old = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { paymentStatus: true, total: true, currency: true },
+      select: { paymentStatus: true, paymentMethod: true, total: true, currency: true },
     });
+    const nextPaymentMethod = status === PaymentStatus.COMPLIMENTARY
+      ? PaymentMethod.COMPLIMENTARY
+      : paymentMethod ?? old?.paymentMethod ?? undefined;
 
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id: bookingId },
         data:  {
           paymentStatus:  status,
-          paymentMethod,
+          ...(nextPaymentMethod ? { paymentMethod: nextPaymentMethod } : {}),
         },
       });
 
-      if (status === PaymentStatus.PAID) {
+      if (old?.paymentStatus !== status || old?.paymentMethod !== nextPaymentMethod) {
+        await tx.paymentMethodChange.create({
+          data: {
+            bookingId,
+            previousStatus: old?.paymentStatus,
+            newStatus: status,
+            previousMethod: old?.paymentMethod,
+            newMethod: nextPaymentMethod,
+            changedByUserId: user.id,
+            note: "Updated from admin booking details.",
+          },
+        });
+      }
+
+      if (status === PaymentStatus.PAID || status === PaymentStatus.COMPLIMENTARY) {
         const paidPayment = await tx.payment.findFirst({
-          where: { bookingId, status: PaymentStatus.PAID },
+          where: { bookingId, status: { in: [PaymentStatus.PAID, PaymentStatus.COMPLIMENTARY] } },
           select: { id: true },
         });
         if (!paidPayment && old) {
@@ -255,8 +276,12 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
               bookingId,
               amount: old.total,
               currency: old.currency,
-              method: paymentMethod ?? PaymentMethod.CASH,
-              status: PaymentStatus.PAID,
+              method: status === PaymentStatus.COMPLIMENTARY ? PaymentMethod.COMPLIMENTARY : nextPaymentMethod ?? PaymentMethod.CASH,
+              collectedAmount: status === PaymentStatus.COMPLIMENTARY ? null : old.total,
+              collectedCurrency: status === PaymentStatus.COMPLIMENTARY ? null : old.currency,
+              receivedByUserId: user.id,
+              approvedByUserId: status === PaymentStatus.COMPLIMENTARY ? user.id : null,
+              status,
               reference: "Marked paid from admin",
             },
           });
@@ -269,8 +294,8 @@ export async function updatePaymentStatus(bookingId: string, status: PaymentStat
           action:   "PAYMENT_STATUS_UPDATED",
           module:   "payments",
           recordId: bookingId,
-          oldValue: { paymentStatus: old?.paymentStatus },
-          newValue: { status, paymentMethod },
+          oldValue: { paymentStatus: old?.paymentStatus, paymentMethod: old?.paymentMethod },
+          newValue: { status, paymentMethod: nextPaymentMethod },
         },
       });
     });
@@ -529,6 +554,7 @@ export async function getBookingDetail(bookingId: string) {
       addOns:      { include: { addOn: true } },
       waivers:     true,
       payments:    true,
+      paymentMethodChanges: { orderBy: { createdAt: "desc" }, take: 10 },
       checkIn:     { include: { checkedInBy: { select: { name: true } } } },
       agent:       { select: { businessName: true, contactPerson: true, phone: true } },
       affiliate:   { select: { name: true } },

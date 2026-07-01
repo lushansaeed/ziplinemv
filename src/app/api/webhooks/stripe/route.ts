@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
               amount:     pi.amount / 100,
               currency:   pi.currency.toUpperCase(),
               method:     "ONLINE",
+              collectedAmount: pi.amount / 100,
+              collectedCurrency: pi.currency.toUpperCase(),
               gatewayRef: pi.id,
               status:     PaymentStatus.PAID,
             },
