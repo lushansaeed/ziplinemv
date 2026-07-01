@@ -25,19 +25,37 @@ type SearchParams = {
 
 function Stat({ label, value, tone = "default" }: { label: string; value: string | number; tone?: "default" | "good" | "bad" }) {
   return (
-    <div className="admin-card p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={tone === "good" ? "mt-2 text-2xl font-bold text-green-600" : tone === "bad" ? "mt-2 text-2xl font-bold text-red-600" : "mt-2 text-2xl font-bold"}>
+    <div className="rounded-xl border border-border bg-card/60 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={tone === "good" ? "mt-1 text-lg font-bold text-green-600" : tone === "bad" ? "mt-1 text-lg font-bold text-red-600" : "mt-1 text-lg font-bold"}>
         {value}
       </p>
     </div>
   );
 }
 
+function MoneyStat({ label, mvr, usd }: { label: string; mvr: number; usd: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-card/60 p-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div className="mt-2 space-y-1 text-sm font-semibold">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">MVR</span>
+          <span>{mvr.toFixed(2)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-muted-foreground">USD</span>
+          <span>{usd.toFixed(2)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="admin-card space-y-4">
-      <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
+    <section className="admin-card space-y-4 p-5">
+      <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
       {children}
     </section>
   );
@@ -59,6 +77,16 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
   const report = await getDayEndReport({ ...searchParams, date, location });
   const closing = report.closing;
   const canApprove = user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "FINANCE" || user.role === "OPERATIONS_MANAGER";
+  const mvrSalesTotal =
+    (report.paymentBreakdown.cash.MVR ?? 0) +
+    (report.paymentBreakdown.card.MVR ?? 0) +
+    (report.paymentBreakdown.bankTransfer.MVR ?? 0) +
+    (report.paymentBreakdown.complimentary.MVR ?? 0);
+  const usdSalesTotal =
+    (report.paymentBreakdown.cash.USD ?? 0) +
+    (report.paymentBreakdown.card.USD ?? 0) +
+    (report.paymentBreakdown.bankTransfer.USD ?? 0) +
+    (report.paymentBreakdown.complimentary.USD ?? 0);
 
   const exportHref = `/api/admin/reports/export?type=day-end&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`;
 
@@ -110,16 +138,18 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           <button className="self-end h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">Apply</button>
         </form>
 
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
           <Stat label="Bookings" value={report.summary.bookings} />
           <Stat label="Riders" value={report.summary.riders} />
-          <Stat label="Ticket sales" value={formatCurrency(report.summary.totalTicketSales)} />
+          <Stat label="MVR sales total" value={`MVR ${mvrSalesTotal.toFixed(2)}`} />
+          <Stat label="USD sales total" value={`USD ${usdSalesTotal.toFixed(2)}`} />
+          <Stat label="Ticket value" value={formatCurrency(report.summary.totalTicketSales)} />
           <Stat label="Add-ons" value={formatCurrency(report.summary.totalAddOnSales)} />
           <Stat label={report.summary.reconciled ? "Reconciled" : "Difference"} value={formatCurrency(report.summary.difference)} tone={report.summary.reconciled ? "good" : "bad"} />
         </div>
 
         <Section title="Opening Float">
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
             <Stat label="MVR opening float" value={`MVR ${report.openingFloat.mvr.toFixed(2)}`} />
             <Stat label="USD opening float" value={`USD ${report.openingFloat.usd.toFixed(2)}`} />
             <Stat label="Effective date" value={report.openingFloat.effectiveDate ?? "Not configured"} />
@@ -137,17 +167,17 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
         </Section>
 
         <Section title="Payment Breakdown">
-          <div className="grid gap-4 md:grid-cols-4">
-            <Stat label="Cash MVR / USD" value={`MVR ${report.paymentBreakdown.cash.MVR.toFixed(2)} / USD ${report.paymentBreakdown.cash.USD.toFixed(2)}`} />
-            <Stat label="Card MVR / USD" value={`MVR ${report.paymentBreakdown.card.MVR.toFixed(2)} / USD ${report.paymentBreakdown.card.USD.toFixed(2)}`} />
-            <Stat label="Bank MVR / USD" value={`MVR ${report.paymentBreakdown.bankTransfer.MVR.toFixed(2)} / USD ${report.paymentBreakdown.bankTransfer.USD.toFixed(2)}`} />
-            <Stat label="Complimentary value" value={`MVR ${report.paymentBreakdown.complimentary.MVR.toFixed(2)} / USD ${report.paymentBreakdown.complimentary.USD.toFixed(2)}`} />
+          <div className="grid gap-3 md:grid-cols-4">
+            <MoneyStat label="Cash" mvr={report.paymentBreakdown.cash.MVR} usd={report.paymentBreakdown.cash.USD} />
+            <MoneyStat label="Card" mvr={report.paymentBreakdown.card.MVR} usd={report.paymentBreakdown.card.USD} />
+            <MoneyStat label="Bank transfer" mvr={report.paymentBreakdown.bankTransfer.MVR} usd={report.paymentBreakdown.bankTransfer.USD} />
+            <MoneyStat label="Complimentary value" mvr={report.paymentBreakdown.complimentary.MVR} usd={report.paymentBreakdown.complimentary.USD} />
           </div>
         </Section>
 
         <Section title="Ticket Sales">
-          <div className="grid gap-4 md:grid-cols-4">
-            <Stat label="Local tickets" value={`${report.ticketSales.localQty} riders`} />
+          <div className="grid gap-3 md:grid-cols-4">
+            <Stat label="Local tickets (MVR)" value={`${report.ticketSales.localQty} riders`} />
             <Stat label="Tourist tickets" value={`${report.ticketSales.touristQty} riders`} />
             {Object.entries(report.ticketSales.bySource).map(([source, value]) => (
               <Stat key={source} label={`${source.toLowerCase()} sales`} value={formatCurrency(value.total)} />
@@ -227,22 +257,43 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
         </Section>
 
         <Section title="Transactions">
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] text-sm">
-              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Ref</th><th>Customer</th><th>Type</th><th>Source</th><th>Payment</th><th>Tickets</th><th>Add-ons</th><th>Total</th><th>Status</th><th>Agent</th></tr></thead>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="min-w-[1500px] text-sm">
+              <thead className="bg-muted/40">
+                <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3">Reference</th>
+                  <th className="px-4 py-3">Customer</th>
+                  <th className="px-4 py-3">Type</th>
+                  <th className="px-4 py-3">Source</th>
+                  <th className="px-4 py-3">Payment</th>
+                  <th className="px-4 py-3 text-right">Tickets</th>
+                  <th className="px-4 py-3">Add-ons</th>
+                  <th className="px-4 py-3 text-right">Add-on total</th>
+                  <th className="px-4 py-3 text-right">Total</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Agent</th>
+                </tr>
+              </thead>
               <tbody className="divide-y divide-border">
                 {report.transactions.map((row) => (
-                  <tr key={String(row.reference)}>
-                    <td className="py-2 font-mono text-primary">{String(row.reference)}</td>
-                    <td>{String(row.customer)}</td>
-                    <td>{String(row.customerType)}</td>
-                    <td>{String(row.source)}</td>
-                    <td>{String(row.paymentMethod)}</td>
-                    <td>{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
-                    <td>{String(row.addOns)} ({formatCurrency(Number(row.addOnAmount), String(row.currency))})</td>
-                    <td className="font-semibold">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
-                    <td>{String(row.paymentStatus)}</td>
-                    <td>{String(row.agent)}</td>
+                  <tr key={String(row.reference)} className="align-top hover:bg-muted/20">
+                    <td className="px-4 py-4 font-mono text-primary">{String(row.reference)}</td>
+                    <td className="px-4 py-4">
+                      <div className="max-w-[240px] whitespace-normal font-medium leading-snug">{String(row.customer)}</div>
+                    </td>
+                    <td className="px-4 py-4">{String(row.customerType)}</td>
+                    <td className="px-4 py-4">{String(row.source).replace("_", " ")}</td>
+                    <td className="px-4 py-4">{String(row.paymentMethod).replace("_", " ")}</td>
+                    <td className="px-4 py-4 text-right tabular-nums">{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
+                    <td className="px-4 py-4">
+                      <div className="max-w-[320px] whitespace-normal leading-snug">{String(row.addOns || "-")}</div>
+                    </td>
+                    <td className="px-4 py-4 text-right tabular-nums">{formatCurrency(Number(row.addOnAmount), String(row.currency))}</td>
+                    <td className="px-4 py-4 text-right font-semibold tabular-nums">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
+                    <td className="px-4 py-4">{String(row.paymentStatus).replace("_", " ")}</td>
+                    <td className="px-4 py-4">
+                      <div className="max-w-[220px] whitespace-normal leading-snug">{String(row.agent || "-")}</div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
