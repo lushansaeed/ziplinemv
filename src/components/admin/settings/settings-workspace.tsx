@@ -16,6 +16,13 @@ import {
   DEFAULT_DAY_END_EMAIL_SUBJECT,
   DEFAULT_DAY_END_EMAIL_TEMPLATE,
 } from "@/lib/reports/day-end-email-template";
+import {
+  DEFAULT_MEDIA_EMAIL_SUBJECT,
+  DEFAULT_MEDIA_EMAIL_TEMPLATE,
+  MEDIA_EMAIL_HTML_KEY,
+  MEDIA_EMAIL_PLACEHOLDERS,
+  MEDIA_EMAIL_SUBJECT_KEY,
+} from "@/lib/booking/media-email-template";
 import type { Setting } from "@prisma/client";
 
 const GROUP_LABELS: Record<string, string> = {
@@ -58,6 +65,25 @@ const BRAND_COLORS = [
   { name: "Indigo",    hex: "#6366F1" },
 ];
 
+type EmailTemplateId = "booking" | "day_end" | "media";
+
+interface EmailTemplateConfig {
+  id: EmailTemplateId;
+  title: string;
+  description: string;
+  subjectKey: string;
+  htmlKey: string;
+  recipientsKey?: string;
+  defaultSubject: string;
+  defaultHtml: string;
+  placeholders: string[];
+  subject: string;
+  html: string;
+  previewHtml: string;
+  sampleValues: Record<string, string>;
+  saveLabel: string;
+}
+
 const THEME_KEYS = [
   { key: "theme_primary",        label: "Primary colour",          desc: "CTA buttons, booking calendar selected date, active states" },
   { key: "theme_secondary",      label: "Secondary colour",        desc: "Hover states, secondary buttons" },
@@ -76,6 +102,7 @@ const THEME_DEFAULTS: Record<string, string> = {
 
 export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
   const [activeTab, setActiveTab] = useState<"general" | "email" | "theme">("general");
+  const [activeEmailTemplate, setActiveEmailTemplate] = useState<EmailTemplateId>("booking");
   const [values, setValues]          = useState<Record<string, string>>(
     Object.fromEntries(settings.map((s) => [s.key, String(s.value)]))
   );
@@ -274,6 +301,111 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
     attentionBlock: "<div style=\"padding:12px 28px 0;\"><div style=\"background:#FAEEDA;border-radius:8px;padding:12px 14px;color:#854F0B;\">Complimentary value recorded: $60.</div></div>",
   };
   const dayEndPreviewHtml = dayEndHtml.replace(/\{\{(\w+)\}\}/g, (_match, key) => dayEndSampleValues[key] ?? "");
+  const mediaSubject = values[MEDIA_EMAIL_SUBJECT_KEY] ?? DEFAULT_MEDIA_EMAIL_SUBJECT;
+  const mediaHtml = values[MEDIA_EMAIL_HTML_KEY] ?? DEFAULT_MEDIA_EMAIL_TEMPLATE;
+  const mediaSampleValues: Record<string, string> = {
+    firstName: "Nazha",
+    customerName: "Nazha Saeed",
+    bookingReference: "ZL-SAMPLE",
+    driveFolderUrl: "https://drive.google.com/drive/folders/sample",
+  };
+  const mediaPreviewHtml = mediaHtml.replace(/\{\{(\w+)\}\}/g, (_match, key) => mediaSampleValues[key] ?? "");
+  const emailTemplates: Record<EmailTemplateId, EmailTemplateConfig> = {
+    booking: {
+      id: "booking" as const,
+      title: "Booking confirmation",
+      description: "Sent after public, agent, walk-in, and affiliate bookings are confirmed.",
+      subjectKey: "email_booking_confirmation_subject",
+      htmlKey: "email_booking_confirmation_html",
+      defaultSubject: DEFAULT_BOOKING_CONFIRMATION_SUBJECT,
+      defaultHtml: DEFAULT_BOOKING_CONFIRMATION_TEMPLATE,
+      placeholders: BOOKING_EMAIL_PLACEHOLDERS,
+      subject: emailSubject,
+      html: emailHtml,
+      previewHtml,
+      sampleValues,
+      saveLabel: "Save booking email",
+    },
+    day_end: {
+      id: "day_end" as const,
+      title: "Day-end report",
+      description: "Sent when operations submit and lock the daily reconciliation. The PDF report is attached.",
+      subjectKey: DAY_END_EMAIL_SUBJECT_KEY,
+      htmlKey: DAY_END_EMAIL_HTML_KEY,
+      recipientsKey: DAY_END_EMAIL_RECIPIENTS_KEY,
+      defaultSubject: DEFAULT_DAY_END_EMAIL_SUBJECT,
+      defaultHtml: DEFAULT_DAY_END_EMAIL_TEMPLATE,
+      placeholders: DAY_END_EMAIL_PLACEHOLDERS,
+      subject: dayEndSubject,
+      html: dayEndHtml,
+      previewHtml: dayEndPreviewHtml,
+      sampleValues: dayEndSampleValues,
+      saveLabel: "Save day-end email",
+    },
+    media: {
+      id: "media" as const,
+      title: "Guest media delivery",
+      description: "Sent to guests with paid add-ons when the ride is marked completed and a Drive folder exists.",
+      subjectKey: MEDIA_EMAIL_SUBJECT_KEY,
+      htmlKey: MEDIA_EMAIL_HTML_KEY,
+      defaultSubject: DEFAULT_MEDIA_EMAIL_SUBJECT,
+      defaultHtml: DEFAULT_MEDIA_EMAIL_TEMPLATE,
+      placeholders: MEDIA_EMAIL_PLACEHOLDERS,
+      subject: mediaSubject,
+      html: mediaHtml,
+      previewHtml: mediaPreviewHtml,
+      sampleValues: mediaSampleValues,
+      saveLabel: "Save media email",
+    },
+  };
+  const selectedEmailTemplate = emailTemplates[activeEmailTemplate];
+
+  function insertSelectedEmailPlaceholder(placeholder: string) {
+    setValues((prev) => ({
+      ...prev,
+      [selectedEmailTemplate.htmlKey]: `${prev[selectedEmailTemplate.htmlKey] ?? ""}${placeholder}`,
+    }));
+    setDirty((prev) => ({ ...prev, [selectedEmailTemplate.htmlKey]: true }));
+  }
+
+  async function saveSelectedEmailTemplate() {
+    startTransition(async () => {
+      const body: Record<string, string> = {
+        [selectedEmailTemplate.subjectKey]: values[selectedEmailTemplate.subjectKey] || selectedEmailTemplate.defaultSubject,
+        [selectedEmailTemplate.htmlKey]: values[selectedEmailTemplate.htmlKey] || selectedEmailTemplate.defaultHtml,
+      };
+      if (selectedEmailTemplate.recipientsKey) {
+        body[selectedEmailTemplate.recipientsKey] = values[selectedEmailTemplate.recipientsKey] ?? "";
+      }
+      const res = await fetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setDirty((prev) => ({
+          ...prev,
+          [selectedEmailTemplate.subjectKey]: false,
+          [selectedEmailTemplate.htmlKey]: false,
+          ...(selectedEmailTemplate.recipientsKey ? { [selectedEmailTemplate.recipientsKey]: false } : {}),
+        }));
+        toast.success(`${selectedEmailTemplate.title} saved`);
+      } else toast.error("Failed to save email template");
+    });
+  }
+
+  function resetSelectedEmailTemplate() {
+    setValues((prev) => ({
+      ...prev,
+      [selectedEmailTemplate.subjectKey]: selectedEmailTemplate.defaultSubject,
+      [selectedEmailTemplate.htmlKey]: selectedEmailTemplate.defaultHtml,
+    }));
+    setDirty((prev) => ({
+      ...prev,
+      [selectedEmailTemplate.subjectKey]: true,
+      [selectedEmailTemplate.htmlKey]: true,
+    }));
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -362,23 +494,63 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
 
       {/* ── Email templates ── */}
       {activeTab === "email" && (
-        <div className="space-y-6">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_420px]">
+          <div className="admin-card space-y-3 self-start xl:sticky xl:top-20">
+            <div>
+              <p className="font-semibold text-sm">Templates</p>
+              <p className="text-xs text-muted-foreground mt-1">Choose a template to edit. No scrolling hunt required.</p>
+            </div>
+            <div className="space-y-2">
+              {Object.values(emailTemplates).map((template) => {
+                const hasChanges = Boolean(dirty[template.subjectKey] || dirty[template.htmlKey] || (template.recipientsKey && dirty[template.recipientsKey]));
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => setActiveEmailTemplate(template.id)}
+                    className={cn(
+                      "w-full rounded-xl border p-3 text-left transition-colors",
+                      activeEmailTemplate === template.id
+                        ? "border-primary bg-primary/10 text-foreground"
+                        : "border-border hover:bg-muted"
+                    )}
+                  >
+                    <span className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold">{template.title}</span>
+                      {hasChanges && <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">Unsaved</span>}
+                    </span>
+                    <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">{template.description}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           <div className="admin-card space-y-5">
             <div>
-              <p className="font-semibold text-sm">Booking confirmation email</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                This template is used after public, agent, walk-in, and affiliate bookings are confirmed.
-              </p>
+              <p className="font-semibold text-sm">{selectedEmailTemplate.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">{selectedEmailTemplate.description}</p>
             </div>
+
+            {selectedEmailTemplate.recipientsKey && (
+              <div className="space-y-1.5">
+                <label className="text-xs text-muted-foreground font-medium">Recipients</label>
+                <textarea
+                  value={values[selectedEmailTemplate.recipientsKey] ?? ""}
+                  onChange={(e) => handleChange(selectedEmailTemplate.recipientsKey!, e.target.value)}
+                  rows={3}
+                  placeholder="finance@example.com, manager@example.com"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                <p className="text-[11px] text-muted-foreground">Separate emails with commas, semicolons, or new lines.</p>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">Subject</label>
               <input
-                value={emailSubject}
-                onChange={(e) => {
-                  handleChange("email_booking_confirmation_subject", e.target.value);
-                }}
+                value={selectedEmailTemplate.subject}
+                onChange={(e) => handleChange(selectedEmailTemplate.subjectKey, e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
@@ -386,11 +558,11 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground font-medium">Placeholders</p>
               <div className="flex flex-wrap gap-2">
-                {BOOKING_EMAIL_PLACEHOLDERS.map((placeholder) => (
+                {selectedEmailTemplate.placeholders.map((placeholder) => (
                   <button
                     key={placeholder}
                     type="button"
-                    onClick={() => insertPlaceholder(placeholder)}
+                    onClick={() => insertSelectedEmailPlaceholder(placeholder)}
                     className="rounded-lg border border-border px-2 py-1 text-xs font-mono hover:bg-muted"
                   >
                     {placeholder}
@@ -402,11 +574,9 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
             <div className="space-y-1.5">
               <label className="text-xs text-muted-foreground font-medium">HTML template</label>
               <textarea
-                value={emailHtml}
-                onChange={(e) => {
-                  handleChange("email_booking_confirmation_html", e.target.value);
-                }}
-                rows={22}
+                value={selectedEmailTemplate.html}
+                onChange={(e) => handleChange(selectedEmailTemplate.htmlKey, e.target.value)}
+                rows={24}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
                 spellCheck={false}
               />
@@ -414,20 +584,20 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
 
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={saveEmailTemplate}
+                onClick={saveSelectedEmailTemplate}
                 disabled={isPending}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 <Save className="w-4 h-4" />
-                {isPending ? "Saving..." : "Save template"}
+                {isPending ? "Saving..." : selectedEmailTemplate.saveLabel}
               </button>
               <button
-                onClick={resetEmailTemplate}
+                onClick={resetSelectedEmailTemplate}
                 type="button"
                 className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
               >
                 <RotateCcw className="w-4 h-4" />
-                Reset to default template
+                Reset selected template
               </button>
             </div>
           </div>
@@ -435,121 +605,22 @@ export function SettingsWorkspace({ settings }: { settings: Setting[] }) {
           <div className="admin-card space-y-4 xl:sticky xl:top-20">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-primary" />
-              <p className="font-semibold text-sm">Sample preview</p>
+              <p className="font-semibold text-sm">Preview</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">Subject</p>
               <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium">
-                {emailSubject.replace(/\{\{(\w+)\}\}/g, (_match, key) => sampleValues[key] ?? "")}
+                {selectedEmailTemplate.subject.replace(/\{\{(\w+)\}\}/g, (_match, key) => selectedEmailTemplate.sampleValues[key] ?? "")}
               </p>
             </div>
             <div className="max-h-[640px] overflow-auto rounded-lg border border-border bg-white p-3">
               <iframe
-                title="Booking confirmation email preview"
-                srcDoc={previewHtml}
+                title={`${selectedEmailTemplate.title} email preview`}
+                srcDoc={selectedEmailTemplate.previewHtml}
                 className="h-[600px] w-full rounded bg-white"
               />
             </div>
           </div>
-        </div>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-          <div className="admin-card space-y-5">
-            <div>
-              <p className="font-semibold text-sm">Day-end report email</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Sent automatically when operations staff submit and lock the daily reconciliation. The PDF report is attached.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Recipients</label>
-              <textarea
-                value={values[DAY_END_EMAIL_RECIPIENTS_KEY] ?? ""}
-                onChange={(e) => handleChange(DAY_END_EMAIL_RECIPIENTS_KEY, e.target.value)}
-                rows={3}
-                placeholder="finance@example.com, manager@example.com"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-              <p className="text-[11px] text-muted-foreground">Separate emails with commas, semicolons, or new lines.</p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">Subject</label>
-              <input
-                value={dayEndSubject}
-                onChange={(e) => handleChange(DAY_END_EMAIL_SUBJECT_KEY, e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground font-medium">Placeholders</p>
-              <div className="flex flex-wrap gap-2">
-                {DAY_END_EMAIL_PLACEHOLDERS.map((placeholder) => (
-                  <button
-                    key={placeholder}
-                    type="button"
-                    onClick={() => insertDayEndPlaceholder(placeholder)}
-                    className="rounded-lg border border-border px-2 py-1 text-xs font-mono hover:bg-muted"
-                  >
-                    {placeholder}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs text-muted-foreground font-medium">HTML template</label>
-              <textarea
-                value={dayEndHtml}
-                onChange={(e) => handleChange(DAY_END_EMAIL_HTML_KEY, e.target.value)}
-                rows={22}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring"
-                spellCheck={false}
-              />
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={saveDayEndEmailTemplate}
-                disabled={isPending}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
-              >
-                <Save className="w-4 h-4" />
-                {isPending ? "Saving..." : "Save day-end email"}
-              </button>
-              <button
-                onClick={resetDayEndEmailTemplate}
-                type="button"
-                className="flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Reset template
-              </button>
-            </div>
-          </div>
-
-          <div className="admin-card space-y-4 xl:sticky xl:top-20">
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-primary" />
-              <p className="font-semibold text-sm">Day-end preview</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-muted-foreground">Subject</p>
-              <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm font-medium">
-                {dayEndSubject.replace(/\{\{(\w+)\}\}/g, (_match, key) => dayEndSampleValues[key] ?? "")}
-              </p>
-            </div>
-            <div className="max-h-[640px] overflow-auto rounded-lg border border-border bg-white p-3">
-              <iframe
-                title="Day-end report email preview"
-                srcDoc={dayEndPreviewHtml}
-                className="h-[600px] w-full rounded bg-white"
-              />
-            </div>
-          </div>
-        </div>
         </div>
       )}
 

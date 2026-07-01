@@ -15,6 +15,12 @@ import {
   DEFAULT_DAY_END_EMAIL_SUBJECT,
   DEFAULT_DAY_END_EMAIL_TEMPLATE,
 } from "@/lib/reports/day-end-email-template";
+import {
+  DEFAULT_MEDIA_EMAIL_SUBJECT,
+  DEFAULT_MEDIA_EMAIL_TEMPLATE,
+  MEDIA_EMAIL_HTML_KEY,
+  MEDIA_EMAIL_SUBJECT_KEY,
+} from "@/lib/booking/media-email-template";
 
 export const metadata: Metadata = { title: "Settings | Admin" };
 
@@ -33,6 +39,8 @@ async function getAllSettings() {
     { key: DAY_END_EMAIL_RECIPIENTS_KEY, value: "", type: "string", group: "email_templates", label: "Day-end report recipients" },
     { key: DAY_END_EMAIL_SUBJECT_KEY, value: DEFAULT_DAY_END_EMAIL_SUBJECT, type: "string", group: "email_templates", label: "Day-end report subject" },
     { key: DAY_END_EMAIL_HTML_KEY, value: DEFAULT_DAY_END_EMAIL_TEMPLATE, type: "string", group: "email_templates", label: "Day-end report HTML" },
+    { key: MEDIA_EMAIL_SUBJECT_KEY, value: DEFAULT_MEDIA_EMAIL_SUBJECT, type: "string", group: "email_templates", label: "Guest media delivery subject" },
+    { key: MEDIA_EMAIL_HTML_KEY, value: DEFAULT_MEDIA_EMAIL_TEMPLATE, type: "string", group: "email_templates", label: "Guest media delivery HTML" },
   ];
   await Promise.all(defaults.map((setting) =>
     prisma.setting.upsert({
