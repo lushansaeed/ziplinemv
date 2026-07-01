@@ -141,6 +141,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   const detectorRef               = useRef<any>(null);
   const lastDetectedRef           = useRef("");
   const scanLoopRef               = useRef<number | null>(null);
+  const scanningRef               = useRef(false);
 
   // Did Not Fly modal
   const [dnfQr, setDnfQr]         = useState("");
@@ -154,6 +155,10 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
     const stored = sessionStorage.getItem(`scan-pin-${deviceCode}`);
     if (stored) authenticate(stored);
   }, []); // eslint-disable-line
+
+  useEffect(() => {
+    scanningRef.current = scanning;
+  }, [scanning]);
 
   async function authenticate(pinVal?: string) {
     const usePin = pinVal ?? pin;
@@ -221,7 +226,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
   }, []);
 
   const startCamera = useCallback(async () => {
-    if (!device || device.scanMode === "manual" || scanning) return;
+    if (!device || device.scanMode === "manual" || scanningRef.current) return;
     setCameraError("");
     setCameraStarting(true);
 
@@ -267,7 +272,7 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
     } finally {
       setCameraStarting(false);
     }
-  }, [device, scanning]);
+  }, [device]);
 
   const toggleTorch = useCallback(async () => {
     const videoTrack = streamRef.current?.getVideoTracks()[0];
@@ -303,9 +308,16 @@ export function ScanInterface({ deviceCode }: { deviceCode: string }) {
       stopCamera();
       return;
     }
-    setCameraPrompt(true);
-    return stopCamera;
-  }, [device, stopCamera]);
+    setCameraPrompt(false);
+    const timer = window.setTimeout(() => {
+      void startCamera();
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timer);
+      stopCamera();
+    };
+  }, [device, startCamera, stopCamera]);
 
   useEffect(() => {
     if (!cameraActive || device?.scanMode === "manual" || !device) return;
