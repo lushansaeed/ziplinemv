@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { format } from "date-fns";
 import { Download } from "lucide-react";
+import { PrintReportButton } from "@/components/admin/reports/print-report-button";
 import { PageHeader } from "@/components/shared/page-header";
 import { requirePermission } from "@/lib/auth/permissions";
 import { formatCurrency } from "@/lib/utils";
@@ -123,6 +125,14 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
   const report = await getDayEndReport({ ...searchParams, date, location });
   const closing = report.closing;
   const canApprove = user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "FINANCE" || user.role === "OPERATIONS_MANAGER";
+  const isClosingLocked = closing?.status === "SUBMITTED" || closing?.status === "APPROVED";
+  const generatedAt = new Date();
+  const generatedTime = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Indian/Maldives",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(generatedAt);
 
   const paidCollections = moneyPair(
     (report.paymentBreakdown.cash.MVR ?? 0) + (report.paymentBreakdown.card.MVR ?? 0) + (report.paymentBreakdown.bankTransfer.MVR ?? 0),
@@ -172,19 +182,24 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
 
   return (
     <div>
-      <PageHeader
-        title="Day-End Sales Report"
-        description="A counter reconciliation sheet for matching cash drawer, card settlement, bank receipts, and complimentary value."
-        actions={
-          <Link href={exportHref} className="btn-secondary px-4 py-2 text-sm">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Link>
-        }
-      />
+      <div className="print:hidden">
+        <PageHeader
+          title="Day-End Sales Report"
+          description="A counter reconciliation sheet for matching cash drawer, card settlement, bank receipts, and complimentary value."
+          actions={
+            <div className="flex flex-wrap gap-2">
+              <PrintReportButton />
+              <Link href={exportHref} className="btn-secondary px-4 py-2 text-sm">
+                <Download className="h-4 w-4" />
+                Export CSV
+              </Link>
+            </div>
+          }
+        />
+      </div>
 
-      <div className="space-y-5 bg-[#F4F1EA] p-4 md:p-6">
-        <form className="rounded-lg border border-black/10 bg-white p-4 shadow-sm" action="/admin/reports/day-end">
+      <div className="space-y-5 bg-[#F4F1EA] p-4 print:bg-white print:p-0 md:p-6">
+        <form className="rounded-lg border border-black/10 bg-white p-4 shadow-sm print:hidden" action="/admin/reports/day-end">
           <div className="grid gap-3 md:grid-cols-6">
             <Field label="Date" name="date" type="date" defaultValue={date} />
             <Field label="Location" name="location" type="text" defaultValue={location} />
@@ -220,16 +235,20 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           </div>
         </form>
 
-        <div className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white px-5 py-6 text-zinc-900 shadow-sm md:px-10 md:py-9">
+        <div className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white px-5 py-6 text-zinc-900 shadow-sm print:max-w-none print:border-0 print:p-8 print:shadow-none md:px-10 md:py-9">
           <header className="mb-6 flex flex-col gap-3 border-b-2 border-[#D85A30] pb-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Vahmaafushi · Zipline Maldives</div>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">Daily sales report</h1>
+            <div className="flex items-start gap-4">
+              <Image src="/images/zipline-logo-black.png" alt="Zipline Maldives" width={116} height={58} className="h-auto w-28 object-contain" priority />
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Vahmaafushi · Zipline Maldives</div>
+                <h1 className="mt-1 text-2xl font-semibold tracking-tight">Daily sales report</h1>
+              </div>
             </div>
             <div className="text-left text-xs leading-6 text-zinc-500 sm:text-right">
               <div className="text-sm font-semibold text-zinc-900">{format(new Date(date), "EEE, dd MMM yyyy")}</div>
               <div>Location: {location}</div>
-              <div>Generated {format(new Date(), "HH:mm")} MVT</div>
+              <div>Generated {generatedTime} MVT</div>
+              {closing && <div className="font-semibold text-zinc-700">Closing: {closing.status}</div>}
             </div>
           </header>
 
@@ -373,29 +392,41 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
 
           <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-black/10 pt-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400 sm:flex-row">
             <span>Confidential - internal use only</span>
-            <span>MHR Trading Pvt Ltd</span>
+            <span>Zipline Maldives</span>
           </footer>
         </div>
 
-        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm print:hidden">
           <h2 className="mb-3 text-sm font-semibold text-zinc-900">Submit counter reconciliation</h2>
-          <form action={async (formData) => { "use server"; await submitDayEndClosing(formData); }} className="space-y-4">
-            <input type="hidden" name="date" value={date} />
-            <input type="hidden" name="location" value={location} />
-            <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Actual MVR cash counted" name="actualMvrCash" defaultValue={report.cashDrawer.actualMvrCash ?? report.cashDrawer.expectedMvrCash} />
-              <Field label="Actual USD cash counted" name="actualUsdCash" defaultValue={report.cashDrawer.actualUsdCash ?? report.cashDrawer.expectedUsdCash} />
-              <Field label="Actual MVR card settlement" name="actualMvrCard" defaultValue={report.cardReconciliation.actualMvr ?? report.cardReconciliation.expectedMvr} />
-              <Field label="Actual USD card settlement" name="actualUsdCard" defaultValue={report.cardReconciliation.actualUsd ?? report.cardReconciliation.expectedUsd} />
-              <Field label="Actual MVR bank verified" name="actualMvrBankTransfer" defaultValue={report.bankTransferReconciliation.actualMvr ?? report.bankTransferReconciliation.expectedMvr} />
-              <Field label="Actual USD bank verified" name="actualUsdBankTransfer" defaultValue={report.bankTransferReconciliation.actualUsd ?? report.bankTransferReconciliation.expectedUsd} />
+          {isClosingLocked ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <p className="font-semibold">This reconciliation is locked.</p>
+              <p className="mt-1">Status: {closing?.status}. Ask an admin or finance user to reopen it if anything needs to change.</p>
+              <div className="mt-3 grid gap-2 text-xs md:grid-cols-3">
+                <div>Actual MVR cash: <strong>{formatCurrency(Number(closing?.actualMvrCash ?? 0), "MVR")}</strong></div>
+                <div>Actual USD cash: <strong>{formatCurrency(Number(closing?.actualUsdCash ?? 0), "USD")}</strong></div>
+                <div>Notes: <strong>{closing?.notes || "No notes"}</strong></div>
+              </div>
             </div>
-            <textarea name="notes" defaultValue={closing?.notes ?? ""} placeholder="Variance notes" className="min-h-20 w-full rounded-lg border border-border bg-background p-3 text-sm" />
-            <div className="flex flex-wrap items-center gap-2">
-              <button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Submit closing</button>
-              {closing && <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">Status: {closing.status}</span>}
-            </div>
-          </form>
+          ) : (
+            <form action={async (formData) => { "use server"; await submitDayEndClosing(formData); }} className="space-y-4">
+              <input type="hidden" name="date" value={date} />
+              <input type="hidden" name="location" value={location} />
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="Actual MVR cash counted" name="actualMvrCash" defaultValue={report.cashDrawer.actualMvrCash ?? report.cashDrawer.expectedMvrCash} />
+                <Field label="Actual USD cash counted" name="actualUsdCash" defaultValue={report.cashDrawer.actualUsdCash ?? report.cashDrawer.expectedUsdCash} />
+                <Field label="Actual MVR card settlement" name="actualMvrCard" defaultValue={report.cardReconciliation.actualMvr ?? report.cardReconciliation.expectedMvr} />
+                <Field label="Actual USD card settlement" name="actualUsdCard" defaultValue={report.cardReconciliation.actualUsd ?? report.cardReconciliation.expectedUsd} />
+                <Field label="Actual MVR bank verified" name="actualMvrBankTransfer" defaultValue={report.bankTransferReconciliation.actualMvr ?? report.bankTransferReconciliation.expectedMvr} />
+                <Field label="Actual USD bank verified" name="actualUsdBankTransfer" defaultValue={report.bankTransferReconciliation.actualUsd ?? report.bankTransferReconciliation.expectedUsd} />
+              </div>
+              <textarea name="notes" defaultValue={closing?.notes ?? ""} placeholder="Variance notes" className="min-h-20 w-full rounded-lg border border-border bg-background p-3 text-sm" />
+              <div className="flex flex-wrap items-center gap-2">
+                <button className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground">Submit closing</button>
+                {closing && <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">Status: {closing.status}</span>}
+              </div>
+            </form>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {closing && canApprove && closing.status !== "APPROVED" && (
               <form action={async () => { "use server"; await approveDayEndClosing(closing.id); }}>
@@ -410,7 +441,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           </div>
         </section>
 
-        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm print:hidden">
           <h2 className="mb-3 text-sm font-semibold text-zinc-900">Transactions</h2>
           <div className="overflow-x-auto rounded-lg border border-black/10">
             <table className="min-w-[1180px] text-[11px] text-zinc-900">
@@ -447,7 +478,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
         </section>
 
         {canApprove && (
-          <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+          <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm print:hidden">
             <h2 className="mb-3 text-sm font-semibold text-zinc-900">Opening float setup</h2>
             <form action={async (formData) => { "use server"; await createCounterFloat(formData); }} className="grid gap-3 md:grid-cols-5">
               <input type="hidden" name="location" value={location} />

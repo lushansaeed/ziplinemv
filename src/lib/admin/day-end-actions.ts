@@ -47,7 +47,7 @@ export async function createCounterFloat(formData: FormData) {
 }
 
 export async function submitDayEndClosing(formData: FormData) {
-  const user = await requirePermission("payments", "create");
+  const user = await requirePermission("reports", "export");
   await ensureDayEndReportingSchema();
 
   const date = stringInput(formData.get("date"));
@@ -69,8 +69,8 @@ export async function submitDayEndClosing(formData: FormData) {
     select: { id: true, status: true },
   });
 
-  if (existing?.status === DayEndClosingStatus.APPROVED) {
-    return { success: false, error: "This day-end closing is approved. Ask an admin to reopen it before editing." };
+  if (existing?.status === DayEndClosingStatus.SUBMITTED || existing?.status === DayEndClosingStatus.APPROVED) {
+    return { success: false, error: "This day-end closing is locked. Ask an admin to reopen it before editing." };
   }
 
   const data = {

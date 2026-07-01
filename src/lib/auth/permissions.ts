@@ -74,7 +74,7 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, Record<string, PermissionA
   },
   "Operations Staff": {
     dashboard: ["view"], bookings: ["view", "edit"], check_in: ["view", "create", "edit"], customers: ["view"], slots: ["view"],
-    ride_tracking: ["view", "create", "edit"],
+    reports: ["view", "export"], ride_tracking: ["view", "create", "edit"],
   },
   Photographer: {
     dashboard: ["view"], bookings: ["view"], customers: ["view"], media: ["view", "create", "edit", "send"], website_customization: ["view", "create", "update", "publish"], gallery: ["view", "create", "edit"],
@@ -239,6 +239,23 @@ export async function ensureDefaultStaffRoles() {
   }
 
   const roleByName = new Map(roles.map((role) => [role.name, role.id]));
+  const operationsStaffRoleId = roleByName.get("Operations Staff");
+  if (operationsStaffRoleId) {
+    await prisma.rolePermission.createMany({
+      data: (["view", "export"] as PermissionAction[]).map((action) => ({
+        roleId: operationsStaffRoleId,
+        module: "reports",
+        action,
+        allowed: true,
+      })),
+      skipDuplicates: true,
+    });
+    await prisma.rolePermission.updateMany({
+      where: { roleId: operationsStaffRoleId, module: "reports", action: { in: ["view", "export"] } },
+      data: { allowed: true },
+    });
+  }
+
   const adminRoleId = roleByName.get("Admin");
   if (adminRoleId) {
     await prisma.user.updateMany({
