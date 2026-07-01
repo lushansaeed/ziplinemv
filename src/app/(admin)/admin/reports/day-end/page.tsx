@@ -9,7 +9,6 @@ import { requirePermission } from "@/lib/auth/permissions";
 import { formatCurrency } from "@/lib/utils";
 import { getDayEndReport } from "@/lib/reports/day-end";
 import {
-  approveDayEndClosing,
   createCounterFloat,
   reopenDayEndClosing,
   submitDayEndClosing,
@@ -124,7 +123,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
   const location = searchParams.location ?? "Main Counter";
   const report = await getDayEndReport({ ...searchParams, date, location });
   const closing = report.closing;
-  const canApprove = user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "FINANCE" || user.role === "OPERATIONS_MANAGER";
+  const canManageClosing = user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "FINANCE";
   const isClosingLocked = closing?.status === "SUBMITTED" || closing?.status === "APPROVED";
   const generatedAt = new Date();
   const generatedTime = new Intl.DateTimeFormat("en-GB", {
@@ -386,7 +385,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           {complimentary.MVR > 0 || complimentary.USD > 0 ? (
             <div className="mt-5 rounded-lg bg-[#FAEEDA] p-4 text-[#854F0B]">
               <div className="text-xs font-semibold">Needs review</div>
-              <p className="mt-1 text-xs leading-5">Complimentary value recorded today: {formatCurrency(complimentary.MVR, "MVR")} and {formatCurrency(complimentary.USD, "USD")}. It is not cash collected, but should be approved and explained.</p>
+              <p className="mt-1 text-xs leading-5">Complimentary value recorded today: {formatCurrency(complimentary.MVR, "MVR")} and {formatCurrency(complimentary.USD, "USD")}. It is not cash collected, but should be explained.</p>
             </div>
           ) : null}
 
@@ -428,12 +427,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
             </form>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {closing && canApprove && closing.status !== "APPROVED" && (
-              <form action={async () => { "use server"; await approveDayEndClosing(closing.id); }}>
-                <button className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">Approve</button>
-              </form>
-            )}
-            {closing && canApprove && closing.status === "APPROVED" && (
+            {closing && canManageClosing && isClosingLocked && (
               <form action={async () => { "use server"; await reopenDayEndClosing(closing.id, "Reopened from day-end report."); }}>
                 <button className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700">Reopen</button>
               </form>
@@ -477,7 +471,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
           </div>
         </section>
 
-        {canApprove && (
+        {canManageClosing && (
           <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm print:hidden">
             <h2 className="mb-3 text-sm font-semibold text-zinc-900">Opening float setup</h2>
             <form action={async (formData) => { "use server"; await createCounterFloat(formData); }} className="grid gap-3 md:grid-cols-5">

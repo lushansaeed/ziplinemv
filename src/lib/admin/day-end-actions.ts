@@ -115,20 +115,6 @@ export async function submitDayEndClosing(formData: FormData) {
   return { success: true };
 }
 
-export async function approveDayEndClosing(closingId: string) {
-  const user = await requirePermission("reports", "export");
-  await ensureDayEndReportingSchema();
-
-  await prisma.dayEndClosing.update({
-    where: { id: closingId },
-    data: { status: DayEndClosingStatus.APPROVED, approvedByUserId: user.id, approvedAt: new Date() },
-  });
-
-  await logAudit({ userId: user.id, action: "DAY_END_CLOSING_APPROVED", module: "reports", recordId: closingId }).catch(() => {});
-  revalidatePath("/admin/reports/day-end");
-  return { success: true };
-}
-
 export async function reopenDayEndClosing(closingId: string, reason: string) {
   const user = await requirePermission("reports", "export");
   await ensureDayEndReportingSchema();
