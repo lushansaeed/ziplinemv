@@ -190,6 +190,7 @@ export async function getDayEndReport(filters: DayEndFilters) {
       date: format(booking.bookingDate, "yyyy-MM-dd"),
       time: booking.slot.startTime,
       customer: booking.customer.name,
+      package: booking.package.name,
       customerType: booking.customerType,
       source: booking.source,
       paymentMethod: method ?? "UNRECORDED",

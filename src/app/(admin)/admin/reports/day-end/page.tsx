@@ -23,54 +23,22 @@ type SearchParams = {
   source?: string;
 };
 
-type SourceSales = Record<string, { local: number; tourist: number; localRiders: number; touristRiders: number }>;
+type CurrencyPair = { MVR: number; USD: number };
+type SourceSales = Record<string, { bookings: number; local: number; tourist: number; localRiders: number; touristRiders: number }>;
+type PackageSales = Record<string, { bookings: number; riders: number; local: number; tourist: number }>;
 
-function Stat({ label, value, tone = "default" }: { label: string; value: string | number; tone?: "default" | "good" | "bad" }) {
-  return (
-    <div className="rounded-xl border border-border bg-card/60 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={tone === "good" ? "mt-1 text-lg font-bold text-green-600" : tone === "bad" ? "mt-1 text-lg font-bold text-red-600" : "mt-1 text-lg font-bold"}>
-        {value}
-      </p>
-    </div>
-  );
+function moneyPair(mvr = 0, usd = 0): CurrencyPair {
+  return { MVR: mvr, USD: usd };
 }
 
-function MoneyStat({ label, mvr, usd }: { label: string; mvr: number; usd: number }) {
-  return (
-    <div className="rounded-xl border border-border bg-card/60 p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <div className="mt-2 space-y-1 text-sm font-semibold">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">MVR</span>
-          <span>{mvr.toFixed(2)}</span>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">USD</span>
-          <span>{usd.toFixed(2)}</span>
-        </div>
-      </div>
-    </div>
-  );
+function formatSourceName(value: string) {
+  return value.toLowerCase().replace(/_/g, " ");
 }
 
-function CompactMoneyRows({ rows }: { rows: Array<{ label: string; value: string }> }) {
+function PaperSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="mt-2 space-y-1 text-xs font-semibold">
-      {rows.map((row) => (
-        <div key={row.label} className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground">{row.label}</span>
-          <span className="text-right tabular-nums">{row.value}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="admin-card space-y-4 p-5">
-      <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h2>
+    <section className="border-t border-black/10 pt-5">
+      <h2 className="mb-3 text-[13px] font-semibold text-zinc-900">{title}</h2>
       {children}
     </section>
   );
@@ -85,6 +53,69 @@ function Field({ label, name, type = "number", defaultValue }: { label: string; 
   );
 }
 
+function CurrencyRows({ mvr, usd, muted = false }: { mvr: number; usd: number; muted?: boolean }) {
+  return (
+    <div className={muted ? "space-y-0.5 text-zinc-500" : "space-y-0.5"}>
+      <div>{formatCurrency(mvr, "MVR")}</div>
+      <div>{formatCurrency(usd, "USD")}</div>
+    </div>
+  );
+}
+
+function SummaryCard({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg bg-[#F7F5EF] p-3">
+      <div className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">{label}</div>
+      <div className="text-sm font-semibold text-zinc-900">{children}</div>
+    </div>
+  );
+}
+
+function MiniTable({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full border-collapse text-[12px] text-zinc-900">
+        {children}
+      </table>
+    </div>
+  );
+}
+
+function paymentPercent(amount: number, total: number) {
+  if (total <= 0) return 0;
+  return Math.max(0, Math.round((amount / total) * 100));
+}
+
+function PaymentBar({ label, cash, card, bank }: { label: string; cash: number; card: number; bank: number }) {
+  const total = cash + card + bank;
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-[11px] text-zinc-500">
+        <span>{label}</span>
+        <span>{total > 0 ? "Cash / Card / Bank" : "No collections"}</span>
+      </div>
+      <div
+        className="grid h-2 overflow-hidden rounded-full bg-zinc-100"
+        style={{
+          gridTemplateColumns: total > 0
+            ? `${paymentPercent(cash, total)}fr ${paymentPercent(card, total)}fr ${paymentPercent(bank, total)}fr`
+            : "1fr",
+        }}
+      >
+        {total > 0 ? (
+          <>
+            <div className="bg-zinc-400" />
+            <div className="bg-[#185FA5]" />
+            <div className="bg-[#5DCAA5]" />
+          </>
+        ) : (
+          <div className="bg-zinc-100" />
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default async function DayEndReportPage({ searchParams }: { searchParams: SearchParams }) {
   const user = await requirePermission("reports", "view");
   const date = searchParams.date ?? format(new Date(), "yyyy-MM-dd");
@@ -92,24 +123,31 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
   const report = await getDayEndReport({ ...searchParams, date, location });
   const closing = report.closing;
   const canApprove = user.role === "SUPER_ADMIN" || user.role === "ADMIN" || user.role === "FINANCE" || user.role === "OPERATIONS_MANAGER";
-  const mvrSalesTotal =
-    (report.paymentBreakdown.cash.MVR ?? 0) +
-    (report.paymentBreakdown.card.MVR ?? 0) +
-    (report.paymentBreakdown.bankTransfer.MVR ?? 0) +
-    (report.paymentBreakdown.complimentary.MVR ?? 0);
-  const usdSalesTotal =
-    (report.paymentBreakdown.cash.USD ?? 0) +
-    (report.paymentBreakdown.card.USD ?? 0) +
-    (report.paymentBreakdown.bankTransfer.USD ?? 0) +
-    (report.paymentBreakdown.complimentary.USD ?? 0);
+
+  const paidCollections = moneyPair(
+    (report.paymentBreakdown.cash.MVR ?? 0) + (report.paymentBreakdown.card.MVR ?? 0) + (report.paymentBreakdown.bankTransfer.MVR ?? 0),
+    (report.paymentBreakdown.cash.USD ?? 0) + (report.paymentBreakdown.card.USD ?? 0) + (report.paymentBreakdown.bankTransfer.USD ?? 0),
+  );
+  const complimentary = moneyPair(report.paymentBreakdown.complimentary.MVR ?? 0, report.paymentBreakdown.complimentary.USD ?? 0);
   const localTicketSales = report.ticketSales.byCustomerType.LOCAL?.total ?? 0;
   const touristTicketSales = report.ticketSales.byCustomerType.TOURIST?.total ?? 0;
   const localAddOnSales = report.addOnSales.reduce((sum, item) => sum + item.localTotal, 0);
   const touristAddOnSales = report.addOnSales.reduce((sum, item) => sum + item.touristTotal, 0);
+  const discounts = report.transactions.reduce<CurrencyPair>((acc, row) => {
+    const currency = String(row.currency);
+    if (currency === "MVR") acc.MVR += Number(row.discount);
+    if (currency === "USD") acc.USD += Number(row.discount);
+    return acc;
+  }, moneyPair());
+  const expectedCash = moneyPair(report.cashDrawer.expectedMvrCash, report.cashDrawer.expectedUsdCash);
+  const cashSales = moneyPair(report.cashDrawer.mvrCashSales, report.cashDrawer.usdCashSales);
+  const cardSales = moneyPair(report.cardReconciliation.expectedMvr, report.cardReconciliation.expectedUsd);
+  const bankSales = moneyPair(report.bankTransferReconciliation.expectedMvr, report.bankTransferReconciliation.expectedUsd);
   const sourceSales: SourceSales = report.transactions.reduce<SourceSales>((acc, row) => {
     const source = String(row.source);
     const customerType = String(row.customerType);
-    acc[source] ??= { local: 0, tourist: 0, localRiders: 0, touristRiders: 0 };
+    acc[source] ??= { bookings: 0, local: 0, tourist: 0, localRiders: 0, touristRiders: 0 };
+    acc[source].bookings += 1;
     if (customerType === "LOCAL") {
       acc[source].local += Number(row.totalPayable);
       acc[source].localRiders += Number(row.riders);
@@ -119,6 +157,16 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
     }
     return acc;
   }, {});
+  const packageSales: PackageSales = report.transactions.reduce<PackageSales>((acc, row) => {
+    const packageName = String(row.package || "Package");
+    const customerType = String(row.customerType);
+    acc[packageName] ??= { bookings: 0, riders: 0, local: 0, tourist: 0 };
+    acc[packageName].bookings += 1;
+    acc[packageName].riders += Number(row.riders);
+    if (customerType === "LOCAL") acc[packageName].local += Number(row.totalPayable);
+    else acc[packageName].tourist += Number(row.totalPayable);
+    return acc;
+  }, {});
 
   const exportHref = `/api/admin/reports/export?type=day-end&date=${encodeURIComponent(date)}&location=${encodeURIComponent(location)}`;
 
@@ -126,127 +174,211 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
     <div>
       <PageHeader
         title="Day-End Sales Report"
-        description="Cash drawer, card, bank transfer, complimentary, add-on, and agent commission reconciliation."
+        description="A counter reconciliation sheet for matching cash drawer, card settlement, bank receipts, and complimentary value."
         actions={
-          <Link href={exportHref} className="btn-secondary text-sm px-4 py-2">
+          <Link href={exportHref} className="btn-secondary px-4 py-2 text-sm">
             <Download className="h-4 w-4" />
             Export CSV
           </Link>
         }
       />
 
-      <div className="space-y-6 p-6">
-        <form className="admin-card grid gap-3 md:grid-cols-6" action="/admin/reports/day-end">
-          <Field label="Date" name="date" type="date" defaultValue={date} />
-          <Field label="Location" name="location" type="text" defaultValue={location} />
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground">Payment</span>
-            <select name="paymentMethod" defaultValue={searchParams.paymentMethod ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
-              <option value="">All</option>
-              <option value="CASH">Cash</option>
-              <option value="CARD">Card</option>
-              <option value="BANK_TRANSFER">Bank Transfer</option>
-              <option value="COMPLIMENTARY">Complimentary</option>
-            </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground">Currency</span>
-            <select name="currency" defaultValue={searchParams.currency ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
-              <option value="">All</option>
-              <option value="MVR">MVR</option>
-              <option value="USD">USD</option>
-            </select>
-          </label>
-          <label className="space-y-1">
-            <span className="text-xs font-semibold text-muted-foreground">Source</span>
-            <select name="source" defaultValue={searchParams.source ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
-              <option value="">All</option>
-              <option value="DIRECT">Direct</option>
-              <option value="WALK_IN">Walk-in</option>
-              <option value="AGENT">Agent</option>
-              <option value="AFFILIATE">Affiliate</option>
-            </select>
-          </label>
-          <button className="self-end h-10 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground">Apply</button>
+      <div className="space-y-5 bg-[#F4F1EA] p-4 md:p-6">
+        <form className="rounded-lg border border-black/10 bg-white p-4 shadow-sm" action="/admin/reports/day-end">
+          <div className="grid gap-3 md:grid-cols-6">
+            <Field label="Date" name="date" type="date" defaultValue={date} />
+            <Field label="Location" name="location" type="text" defaultValue={location} />
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground">Payment</span>
+              <select name="paymentMethod" defaultValue={searchParams.paymentMethod ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                <option value="">All</option>
+                <option value="CASH">Cash</option>
+                <option value="CARD">Card</option>
+                <option value="BANK_TRANSFER">Bank Transfer</option>
+                <option value="COMPLIMENTARY">Complimentary</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground">Currency</span>
+              <select name="currency" defaultValue={searchParams.currency ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                <option value="">All</option>
+                <option value="MVR">MVR</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-xs font-semibold text-muted-foreground">Source</span>
+              <select name="source" defaultValue={searchParams.source ?? ""} className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm">
+                <option value="">All</option>
+                <option value="DIRECT">Direct</option>
+                <option value="WALK_IN">Walk-in</option>
+                <option value="AGENT">Agent</option>
+                <option value="AFFILIATE">Affiliate</option>
+              </select>
+            </label>
+            <button className="self-end rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground">Apply</button>
+          </div>
         </form>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-          <Stat label="Bookings" value={report.summary.bookings} />
-          <Stat label="Riders" value={report.summary.riders} />
-          <Stat label="MVR sales total" value={`MVR ${mvrSalesTotal.toFixed(2)}`} />
-          <Stat label="USD sales total" value={`USD ${usdSalesTotal.toFixed(2)}`} />
-          <MoneyStat label="Ticket sales" mvr={localTicketSales} usd={touristTicketSales} />
-          <MoneyStat label="Add-on sales" mvr={localAddOnSales} usd={touristAddOnSales} />
-          <Stat label={report.summary.reconciled ? "Reconciled" : "Difference"} value={formatCurrency(report.summary.difference)} tone={report.summary.reconciled ? "good" : "bad"} />
-        </div>
-
-        <Section title="Opening Float">
-          <div className="grid gap-3 md:grid-cols-3">
-            <Stat label="MVR opening float" value={`MVR ${report.openingFloat.mvr.toFixed(2)}`} />
-            <Stat label="USD opening float" value={`USD ${report.openingFloat.usd.toFixed(2)}`} />
-            <Stat label="Effective date" value={report.openingFloat.effectiveDate ?? "Not configured"} />
-          </div>
-          {canApprove && (
-            <form action={async (formData) => { "use server"; await createCounterFloat(formData); }} className="grid gap-3 border-t border-border pt-4 md:grid-cols-5">
-              <input type="hidden" name="location" value={location} />
-              <Field label="New effective date" name="effectiveDate" type="date" defaultValue={date} />
-              <Field label="MVR float" name="mvrAmount" />
-              <Field label="USD float" name="usdAmount" />
-              <Field label="Notes" name="notes" type="text" />
-              <button className="self-end h-10 rounded-lg border border-border px-4 text-sm font-semibold hover:bg-muted">Add future float</button>
-            </form>
-          )}
-        </Section>
-
-        <Section title="Payment Breakdown">
-          <div className="grid gap-3 md:grid-cols-4">
-            <MoneyStat label="Cash" mvr={report.paymentBreakdown.cash.MVR} usd={report.paymentBreakdown.cash.USD} />
-            <MoneyStat label="Card" mvr={report.paymentBreakdown.card.MVR} usd={report.paymentBreakdown.card.USD} />
-            <MoneyStat label="Bank transfer" mvr={report.paymentBreakdown.bankTransfer.MVR} usd={report.paymentBreakdown.bankTransfer.USD} />
-            <MoneyStat label="Complimentary value" mvr={report.paymentBreakdown.complimentary.MVR} usd={report.paymentBreakdown.complimentary.USD} />
-          </div>
-        </Section>
-
-        <Section title="Ticket Sales">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-xl border border-border bg-card/60 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Local tickets</p>
-              <p className="mt-1 text-lg font-bold">{report.ticketSales.localQty} riders</p>
-              <p className="text-xs font-semibold text-muted-foreground">{formatCurrency(localTicketSales, "MVR")}</p>
+        <div className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white px-5 py-6 text-zinc-900 shadow-sm md:px-10 md:py-9">
+          <header className="mb-6 flex flex-col gap-3 border-b-2 border-[#D85A30] pb-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-500">Vahmaafushi · Zipline Maldives</div>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight">Daily sales report</h1>
             </div>
-            <div className="rounded-xl border border-border bg-card/60 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Tourist tickets</p>
-              <p className="mt-1 text-lg font-bold">{report.ticketSales.touristQty} riders</p>
-              <p className="text-xs font-semibold text-muted-foreground">{formatCurrency(touristTicketSales, "USD")}</p>
+            <div className="text-left text-xs leading-6 text-zinc-500 sm:text-right">
+              <div className="text-sm font-semibold text-zinc-900">{format(new Date(date), "EEE, dd MMM yyyy")}</div>
+              <div>Location: {location}</div>
+              <div>Generated {format(new Date(), "HH:mm")} MVT</div>
             </div>
-            {Object.entries(sourceSales).map(([source, value]) => (
-              <div key={source} className="rounded-xl border border-border bg-card/60 p-3">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{source.toLowerCase().replace("_", " ")} sales</p>
-                <CompactMoneyRows
-                  rows={[
-                    { label: `Local (${value.localRiders} riders)`, value: formatCurrency(value.local, "MVR") },
-                    { label: `Tourist (${value.touristRiders} riders)`, value: formatCurrency(value.tourist, "USD") },
-                  ]}
-                />
+          </header>
+
+          <section className="space-y-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-500">Counter must match</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <div className="text-3xl font-semibold tracking-tight text-zinc-900">{formatCurrency(paidCollections.MVR, "MVR")}</div>
+                <div className="text-xs text-zinc-500">MVR collected by cash, card, and bank transfer</div>
               </div>
-            ))}
-          </div>
-        </Section>
+              <div>
+                <div className="text-3xl font-semibold tracking-tight text-zinc-900">{formatCurrency(paidCollections.USD, "USD")}</div>
+                <div className="text-xs text-zinc-500">USD collected by cash, card, and bank transfer</div>
+              </div>
+            </div>
+          </section>
 
-        <Section title="Add-On Sales">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Add-on</th><th>Qty</th><th>Total</th><th>Local MVR</th><th>Tourist USD</th></tr></thead>
-              <tbody className="divide-y divide-border">
-                {report.addOnSales.map((item) => (
-                  <tr key={item.name}><td className="py-2 font-medium">{item.name}</td><td>{item.quantity}</td><td>{formatCurrency(item.total)}</td><td>{formatCurrency(item.localTotal, "MVR")}</td><td>{formatCurrency(item.touristTotal, "USD")}</td></tr>
+          <PaperSection title="Counter reconciliation">
+            <div className="grid gap-3 md:grid-cols-2">
+              <SummaryCard label="Cash drawer expected">
+                <CurrencyRows mvr={expectedCash.MVR} usd={expectedCash.USD} />
+                <p className="mt-1 text-[11px] font-normal text-zinc-500">Opening float + cash sales</p>
+              </SummaryCard>
+              <SummaryCard label="Opening float">
+                <CurrencyRows mvr={report.openingFloat.mvr} usd={report.openingFloat.usd} muted />
+              </SummaryCard>
+              <SummaryCard label="Card settlement must match">
+                <CurrencyRows mvr={cardSales.MVR} usd={cardSales.USD} />
+              </SummaryCard>
+              <SummaryCard label="Bank receipts must match">
+                <CurrencyRows mvr={bankSales.MVR} usd={bankSales.USD} />
+              </SummaryCard>
+            </div>
+          </PaperSection>
+
+          <PaperSection title="Revenue breakdown">
+            <MiniTable>
+              <tbody>
+                <tr className="border-b border-black/10"><td className="py-2 text-zinc-500">Package revenue</td><td className="py-2 text-right tabular-nums">{formatCurrency(localTicketSales, "MVR")}</td><td className="py-2 text-right tabular-nums">{formatCurrency(touristTicketSales, "USD")}</td></tr>
+                <tr className="border-b border-black/10"><td className="py-2 text-zinc-500">Add-on revenue</td><td className="py-2 text-right tabular-nums">{formatCurrency(localAddOnSales, "MVR")}</td><td className="py-2 text-right tabular-nums">{formatCurrency(touristAddOnSales, "USD")}</td></tr>
+                <tr className="border-b border-black/10"><td className="py-2 text-zinc-500">Discounts applied</td><td className="py-2 text-right tabular-nums text-zinc-500">-{formatCurrency(discounts.MVR, "MVR")}</td><td className="py-2 text-right tabular-nums text-zinc-500">-{formatCurrency(discounts.USD, "USD")}</td></tr>
+                <tr><td className="py-3 font-semibold">Collected sales</td><td className="py-3 text-right font-semibold tabular-nums">{formatCurrency(paidCollections.MVR, "MVR")}</td><td className="py-3 text-right font-semibold tabular-nums">{formatCurrency(paidCollections.USD, "USD")}</td></tr>
+                <tr><td className="pb-1 text-zinc-500">Complimentary value</td><td className="pb-1 text-right tabular-nums text-zinc-500">{formatCurrency(complimentary.MVR, "MVR")}</td><td className="pb-1 text-right tabular-nums text-zinc-500">{formatCurrency(complimentary.USD, "USD")}</td></tr>
+              </tbody>
+            </MiniTable>
+          </PaperSection>
+
+          <PaperSection title="Payment method">
+            <div className="space-y-3">
+              <PaymentBar label="MVR payment split" cash={cashSales.MVR} card={cardSales.MVR} bank={bankSales.MVR} />
+              <PaymentBar label="USD payment split" cash={cashSales.USD} card={cardSales.USD} bank={bankSales.USD} />
+              <MiniTable>
+                <thead>
+                  <tr className="border-b border-black/10 text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+                    <th className="py-2 font-semibold">Method</th>
+                    <th className="py-2 text-right font-semibold">MVR</th>
+                    <th className="py-2 text-right font-semibold">USD</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-black/10"><td className="py-2">Cash</td><td className="py-2 text-right">{formatCurrency(cashSales.MVR, "MVR")}</td><td className="py-2 text-right">{formatCurrency(cashSales.USD, "USD")}</td></tr>
+                  <tr className="border-b border-black/10"><td className="py-2">Card</td><td className="py-2 text-right">{formatCurrency(cardSales.MVR, "MVR")}</td><td className="py-2 text-right">{formatCurrency(cardSales.USD, "USD")}</td></tr>
+                  <tr><td className="py-2">Bank transfer</td><td className="py-2 text-right">{formatCurrency(bankSales.MVR, "MVR")}</td><td className="py-2 text-right">{formatCurrency(bankSales.USD, "USD")}</td></tr>
+                </tbody>
+              </MiniTable>
+              <p className="text-[11px] text-zinc-500">Use these figures to match the physical cash count, card terminal settlement, and bank receipt proof. Complimentary is tracked separately and should not be counted as cash collected.</p>
+            </div>
+          </PaperSection>
+
+          <PaperSection title="Bookings by package">
+            <MiniTable>
+              <thead>
+                <tr className="border-b border-black/10 text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+                  <th className="py-2 font-semibold">Package</th>
+                  <th className="py-2 text-right font-semibold">Bookings</th>
+                  <th className="py-2 text-right font-semibold">Riders</th>
+                  <th className="py-2 text-right font-semibold">MVR</th>
+                  <th className="py-2 text-right font-semibold">USD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(packageSales).map(([name, item]) => (
+                  <tr key={name} className="border-b border-black/10 last:border-0">
+                    <td className="py-2">{name}</td>
+                    <td className="py-2 text-right tabular-nums">{item.bookings}</td>
+                    <td className="py-2 text-right tabular-nums">{item.riders}</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.local, "MVR")}</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.tourist, "USD")}</td>
+                  </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
-        </Section>
+            </MiniTable>
+          </PaperSection>
 
-        <Section title="Reconciliation">
+          <PaperSection title="Source attribution">
+            <MiniTable>
+              <tbody>
+                {Object.entries(sourceSales).map(([source, item]) => (
+                  <tr key={source} className="border-b border-black/10 last:border-0">
+                    <td className="py-2 capitalize">{formatSourceName(source)}</td>
+                    <td className="py-2 text-right text-zinc-500">{item.bookings} bookings</td>
+                    <td className="py-2 text-right text-zinc-500">{item.localRiders} local riders</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.local, "MVR")}</td>
+                    <td className="py-2 text-right text-zinc-500">{item.touristRiders} tourist riders</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.tourist, "USD")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </MiniTable>
+          </PaperSection>
+
+          <PaperSection title="Add-on sales">
+            <MiniTable>
+              <thead>
+                <tr className="border-b border-black/10 text-left text-[10px] uppercase tracking-[0.08em] text-zinc-500">
+                  <th className="py-2 font-semibold">Add-on</th>
+                  <th className="py-2 text-right font-semibold">Qty</th>
+                  <th className="py-2 text-right font-semibold">Local MVR</th>
+                  <th className="py-2 text-right font-semibold">Tourist USD</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.addOnSales.map((item) => (
+                  <tr key={item.name} className="border-b border-black/10 last:border-0">
+                    <td className="py-2">{item.name}</td>
+                    <td className="py-2 text-right tabular-nums">{item.quantity}</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.localTotal, "MVR")}</td>
+                    <td className="py-2 text-right tabular-nums">{formatCurrency(item.touristTotal, "USD")}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </MiniTable>
+          </PaperSection>
+
+          {complimentary.MVR > 0 || complimentary.USD > 0 ? (
+            <div className="mt-5 rounded-lg bg-[#FAEEDA] p-4 text-[#854F0B]">
+              <div className="text-xs font-semibold">Needs review</div>
+              <p className="mt-1 text-xs leading-5">Complimentary value recorded today: {formatCurrency(complimentary.MVR, "MVR")} and {formatCurrency(complimentary.USD, "USD")}. It is not cash collected, but should be approved and explained.</p>
+            </div>
+          ) : null}
+
+          <footer className="mt-7 flex flex-col justify-between gap-2 border-t border-black/10 pt-4 text-[10px] uppercase tracking-[0.08em] text-zinc-400 sm:flex-row">
+            <span>Confidential - internal use only</span>
+            <span>MHR Trading Pvt Ltd</span>
+          </footer>
+        </div>
+
+        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Submit counter reconciliation</h2>
           <form action={async (formData) => { "use server"; await submitDayEndClosing(formData); }} className="space-y-4">
             <input type="hidden" name="date" value={date} />
             <input type="hidden" name="location" value={location} />
@@ -264,7 +396,7 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
               {closing && <span className="rounded-full bg-muted px-3 py-1 text-xs font-semibold">Status: {closing.status}</span>}
             </div>
           </form>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             {closing && canApprove && closing.status !== "APPROVED" && (
               <form action={async () => { "use server"; await approveDayEndClosing(closing.id); }}>
                 <button className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700">Approve</button>
@@ -276,78 +408,57 @@ export default async function DayEndReportPage({ searchParams }: { searchParams:
               </form>
             )}
           </div>
-        </Section>
+        </section>
 
-        <Section title="Agent Commission">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Agent</th><th>Bookings</th><th>Riders</th><th>Sales</th><th>Rate</th><th>Commission</th><th>Net</th></tr></thead>
-              <tbody className="divide-y divide-border">
-                {report.agentCommissions.map((item) => (
-                  <tr key={`${item.agentName}-${item.currency}`}><td className="py-2 font-medium">{item.agentName}</td><td>{item.bookings}</td><td>{item.riders}</td><td>{formatCurrency(item.ticketSales + item.addOnSales, item.currency)}</td><td>{item.commissionRate}%</td><td>{formatCurrency(item.commissionAmount, item.currency)}</td><td>{formatCurrency(item.netAmount, item.currency)}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section title="Complimentary Summary">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase text-muted-foreground"><th className="py-2">Reference</th><th>Customer</th><th>Riders</th><th>Ticket</th><th>Add-ons</th><th>Total value</th><th>Reason</th></tr></thead>
-              <tbody className="divide-y divide-border">
-                {report.complimentary.map((item) => (
-                  <tr key={String(item.reference)}><td className="py-2 font-mono text-primary">{String(item.reference)}</td><td>{String(item.customer)}</td><td>{String(item.riders)}</td><td>{formatCurrency(Number(item.ticketValue), String(item.currency))}</td><td>{formatCurrency(Number(item.addOnValue), String(item.currency))}</td><td>{formatCurrency(Number(item.totalValue), String(item.currency))}</td><td>{String(item.reason ?? "")}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-
-        <Section title="Transactions">
-          <div className="overflow-x-auto rounded-xl border border-border">
-            <table className="min-w-[1420px] text-xs">
-              <thead className="bg-muted/40">
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground">
-                  <th className="px-3 py-2.5">Reference</th>
-                  <th className="px-3 py-2.5">Customer</th>
-                  <th className="px-3 py-2.5">Type</th>
-                  <th className="px-3 py-2.5">Source</th>
-                  <th className="px-3 py-2.5">Payment</th>
-                  <th className="px-3 py-2.5 text-right">Tickets</th>
-                  <th className="px-3 py-2.5">Add-ons</th>
-                  <th className="px-3 py-2.5 text-right">Add-on total</th>
-                  <th className="px-3 py-2.5 text-right">Total</th>
-                  <th className="px-3 py-2.5">Status</th>
-                  <th className="px-3 py-2.5">Agent</th>
+        <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+          <h2 className="mb-3 text-sm font-semibold text-zinc-900">Transactions</h2>
+          <div className="overflow-x-auto rounded-lg border border-black/10">
+            <table className="min-w-[1180px] text-[11px] text-zinc-900">
+              <thead className="bg-[#F7F5EF]">
+                <tr className="text-left text-[10px] uppercase tracking-wider text-zinc-500">
+                  <th className="px-3 py-2">Ref</th>
+                  <th className="px-3 py-2">Customer</th>
+                  <th className="px-3 py-2">Type</th>
+                  <th className="px-3 py-2">Source</th>
+                  <th className="px-3 py-2">Payment</th>
+                  <th className="px-3 py-2 text-right">Tickets</th>
+                  <th className="px-3 py-2">Add-ons</th>
+                  <th className="px-3 py-2 text-right">Total</th>
+                  <th className="px-3 py-2">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-black/10">
                 {report.transactions.map((row) => (
-                  <tr key={String(row.reference)} className="align-top hover:bg-muted/20">
-                    <td className="px-3 py-3 font-mono text-primary">{String(row.reference)}</td>
-                    <td className="px-3 py-3">
-                      <div className="max-w-[220px] whitespace-normal font-medium leading-snug">{String(row.customer)}</div>
-                    </td>
-                    <td className="px-3 py-3">{String(row.customerType)}</td>
-                    <td className="px-3 py-3">{String(row.source).replace("_", " ")}</td>
-                    <td className="px-3 py-3">{String(row.paymentMethod).replace("_", " ")}</td>
-                    <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
-                    <td className="px-3 py-3">
-                      <div className="max-w-[300px] whitespace-normal leading-snug">{String(row.addOns || "-")}</div>
-                    </td>
-                    <td className="px-3 py-3 text-right tabular-nums">{formatCurrency(Number(row.addOnAmount), String(row.currency))}</td>
-                    <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
-                    <td className="px-3 py-3">{String(row.paymentStatus).replace("_", " ")}</td>
-                    <td className="px-3 py-3">
-                      <div className="max-w-[220px] whitespace-normal leading-snug">{String(row.agent || "-")}</div>
-                    </td>
+                  <tr key={String(row.reference)} className="align-top">
+                    <td className="px-3 py-2 font-mono text-primary">{String(row.reference)}</td>
+                    <td className="px-3 py-2"><div className="max-w-[200px] whitespace-normal font-medium leading-snug">{String(row.customer)}</div></td>
+                    <td className="px-3 py-2">{String(row.customerType)}</td>
+                    <td className="px-3 py-2">{String(row.source).replace("_", " ")}</td>
+                    <td className="px-3 py-2">{String(row.paymentMethod).replace("_", " ")}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">{formatCurrency(Number(row.ticketAmount), String(row.currency))}</td>
+                    <td className="px-3 py-2"><div className="max-w-[260px] whitespace-normal leading-snug">{String(row.addOns || "-")}</div></td>
+                    <td className="px-3 py-2 text-right font-semibold tabular-nums">{formatCurrency(Number(row.totalPayable), String(row.currency))}</td>
+                    <td className="px-3 py-2">{String(row.paymentStatus).replace("_", " ")}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </Section>
+        </section>
+
+        {canApprove && (
+          <section className="mx-auto max-w-[920px] rounded-lg border border-black/10 bg-white p-5 shadow-sm">
+            <h2 className="mb-3 text-sm font-semibold text-zinc-900">Opening float setup</h2>
+            <form action={async (formData) => { "use server"; await createCounterFloat(formData); }} className="grid gap-3 md:grid-cols-5">
+              <input type="hidden" name="location" value={location} />
+              <Field label="New effective date" name="effectiveDate" type="date" defaultValue={date} />
+              <Field label="MVR float" name="mvrAmount" />
+              <Field label="USD float" name="usdAmount" />
+              <Field label="Notes" name="notes" type="text" />
+              <button className="self-end rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-muted">Add future float</button>
+            </form>
+          </section>
+        )}
       </div>
     </div>
   );
