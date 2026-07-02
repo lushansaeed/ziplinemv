@@ -20,8 +20,6 @@ interface HeroSectionProps {
   };
 }
 
-const FALLBACK_BG = "bg-brand-deep";
-
 export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
   const heading    = typography?.heading    ?? "Fly from Maafushi. Land in a story.";
   const subheading = typography?.subheading ?? "428 metres of ocean, adrenaline, and unforgettable views.\nYour barefoot adventure starts in the sky.";
@@ -41,12 +39,10 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
     <section className="theme-contrast relative min-h-screen flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0">
-        <div className={cn("absolute inset-0", FALLBACK_BG)}>
-          <div className="absolute inset-0 bg-ocean-gradient opacity-75" />
-          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-brand-turquoise/10 blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-brand-citrus/10 blur-3xl animate-pulse [animation-delay:1s]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-brand-ocean/10 blur-3xl" />
-        </div>
+        <div
+          className="absolute inset-0"
+          style={{ backgroundColor: "var(--header-bg, var(--site-header-bg, var(--site-bg, #FFFFFF)))" }}
+        />
 
         {isVideo && heroMedia?.url ? (
           <video
@@ -77,11 +73,15 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
             onError={() => setReady(true)}
           />
         ) : (
-          /* Decorative fallback — animated ocean gradient */
           <div className="relative w-full h-full" />
         )}
         {/* Gradient overlay */}
-        <div className="absolute inset-0 hero-video-overlay" />
+        <div
+          className={cn(
+            "absolute inset-0 hero-video-overlay transition-opacity duration-700",
+            ready && hasMedia ? "opacity-100" : "opacity-0"
+          )}
+        />
       </div>
 
       {/* Content */}
