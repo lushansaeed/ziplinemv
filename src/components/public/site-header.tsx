@@ -18,20 +18,12 @@ const NAV = [
 ];
 
 export function SiteHeader({ logo }: { logo: LogoData }) {
-  const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname                = usePathname();
-  const isHome                  = pathname === "/";
-  const useLightHeader          = scrolled || !isHome;
+  const useLightHeader          = true;
   const headerLogo              = useLightHeader
     ? { ...logo, url: "/images/zipline-logo-black.png" }
     : logo;
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [pathname]);
