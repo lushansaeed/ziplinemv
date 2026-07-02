@@ -23,6 +23,8 @@ interface BookingWizardProps {
   initialDate?:         string;
   affiliateRef?:        string;
   affiliateCoupon?:     string;
+  operatingHoursLabel?: string;
+  openDays?:            number[];
 }
 
 const STEPS = [
@@ -32,6 +34,7 @@ const STEPS = [
 
 export function BookingWizard({
   packages, addOns, preselectedPackageId, initialDate, affiliateRef, affiliateCoupon,
+  operatingHoursLabel, openDays,
 }: BookingWizardProps) {
   const { currentStep, setField, reset } = useBookingStore();
 
@@ -57,7 +60,7 @@ export function BookingWizard({
   }, []);
 
   const stepComponent = [
-    <Step1Date key={1} />,
+    <Step1Date key={1} operatingHoursLabel={operatingHoursLabel} openDays={openDays} />,
     <Step2Slot key={2} />,
     <Step3Riders key={3} />,
     <Step4Package key={4} packages={packages} />,

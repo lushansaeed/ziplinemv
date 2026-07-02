@@ -58,7 +58,7 @@ const SOCIALS = [
   },
 ];
 
-export function SiteFooter({ logo }: { logo?: LogoData }) {
+export function SiteFooter({ logo, operatingHoursLabel = "Open daily 08:00 – 17:00" }: { logo?: LogoData; operatingHoursLabel?: string }) {
   return (
     <footer className="theme-contrast border-t border-white/10" style={{ backgroundColor: "var(--footer-bg, var(--site-footer-bg, #052F3F))" }}>
       <div className="container-brand py-16 lg:py-20">
@@ -128,7 +128,7 @@ export function SiteFooter({ logo }: { logo?: LogoData }) {
           </p>
           <div className="flex items-center gap-1.5">
             <div className="w-1.5 h-1.5 rounded-full bg-brand-lime animate-pulse" />
-            <p className="text-white/30 text-xs">Open daily 08:00 – 17:00</p>
+            <p className="text-white/30 text-xs">{operatingHoursLabel}</p>
           </div>
         </div>
       </div>

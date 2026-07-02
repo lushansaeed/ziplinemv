@@ -2,6 +2,7 @@ import { PageBackground } from "@/components/public/page-background-server";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/prisma/client";
 import { BookingWizard } from "@/components/booking/booking-wizard";
+import { getPublicOperatingHours } from "@/lib/public/operating-hours";
 
 export const metadata: Metadata = {
   title: "Book Your Flight — Zipline Maldives",
@@ -10,16 +11,22 @@ export const metadata: Metadata = {
 
 async function getBookingData(packageSlug?: string) {
   try {
-    const [packages, addOns] = await Promise.all([
+    const [packages, addOns, operatingHours] = await Promise.all([
       prisma.package.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
       prisma.addOn.findMany({ where: { active: true }, orderBy: { displayOrder: "asc" } }),
+      getPublicOperatingHours(),
     ]);
     const preselectedPackage = packageSlug
       ? packages.find((p) => p.slug === packageSlug) ?? null
       : null;
-    return { packages, addOns, preselectedPackage };
+    return { packages, addOns, preselectedPackage, operatingHours };
   } catch {
-    return { packages: [], addOns: [], preselectedPackage: null };
+    return {
+      packages: [],
+      addOns: [],
+      preselectedPackage: null,
+      operatingHours: { summary: "Open daily 08:00 – 17:00", openDays: [0, 1, 2, 3, 4, 5, 6] },
+    };
   }
 }
 
@@ -28,7 +35,7 @@ export default async function BookPage({
 }: {
   searchParams: { package?: string; date?: string; ref?: string; coupon?: string };
 }) {
-  const { packages, addOns, preselectedPackage } = await getBookingData(searchParams.package);
+  const { packages, addOns, preselectedPackage, operatingHours } = await getBookingData(searchParams.package);
 
   return (
     <div className="min-h-screen pt-20 pb-28 lg:pb-10">
@@ -40,6 +47,8 @@ export default async function BookPage({
         initialDate={searchParams.date}
         affiliateRef={searchParams.ref}
         affiliateCoupon={searchParams.coupon}
+        operatingHoursLabel={operatingHours.summary}
+        openDays={operatingHours.openDays}
       />
     </div>
   );

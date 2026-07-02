@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma/client";
 import { Phone, Mail, MapPin, Clock, MessageCircle, Instagram, Facebook } from "lucide-react";
 import { ContactForm } from "@/components/public/contact-form";
 import { PageHeading } from "@/components/public/page-heading";
+import { getPublicOperatingHours } from "@/lib/public/operating-hours";
 
 export const metadata: Metadata = {
   title: "Contact — Zipline Maldives",
@@ -17,12 +18,10 @@ async function getContactSettings() {
 }
 
 export default async function ContactPage() {
-  const contact = await getContactSettings();
-
-  const hours = (contact?.operatingHours as Record<string, string> | null) ?? {
-    monday: "08:00–17:00", tuesday: "08:00–17:00", wednesday: "08:00–17:00",
-    thursday: "08:00–17:00", friday: "08:00–17:00", saturday: "08:00–17:00", sunday: "08:00–17:00",
-  };
+  const [contact, operatingHours] = await Promise.all([
+    getContactSettings(),
+    getPublicOperatingHours(),
+  ]);
 
   const socials = (contact?.socialLinks as Record<string, string> | null) ?? {};
 
@@ -105,11 +104,11 @@ export default async function ContactPage() {
                 <p className="site-heading font-semibold text-sm">Operating hours</p>
                 <div className="ml-auto flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-brand-lime animate-pulse" />
-                  <span className="text-brand-lime text-xs">Open daily</span>
+                  <span className="text-brand-lime text-xs">{operatingHours.summary.startsWith("Open daily") ? "Open daily" : "Slots"}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
-                {Object.entries(hours).map(([day, time]) => (
+                {Object.entries(operatingHours.byDay).map(([day, time]) => (
                   <div key={day} className="flex justify-between text-xs">
                     <span className="site-text-muted capitalize">{day.slice(0, 3)}</span>
                     <span className="site-body">{time}</span>

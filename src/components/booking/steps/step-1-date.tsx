@@ -10,11 +10,17 @@ import {
   eachDayOfInterval, getDay, isBefore, isToday, parseISO,
 } from "date-fns";
 
-const OPEN_DAYS  = new Set([0, 1, 2, 3, 4, 5, 6]);
+const DEFAULT_OPEN_DAYS = [0, 1, 2, 3, 4, 5, 6];
 const DAY_LABELS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
-export function Step1Date() {
+interface Step1DateProps {
+  operatingHoursLabel?: string;
+  openDays?: number[];
+}
+
+export function Step1Date({ operatingHoursLabel = "Open daily 08:00 – 17:00", openDays = DEFAULT_OPEN_DAYS }: Step1DateProps) {
   const { date, setField, nextStep } = useBookingStore();
+  const openDaySet = new Set(openDays);
   const [viewMonth, setViewMonth] = useState(() => {
     const d = date ? parseISO(date) : new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -28,7 +34,7 @@ export function Step1Date() {
   const selected  = date ? parseISO(date) : null;
 
   function isSelectable(d: Date) {
-    return !isBefore(d, today) && OPEN_DAYS.has(getDay(d));
+    return !isBefore(d, today) && openDaySet.has(getDay(d));
   }
 
   function select(d: Date) {
@@ -147,7 +153,7 @@ export function Step1Date() {
         )}
 
         <p className="text-[11px] text-gray-400 text-center mt-3">
-          Open daily 08:00 – 17:00 · Weather may affect operations
+          {operatingHoursLabel} · Weather may affect operations
         </p>
       </div>
     </StepShell>
