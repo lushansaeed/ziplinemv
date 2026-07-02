@@ -35,6 +35,10 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
     setReady(!hasMedia);
   }, [hasMedia, heroMedia?.url]);
 
+  useEffect(() => {
+    if (ready) window.dispatchEvent(new Event("zipline:hero-ready"));
+  }, [ready]);
+
   return (
     <section className="theme-contrast relative min-h-screen flex flex-col overflow-hidden">
       {/* Background */}

@@ -19,10 +19,11 @@ const NAV = [
 
 export function SiteHeader({ logo }: { logo: LogoData }) {
   const [scrolled, setScrolled] = useState(false);
+  const [heroReady, setHeroReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname                = usePathname();
   const isHome                  = pathname === "/";
-  const useLightHeader          = scrolled || !isHome;
+  const useLightHeader          = scrolled || !isHome || !heroReady;
   const headerLogo              = useLightHeader
     ? { ...logo, url: "/images/zipline-logo-black.png" }
     : logo;
@@ -32,6 +33,15 @@ export function SiteHeader({ logo }: { logo: LogoData }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  useEffect(() => {
+    setHeroReady(!isHome);
+    if (!isHome) return;
+
+    const onHeroReady = () => setHeroReady(true);
+    window.addEventListener("zipline:hero-ready", onHeroReady);
+    return () => window.removeEventListener("zipline:hero-ready", onHeroReady);
+  }, [isHome]);
 
   // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [pathname]);
