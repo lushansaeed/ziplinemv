@@ -350,6 +350,13 @@ html:has(.theme-public) {
     @apply bg-gradient-to-r from-brand-citrus via-brand-mango to-brand-coral bg-clip-text text-transparent;
   }
 
+  .hero-outline-text {
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.88);
+    text-shadow: 0 10px 38px rgba(0, 0, 0, 0.22);
+  }
+
   /* Section padding */
   .section-padding {
     @apply px-4 sm:px-6 lg:px-8;

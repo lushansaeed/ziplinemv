@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Play } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface HeroSectionProps {
@@ -20,9 +20,7 @@ interface HeroSectionProps {
   };
 }
 
-// Fallback gradient hero while no media is uploaded
-// Transparent fallback — allows page background (set via admin theme) to show through
-const FALLBACK_BG = "bg-transparent";
+const FALLBACK_BG = "bg-brand-deep";
 
 export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
   const heading    = typography?.heading    ?? "Fly from Maafushi. Land in a story.";
@@ -31,19 +29,25 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
   const rotation   = typography?.rotation   ?? 0;
   const headingLines = heading.split("\n");
   const videoRef   = useRef<HTMLVideoElement>(null);
-  const [ready, setReady] = useState(false);
+  const isVideo = heroMedia?.type === "VIDEO";
+  const hasMedia = Boolean(heroMedia?.url);
+  const [ready, setReady] = useState(!hasMedia);
 
   useEffect(() => {
-    const timer = setTimeout(() => setReady(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const isVideo = heroMedia?.type === "VIDEO";
+    setReady(!hasMedia);
+  }, [hasMedia, heroMedia?.url]);
 
   return (
     <section className="theme-contrast relative min-h-screen flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0">
+        <div className={cn("absolute inset-0", FALLBACK_BG)}>
+          <div className="absolute inset-0 bg-ocean-gradient opacity-75" />
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-brand-turquoise/10 blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-brand-citrus/10 blur-3xl animate-pulse [animation-delay:1s]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-brand-ocean/10 blur-3xl" />
+        </div>
+
         {isVideo && heroMedia?.url ? (
           <video
             ref={videoRef}
@@ -52,24 +56,29 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
             muted
             loop
             playsInline
-            className="w-full h-full object-cover"
+            preload="auto"
+            className={cn(
+              "relative w-full h-full object-cover transition-opacity duration-700",
+              ready ? "opacity-100" : "opacity-0"
+            )}
+            onLoadedData={() => setReady(true)}
             onCanPlay={() => setReady(true)}
+            onError={() => setReady(true)}
           />
         ) : heroMedia?.url ? (
           <img
             src={heroMedia.url}
             alt={heroMedia.title ?? "Zipline Maldives"}
-            className="w-full h-full object-cover"
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className="relative w-full h-full object-cover"
             onLoad={() => setReady(true)}
+            onError={() => setReady(true)}
           />
         ) : (
           /* Decorative fallback — animated ocean gradient */
-          <div className={cn("w-full h-full", FALLBACK_BG)}>
-            {/* Animated circles */}
-            <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-brand-turquoise/5 blur-3xl animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-brand-citrus/5 blur-3xl animate-pulse [animation-delay:1s]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full bg-brand-ocean/4 blur-3xl" />
-          </div>
+          <div className="relative w-full h-full" />
         )}
         {/* Gradient overlay */}
         <div className="absolute inset-0 hero-video-overlay" />
@@ -102,7 +111,7 @@ export function HeroSection({ heroMedia, typography }: HeroSectionProps) {
         >
           {headingLines.map((line, i) => (
             <span key={i}>
-              {i === 1 ? <span className="text-brand-gradient">{line}</span> : line}
+              {i === 1 ? <span className="hero-outline-text">{line}</span> : line}
               {i < headingLines.length - 1 && <br />}
             </span>
           ))}
